@@ -1,9 +1,9 @@
 FLAGS= -g # -Wall -Wextra -Werror -std=c++98
 
 SRCDIR= src/
-SRCS= main.cpp
+SRCS= main.cpp Server.cpp Config.cpp
 
-OBJS= $(SRCDIR)$(SRCS:.cpp=.o)
+OBJS = $(addprefix $(SRCDIR), $(SRCS:.cpp=.o))
 NAME= webserv
 
 all: $(NAME)
