@@ -7,7 +7,6 @@ CCFLAGS = -Wall -Werror -Wextra -std=c++98
 RM = rm -rf
 MKDIR = mkdir -p
 
-<<<<<<< HEAD
 NAME = webserv
 
 
@@ -31,6 +30,12 @@ MAGENTA = \033[0;95m
 CYAN = \033[0;96m
 WHITE = \033[0;97m
 
+
+SRCDIR= src/
+SRCS= main.cpp
+
+OBJS= $(SRCDIR)$(SRCS:.cpp=.o)
+NAME= webserv
 
 all: $(NAME)
 
@@ -59,3 +64,15 @@ re: fclean all
 
 leaks:
 	@leaks -atExit -- ./$(NAME)
+	c++ $(FLAGS) -o $(NAME) $(OBJS)
+
+$(SRCDIR)%.o: $(SRCDIR)%.cpp
+	c++ $(FLAGS) -c $< -o $@
+
+clean:
+	rm -f $(OBJS)
+
+fclean: clean
+	rm -f $(NAME)
+
+re: fclean all
