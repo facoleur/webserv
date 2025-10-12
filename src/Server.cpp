@@ -33,35 +33,55 @@ void Server::run() {
       int fd = events[i].data.fd;
 
       if (fd == server_fd) {
-        // New client connection
         int client_fd = accept(server_fd, NULL, NULL);
         struct epoll_event cev;
-        cev.events = EPOLLIN;
+        cev.events = EPOLLIN | EPOLLRDHUP;
         cev.data.fd = client_fd;
         epoll_ctl(epfd, EPOLL_CTL_ADD, client_fd, &cev);
       } else {
-        // Data ready to read from client
-        char buf[1024];
-        ssize_t len = read(fd, buf, sizeof(buf));
-
-        std::cout << buf << std::endl;
-
-        if (len <= 0) {
-          // Client disconnected or error
+        if (events[i].events & EPOLLRDHUP) {
+          std::cout << "[Server] Client " << fd
+                    << " disconnected cleanly (EPOLLRDHUP).\n";
           close(fd);
           epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
-        } else {
-          // Basic HTTP response
-          char response[] = "HTTP/1.1 200 OK\r\n \
-                            Content - \
-                            Type : text / plain\r\n \
-														Content - \
-                            Length : 5\r\n \
-														\r\n Hello ";
-          write(fd, response, sizeof(response) - 1);
-          close(fd);
-          epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
+          continue;
         }
+
+        // TODO: each client should have its own request -> map request with
+        // correct client_fd
+        static std::string request;
+
+        char buf[1024] = {0};
+        ssize_t len = read(fd, buf, sizeof(buf) - 1);
+
+        buf[len] = '\0';
+        request += buf;
+
+        if (len == 0) {
+          std::cout << "[Server] Client " << fd << " disconnected (EOF).\n";
+          close(fd);
+          epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
+          continue;
+        }
+
+        if (len < 0) {
+          perror("read");
+          continue;
+        }
+
+        // if (request.find("\r\n\r\n")) {
+
+        std::cout << "Received (" << len << " bytes): " << buf << "\n";
+        // Basic HTTP response
+        std::string res = "HTTP/1.1 222 OK\r\n \
+                          Content - \
+                          Type : text / plain\r\n \
+                          Content - \
+                          Length : 5\r\n \
+                          \r\n Hello";
+        write(fd, res.c_str(), res.size());
+        request.clear();
+        // }
       }
     }
   }
