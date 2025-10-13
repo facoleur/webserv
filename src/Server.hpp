@@ -3,6 +3,7 @@
 #pragma once
 
 #include <iostream>
+#include <map>
 #include <netinet/in.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
@@ -16,6 +17,8 @@
 
 class Server {
 private:
+  Config conf;
+
 public:
   Server(Config &conf);
 
