@@ -46,10 +46,12 @@ CCFLAGS = -Wall -Werror -Wextra -std=c++98
 RM = rm -rf
 MKDIR = mkdir -p
 
-SRCS =	main.cpp
-SRC_DIR = .
-INC_DIR = .
-OBJS = $(SRCS:${SRC_DIR}/%.cpp=${OBJ_DIR}/%.o)
+
+SRCS = main.cpp Server.cpp Config.cpp
+SRC_DIR = src/
+INC_DIR = inc/
+OBJS = $(patsubst %.cpp, $(OBJ_DIR)/%.o, $(notdir $(SRCS)))
+
 OBJ_DIR = bin
 BIN_DIR = bin
 
