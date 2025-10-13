@@ -10,10 +10,17 @@ A list of requirements from the subject and the details from the references (HTT
 
 
 ## Questions to clear
+### Status codes
 - "Your HTTP response status codes must be accurate"<br>
 => implement 3xx status codes for redirection ?
 => implement 401 Unauthorized ? ("*The request requires user authentication.*")
+
+### Chunking
+- What should we handle ?
+
+### Proxies
 - Do we need to do anything to handle proxies ?
+
 
 ## General
 ### Requirements

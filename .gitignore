@@ -1,2 +1,5 @@
 **/Journal-fallan-webserv.md
 **/Webserv-notes-fallan.md
+.vscode/
+*.o
+webserv
