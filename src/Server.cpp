@@ -2,7 +2,7 @@
 
 #include "Server.hpp"
 
-Server::Server(Config &conf) {}
+Server::Server(Config &conf) { (void)conf; }
 
 void Server::run() {
   int server_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
@@ -29,6 +29,7 @@ void Server::run() {
 
   struct epoll_event events[MAX_EVENTS];
   char read_buffer[READ_SIZE + 1];
+  (void)read_buffer;
 
   while (1) {
     int n = epoll_wait(epfd, events, 64, -1);
@@ -70,7 +71,7 @@ void Server::run() {
         }
 
         if (len < 0) {
-          perror("read");
+          std::cout << "read error" << std::endl;
           continue;
         }
 
