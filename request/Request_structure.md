@@ -1,8 +1,8 @@
 # Structure of an HTTP request
 
 ## To clarify
-- CRLF: see "Components" => only CRLF or alternatives too ?
-- 
+- CRLF: see "Components" => only CRLF or alternatives too ? => tfrily: see RFC 9111 () and 9110 (HTTP semantics)
+- Source of truth for body in GET: Content-Length ?
 
 ## HTTP request structure
 Following [A typical HTTP session - Mozilla](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Session) and [HTTP headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers) and [HTTP/1.1](https://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.7)
@@ -43,72 +43,7 @@ The class `Request` has:
 note: no explicit information about CGI, which is handled afterwards at the application level (the Request is a protocol-level data structure)
 
 ## Implementation
-```cpp
-enum requestMethod
-{
-    GET,
-    POST,
-    DELETE,
-    UNKNOWN
-};
-
-enum requestValidity
-{
-	UNEVALUATED_REQUEST,
-	VALID_REQUEST,
-	INVALID_REQUEST
-};
-
-// stores and validates an HTTP request
-class Request
-{
-	// Attributes
-	enum requestMethod						_method; 
-	std::string								_path;
-	std::string								_queryString;
-	int										_protocolVersion;
-	std::vector<std::string, std::string>	_headers;
-	std::string								_body;
-	enum requestValidity					_validity;
-
-	// Functions
-		// presence checks
-	bool									hasHeader(std::string const &); // whether a specific header is present
-	bool									hasBody(void);
-
-		// validity checks => semantic validation
-	bool									isMethodValid(void);
-	bool									isPathValid(void);
-	bool									isQueryStringValid(void);
-	bool									isProtocolVersionValid(void);
-	bool									isHeadersValid(void);
-	bool									isBodyValid(void);
-	bool									isRequestValid(void);
-	
-		// getters
-	enum requestMethod						getMethod(void); 
-	std::string								&getPath(void);
-	std::string								&getQueryString(void);
-	int										getProtocolVersion(void);
-	std::vector<std::string, std::string>	&getHeaders(void);
-	std::string								&getBody(void);
-	enum requestValidity					getValidity(void);
-
-};
-
-// parses an HTTP request, (in)validating its syntax, and storing the result in a Request object
-class RequestParser {
-
-	parseRequestLine(std::string const &line);
-	parseMethod(std::string const &token);
-	parseHeaders(int socketFd);
-	parseHeader(std::string const &line);
-	parseBody(int socketFd, size_t contentLength);
-
-		// handlers
-			discardBytes(void); // advance by Content-Length bytes
-};
-```
+See Request.hpp and RequestParser.hpp
 
 ### Methods
 - GET:

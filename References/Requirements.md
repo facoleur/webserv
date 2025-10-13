@@ -8,23 +8,22 @@ A list of requirements from the subject and the details from the references (HTT
 ### Implementation
 ### Responsibility ?
 
-## Questions to clear
-- HTTP/1.1 or HTTP/1.0 ? Should we handle or reject (or ?) HTTP/0.9 and HTTP/2+ requests ?
-=> how to handle different versions in requests ?
-
--  and if so how ?
-
-- Requests:
-	- conditional also (e.g. GET) ?
-	- body on DELETE: reject request or ignore ?
-
+## Questions
+### To clear
 - "Your HTTP response status codes must be accurate"<br>
-=> implement 3xx status codes for redirection ?
 => implement 401 Unauthorized ? ("*The request requires user authentication.*")
 
-- Do we need to do anything to handle proxies ?
-
-- How to implement "non-blocking" ? Is it with poll() or something more general about how the program works ?
+## Cleared
+- HTTP/1.1 or HTTP/1.0 ? Should we handle or reject (or ?) HTTP/0.9 and HTTP/2+ requests ?
+=> how to handle different versions in requests ?
+=> tfrily: you can say no to anything not 1.1
+- Do we need to do anything to handle proxies ? => tfrily, kly: no
+- cache ? => tfrily, kly: no
+- Requests:
+	- conditional also (e.g. GET) ? => tfrily: no
+	- body on DELETE: reject request or ignore ? => tfrily: read the spec and you decide, justify your choice(s)
+- How to implement "non-blocking" ? Is it with poll() or something more general about how the program works ? => tfrily: [many things]
+- Redirections: what are they and whether to "implement 3xx status codes for redirection" ? => tfrily: yes + add header "location" in response. What they are: see config (something has moved ?)
 
 ## General
 ### Requirements

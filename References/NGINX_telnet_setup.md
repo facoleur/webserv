@@ -1,5 +1,7 @@
 # How to setup NGINX and telnet to conduct tests
 
+**Note lferro: nc is more low-level than curl => prompts you for a request**
+
 Setting up NGINX on macOS
 Installation
 Using Homebrew (simplest):
