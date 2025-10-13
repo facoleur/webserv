@@ -25,6 +25,8 @@ A list of requirements from the subject and the details from the references (HTT
 - How to implement "non-blocking" ? Is it with poll() or something more general about how the program works ? => tfrily: [many things]
 - Redirections: what are they and whether to "implement 3xx status codes for redirection" ? => tfrily: yes + add header "location" in response. What they are: see config (something has moved ?)
 
+- What are redirections and how to handle them ?
+
 ## General
 ### Requirements
 > - **Although you are not required to implement the entire RFCs, reading it will help you develop the required features. The HTTP 1.0 is suggested as a reference point, but not enforced.**<br>
