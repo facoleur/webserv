@@ -40,6 +40,8 @@ The class `Request` has:
 - a body (only for POST)
 - a validity status
 
+note: no explicit information about CGI, which is handled afterwards at the application level (the Request is a protocol-level data structure)
+
 ## Implementation
 ```cpp
 enum requestMethod
@@ -84,13 +86,13 @@ class Request
 	bool									isRequestValid(void);
 	
 		// getters
-	enum requestMethod						getMethod; 
-	std::string								&getPath;
-	std::string								&getQueryString;
-	int										getProtocolVersion;
-	std::vector<std::string, std::string>	&getHeaders;
-	std::string								&getBody;
-	enum requestValidity					getValidity;
+	enum requestMethod						getMethod(void); 
+	std::string								&getPath(void);
+	std::string								&getQueryString(void);
+	int										getProtocolVersion(void);
+	std::vector<std::string, std::string>	&getHeaders(void);
+	std::string								&getBody(void);
+	enum requestValidity					getValidity(void);
 
 };
 
@@ -104,7 +106,7 @@ class RequestParser {
 	parseBody(int socketFd, size_t contentLength);
 
 		// handlers
-											handleContextLength(void); // advance by Content-Length bytes
+			discardBytes(void); // advance by Content-Length bytes
 };
 ```
 

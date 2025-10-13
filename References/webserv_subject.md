@@ -96,6 +96,7 @@ However, you are allowed to use fcntl() only with the following
 flags:
 F_SETFL, O_NONBLOCK and, FD_CLOEXEC.
 Any other flag is forbidden.
+
 IV.3 Configuration file
 You can take inspiration from the ’server’ section of the NGINX
 configuration file.
@@ -112,7 +113,6 @@ In the configuration file, you should be able to:
 ◦Uploading files from the clients to the server is authorized, and storage location is provided.
 
 
-
 ◦Execution of CGI, based on file extension (for example .php). Here are some specific remarks regarding CGIs:
 ∗Do you wonder what a CGI is?
 ∗Have a careful look at the environment variables involved in the web server-CGI communication. The full request and arguments provided by
@@ -123,8 +123,10 @@ them, the CGI will expect EOF as the end of the body.
 ∗The CGI should be run in the correct directory for relative path file access.
 ∗Your server should support at least one CGI (php-CGI, Python, and so
 forth).
+
 You must provide configuration files and default files to test and demonstrate that every feature works during the evaluation.
 You can have other rules or configuration information in your file (e.g., a server name for a website if you plan to implement virtual hosts).
+
 If you have a question about a specific behaviour, you can compare
 your program’s behaviour with NGINX’s.
 We have provided a small tester. Using it is not mandatory if

@@ -9,12 +9,14 @@ A list of requirements from the subject and the details from the references (HTT
 ### Responsibility ?
 
 ## Questions to clear
-- HTTP/1.1 or HTTP/1.0 ?
-=> how to handle different version in requests ?
+- HTTP/1.1 or HTTP/1.0 ? Should we handle or reject (or ?) HTTP/0.9 and HTTP/2+ requests ?
+=> how to handle different versions in requests ?
 
-- Should we handle HTTP/0.9 and HTTP/1.0 (and HTTP/2) requests and if so how ?
+-  and if so how ?
 
-- Requests: conditional also (e.g. GET) ?
+- Requests:
+	- conditional also (e.g. GET) ?
+	- body on DELETE: reject request or ignore ?
 
 - "Your HTTP response status codes must be accurate"<br>
 => implement 3xx status codes for redirection ?
@@ -23,8 +25,6 @@ A list of requirements from the subject and the details from the references (HTT
 - Do we need to do anything to handle proxies ?
 
 - How to implement "non-blocking" ? Is it with poll() or something more general about how the program works ?
-
-- Requests: how to handle various HTTP protocol versions ?
 
 ## General
 ### Requirements

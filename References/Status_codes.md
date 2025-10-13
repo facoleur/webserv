@@ -1,4 +1,4 @@
-# Error status codes
+# Status codes
 
 ```cpp
 enum ErrorCodes
