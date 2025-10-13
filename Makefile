@@ -2,11 +2,12 @@
 
 NAME = webserv
 CC = c++
-CCFLAGS = #-Wall -Werror -Wextra -std=c++98
+CCFLAGS = -Wall -Werror -Wextra -std=c++98
 
 RM = rm -rf
 MKDIR = mkdir -p
 
+<<<<<<< HEAD
 NAME = webserv
 
 
