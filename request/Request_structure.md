@@ -37,13 +37,36 @@ The class `Request` has:
 - a query string: ?q=webserv&lang=en (optional, parsed by the CGI)
 - an HTTP protocol version: HTTP/1.1
 - a set of headers, which can have duplicates (n.b.: careful with case-insensitivity)
-- a body (only for POST)
+- a body (only for POST) (must <= MAX_BODY_SIZE, see Config file)
 - a validity status
 
 note: no explicit information about CGI, which is handled afterwards at the application level (the Request is a protocol-level data structure)
 
 ## Implementation
 See Request.hpp and RequestParser.hpp
+
+How the main loop will handle this:
+```cpp
+RequestParser req_parser;
+Request	*req = req_parser.parse(socketFd);
+if (req == NULL)
+	handle_parse_error(socketFd, 400);
+else if (req->validate() == INVALID_REQUEST)
+	handle_request_error(socketFd, req);
+else
+	handle_request(socketFd, req);
+
+delete req;
+```
+
+n.b. (Claude):
+> Why socketFd as parameter in handlers?
+Because each handler needs to send an HTTP response back to the client.
+> When you call handle_parse_error(socketFd, 400), that function must:
+> - Format an HTTP 400 response
+> - Call send(socketFd, ...) to transmit it back to the client
+> The socketFd is your communication channel with the client. Without it, you can't reply.
+> First principle: The socket is a bidirectional pipe. You read the request from it (in parser), then write the response to it (in handlers). Same file descriptor, opposite direction.
 
 ### Methods
 - GET:
