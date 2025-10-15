@@ -44,6 +44,7 @@ void Server::run() {
   pfds[0].revents = 0;
 
   char read_buffer[READ_SIZE + 1];
+  (void)read_buffer;
 
   while (1) {
     int n = poll(pfds, nfds, TIMEOUT);

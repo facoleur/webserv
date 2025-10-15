@@ -20,6 +20,9 @@ A list of requirements from the subject and the details from the references (HTT
 
 ### Proxies
 - Do we need to do anything to handle proxies ?
+- HTTP/1.1 or HTTP/1.0 ?
+- Should we handle HTTP/0.9 and HTTP/1.0 (and HTTP/2) requests and if so how ?
+- How to implement "non-blocking" ? Is it with poll() or something more general about how the program works ?
 
 
 ## General
@@ -353,4 +356,5 @@ You must be able to serve a fully static website.
 
 ### Implementation
 - to be discussed later on ?
+- Use LLMs to generate tests
 
