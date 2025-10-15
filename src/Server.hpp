@@ -5,6 +5,7 @@
 #include <iostream>
 #include <map>
 #include <netinet/in.h>
+#include <poll.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -23,6 +24,8 @@ public:
   Server(Config &conf);
 
   void run();
-
+  void print_request();
+  void disconnect_client(int &index, int &client_fd, struct pollfd *pfds,
+                         int &nfds);
   ~Server();
 };
