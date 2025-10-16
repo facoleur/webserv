@@ -1,4 +1,4 @@
-FLAGS= -g # -Wall -Wextra -Werror -std=c++98
+FLAGS= -g -Iinc -Wall -Wextra -Werror -std=c++98
 
 SRCDIR= src/
 SRCS= main.cpp Server.cpp Config.cpp
