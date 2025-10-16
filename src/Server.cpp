@@ -1,6 +1,8 @@
 // Server.cpp
 
 #include "Server.hpp"
+#include "MockRequest.hpp"
+#include "MockResponse.hpp"
 
 std::ostream &operator<<(std::ostream &os, struct pollfd pfd) {
   os << "fd: " << pfd.fd << std::endl;
@@ -45,6 +47,8 @@ void Server::run() {
 
   char read_buffer[READ_SIZE + 1];
 
+  std::map<int, std::string> requests;
+
   while (1) {
     int n = poll(pfds, nfds, TIMEOUT);
 
@@ -52,16 +56,16 @@ void Server::run() {
       std::cout << "poll err" << std::endl;
 
     for (int i = 0; i < nfds; i++) {
-      int curr_fd = pfds[i].fd;
+      int client_fd = pfds[i].fd;
 
-      if (curr_fd == server_fd && (pfds[i].revents & POLLIN)) {
-        int client_fd = accept(curr_fd, NULL, NULL);
-        if (client_fd < 0) {
+      if (client_fd == server_fd && (pfds[i].revents & POLLIN)) {
+        int new_client_fd = accept(client_fd, NULL, NULL);
+        if (new_client_fd < 0) {
           std::cout << "client fd error" << std::endl;
           continue;
         }
 
-        pfds[nfds].fd = client_fd;
+        pfds[nfds].fd = new_client_fd;
         pfds[nfds].events = POLLIN;
         pfds[nfds].revents = 0;
 
@@ -74,25 +78,44 @@ void Server::run() {
       }
 
       if (pfds[i].revents & POLLIN) {
-        std::map<int, std::string> requests;
-        char buf[10] = {0};
-        int len = read(curr_fd, &buf, 10);
+        int len = read(client_fd, &read_buffer, 10);
         if (len <= 0) {
-          disconnect_client(i, curr_fd, pfds, nfds);
+          disconnect_client(i, client_fd, pfds, nfds);
         }
 
-        buf[len] = '\0';
-        requests[curr_fd] += buf;
-        write(curr_fd, requests[curr_fd].c_str(), requests[curr_fd].size());
-        std::cout << requests[curr_fd] << std::endl;
+        read_buffer[len] = '\0';
+        requests[client_fd] += read_buffer;
+
+        // processing
+
+        if (requests[client_fd].find("0\r\n\r\n") != std::string::npos) {
+          // end of request (?)
+          MockResponse r = process_request(requests[client_fd]);
+          std::string response = r.getResponse();
+          write(client_fd, response.c_str(), response.size());
+
+          std::cout << "requests from client " << client_fd << ": "
+                    << requests[client_fd] << "[end]" << std::endl;
+          requests[client_fd].clear();
+        }
+
+        // processing
+
         continue;
       }
 
       if (pfds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-        disconnect_client(i, curr_fd, pfds, nfds);
+        disconnect_client(i, client_fd, pfds, nfds);
       }
     }
   }
+}
+
+MockResponse Server::process_request(std::string &request) {
+  (void)request;
+  MockResponse res;
+
+  return res;
 }
 
 Server::~Server() {}
