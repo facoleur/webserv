@@ -1,8 +1,4 @@
-.PHONY: all clean fclean re leaks test
-
-NAME = webserv
-CC = c++
-CCFLAGS = -Wall -Werror -Wextra -std=c++98
+FLAGS= -g -Iinc -Wall -Wextra -Werror -std=c++98
 
 RM = rm -rf
 MKDIR = mkdir -p
