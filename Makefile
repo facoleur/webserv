@@ -46,6 +46,8 @@ CCFLAGS = -Wall -Werror -Wextra -std=c++98
 RM = rm -rf
 MKDIR = mkdir -p
 
+NAME = webserv
+
 
 SRCS = main.cpp Server.cpp Config.cpp
 SRC_DIR = src/
