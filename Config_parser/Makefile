@@ -1,10 +1,14 @@
-FLAGS= -g -Iinc -Wall -Wextra -Werror -std=c++98
+.PHONY: all clean fclean re leaks test
+
+NAME = webserv
+CC = c++
+CCFLAGS = -Wall -Werror -Wextra -std=c++98
 
 RM = rm -rf
 MKDIR = mkdir -p
 
-SRCS =	main.cpp Server.cpp Config.cpp
-SRC_DIR = src/
+SRCS = main.cpp Parser.cpp
+SRC_DIR = .
 INC_DIR = .
 OBJS = $(patsubst %.cpp, $(OBJ_DIR)/%.o, $(notdir $(SRCS)))
 OBJ_DIR = bin

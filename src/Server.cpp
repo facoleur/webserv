@@ -46,6 +46,7 @@ void Server::run() {
   pfds[0].revents = 0;
 
   char read_buffer[READ_SIZE + 1];
+  (void)read_buffer;
 
   std::map<int, std::string> requests;
 
