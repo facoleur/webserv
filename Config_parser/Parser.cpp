@@ -132,17 +132,24 @@ void ConfigParser::parseServer() {
 
     if (accept("host")) {
       Token ip = next();
-      if (ip.s == ";" || ip.s == "{" || ip.s == "}" || ip.s.empty())
-        throw ParseError("invalid host value at line " + std::string(1, '\0'));
+      if (ip.s == ";" || ip.s == "{" || ip.s == "}" || ip.s.empty()) {
+        std::ostringstream msg;
+        msg << "invalid host value '" << ip.s << "' at line " << ip.line
+            << ", col " << ip.col;
+        throw ParseError(msg.str());
+      }
       srv.host = ip.s;
       expect(";", "missing ';' after host");
       continue;
     }
     if (accept("root")) {
       Token p = next();
-      if (p.s == ";" || p.s == "{" || p.s == "}" || p.s.empty())
-        throw ParseError("invalid root value (line " + std::string(1, '\0') +
-                         ")");
+      if (p.s == ";" || p.s == "{" || p.s == "}" || p.s.empty()) {
+        std::ostringstream msg;
+        msg << "invalid root value '" << p.s << "' at line " << p.line
+            << ", col " << p.col;
+        throw ParseError(msg.str());
+      }
       srv.root = p.s;
       expect(";", "missing ';' after root");
       continue;
@@ -153,9 +160,12 @@ void ConfigParser::parseServer() {
         if (eof())
           throw ParseError("unexpected EOF in index directive");
         Token f = next();
-        if (f.s == "{" || f.s == "}" || f.s == ";")
-          throw ParseError("invalid token in index directive at line " +
-                           std::string(1, '\0'));
+        if (f.s == "{" || f.s == "}" || f.s == ";") {
+          std::ostringstream msg;
+          msg << "invalid token '" << f.s << "' in index directive at line "
+              << f.line << ", col " << f.col;
+          throw ParseError(msg.str());
+        }
         srv.index_files.push_back(f.s);
       }
       continue;
