@@ -3,8 +3,8 @@
 #pragma once
 
 class Config {
-private:
-public:
-  Config();
-  ~Config();
+  private:
+  public:
+    Config();
+    ~Config();
 };

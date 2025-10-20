@@ -10,7 +10,7 @@ MKDIR = mkdir -p
 NAME = webserv
 
 
-SRCS = main.cpp Server.cpp Config.cpp
+SRCS = main.cpp Server.cpp Config.cpp MockRequest.cpp MockRequestParser.cpp
 SRC_DIR = src/
 INC_DIR = inc/
 OBJS = $(patsubst %.cpp, $(OBJ_DIR)/%.o, $(notdir $(SRCS)))
