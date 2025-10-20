@@ -66,9 +66,17 @@ int main(int argc, char **argv) {
     for (size_t i = 0; i < cfg.servers.size(); ++i) {
       const ServerConfig &s = cfg.servers[i];
       std::cout << "server[" << i << "] host=" << s.host << " root=" << s.root
-                << " index="
-                << (s.index_files.empty() ? "(none)" : s.index_files[0])
-                << "\n";
+                << " index=";
+      if (s.index_files.empty()) {
+        std::cout << "(none)";
+      } else {
+        for (size_t k = 0; k < s.index_files.size(); ++k) {
+          std::cout << s.index_files[k];
+          if (k + 1 < s.index_files.size())
+            std::cout << ", ";
+        }
+      }
+      std::cout << "\n";
       for (size_t j = 0; j < s.locations.size(); ++j) {
         const LocationConfig &l = s.locations[j];
         std::cout << "  location " << l.path << " root=" << l.root
