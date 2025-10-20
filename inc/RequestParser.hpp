@@ -2,15 +2,15 @@
 
 #pragma once
 
-#include <sstream>
-#include <string>
-// #include <sys/types.h>
 #include "Request.hpp"
-#include <sys/socket.h>
+#include <sstream>
 
 #define READ_BUF_SIZE 4096
+#define CRLF std::string("\r\n")
 
 enum ParserState { REQ_PARSE_PARTIAL, REQ_PARSE_COMPLETE, REQ_PARSE_ERROR };
+
+enum ParsingPhase { PARSING_REQUEST_LINE, PARSING_HEADERS, PARSING_BODY, PARSING_COMPLETE };
 
 /* parses an HTTP request, (in)validating its syntax, and storing the result in
 a Request object */
@@ -19,27 +19,61 @@ class RequestParser {
   public:
     void feed(char* buf, Request* req);
 
-  private:
-    void* parseRequestLine(std::string const& line);
-    void* parseMethod(std::string const& token);
-    void* parseHeaders(int sockFd);
-    void* parseHeader(std::string const& line);
-    void* parseBody(int sockFd, size_t contentLength);
-
-    // handlers
-    size_t findCRLF(void);
-    void   skipBytes(void); // advance by Content-Length bytes
-    void   setState(enum ParserState);
-
     // getters
     enum ParserState getState(void);
 
+  private:
+    void* parseRequestLine(std::string& line);
+    void* parseMethod(std::string const& token);
+    void* parseHeaders(int sockFd);
+    void* parseHeader(std::string& line);
+    void* parseBody(int sockFd, size_t contentLength);
+
+    // handlers
+    void skipBytes(void); // advance by Content-Length bytes
+
     // attributes
-    std::string      _accumulator;
-    size_t           _bufferPos;
-    enum ParserState _state;
+    std::string       _accumulator;
+    size_t            _bufferPos;
+    enum ParserState  _parserState;
+    enum ParsingPhase _parsingPhase;
 };
 
+void RequestParser::feed(char* buf, Request* req) {
+    std::string line;
+    size_t      pos;
+
+    /* Get a new line */
+    _accumulator += buf;
+    pos = _accumulator.find(CRLF);
+    if (pos != _accumulator.npos) {
+        line         = _accumulator.substr(0, pos);
+        _accumulator = _accumulator.substr(pos + 2); // + 2 to skip CRLF
+    } else {
+        _parserState = REQ_PARSE_PARTIAL;
+        return;
+    }
+
+    /* Parse the line */
+    try {
+        switch (_parsingPhase) {
+        case PARSING_REQUEST_LINE:
+            parseRequestLine(line);
+            _parsingPhase = PARSING_HEADERS;
+            break;
+        }
+    } catch (std::exception& e) {
+        std::cout << e.what() << std::endl;
+        _parserState = REQ_PARSE_ERROR;
+    }
+    // testFeed();
+}
+
+RequestParser::RequestParser(void) : _parsingPhase(PARSING_REQUEST_LINE) {
+}
+
+
+// HOW TO USE IT
 // Read 1000 bytes:
 
 // request:
@@ -53,12 +87,7 @@ class RequestParser {
 // GET /root HTTP/1.1
 // Host: blabla
 
-// ssize_t recv(int sockfd, void *buf, size_t len, int flags);
-
-/* In Server.cpp loop:
-
-
-
+/* IN SERVER.CPP LOOP:
 
     while (1)
     {
@@ -90,21 +119,3 @@ class RequestParser {
     }
 
 */
-
-void RequestParser::feed(char* buf, Request* req) {
-    std::string line;
-
-    if (REQ_PARSE_PARTIAL)
-        _accumulator += buf;
-    size_t pos = findCRLF();
-
-    if (pos != _accumulator.npos)
-        line = _accumulator.extractUntilPos(pos);
-    else {
-        setState(REQ_PARSE_PARTIAL);
-        return;
-    }
-}
-
-size_t RequestParser::findCRLF(void) {
-}

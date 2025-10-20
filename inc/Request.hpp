@@ -2,36 +2,24 @@
 
 #pragma once
 
-#include <string>
+#include "Webserv.hpp"
 #include <vector>
 
-enum requestMethod
-{
-    GET,
-    POST,
-    DELETE,
-    UNKNOWN
-};
+enum requestMethod { GET, POST, DELETE, UNKNOWN };
 
-enum requestValidity
-{
-    VALID_REQUEST,
-    INVALID_REQUEST
-};
+enum requestValidity { VALID_REQUEST, INVALID_REQUEST };
 
 // stores and validates (semantically) an HTTP request
-class Request
-{
+class Request {
   private:
     // Attributes
     enum requestMethod _method;
     std::string        _path;
     std::string        _queryString;
     int                _protocolVersion;
-    std::vector<std::pair<std::string, std::string> >
-        _headers; // lferro: use map, more useable for the next user; and append
-                  // during parsing if duplicate
-    std::string          _body;
+    std::vector<std::pair<std::string, std::string>>
+                _headers; // lferro: use map, more useable for the next user; and append during parsing if duplicate
+    std::string _body;
     enum requestValidity _validity;
 
   public:
@@ -41,7 +29,7 @@ class Request
 
     // Functions
     // presence checks
-    bool hasHeader(std::string const &); // whether a specific header is present
+    bool hasHeader(std::string const&); // whether a specific header is present
     bool hasBody(void);
 
     // validity checks => semantic validation
@@ -55,11 +43,11 @@ class Request
 
     // getters
     enum requestMethod                     getMethod(void);
-    std::string                           &getPath(void);
-    std::string                           &getQueryString(void);
+    std::string&                           getPath(void);
+    std::string&                           getQueryString(void);
     int                                    getProtocolVersion(void);
-    std::vector<std::string, std::string> &getHeaders(void);
-    std::string                           &getBody(void);
+    std::vector<std::string, std::string>& getHeaders(void);
+    std::string&                           getBody(void);
     enum requestValidity                   getValidity(void);
 
     // setters
