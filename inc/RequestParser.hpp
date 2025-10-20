@@ -43,30 +43,39 @@ void RequestParser::feed(char* buf, Request* req) {
     std::string line;
     size_t      pos;
 
-    /* Get a new line */
+	/* add the buffer to the accumulator */
     _accumulator += buf;
-    pos = _accumulator.find(CRLF);
-    if (pos != _accumulator.npos) {
-        line         = _accumulator.substr(0, pos);
-        _accumulator = _accumulator.substr(pos + 2); // + 2 to skip CRLF
-    } else {
-        _parserState = REQ_PARSE_PARTIAL;
-        return;
-    }
 
-    /* Parse the line */
-    try {
-        switch (_parsingPhase) {
-        case PARSING_REQUEST_LINE:
-            parseRequestLine(line);
-            _parsingPhase = PARSING_HEADERS;
-            break;
-        }
-    } catch (std::exception& e) {
-        std::cout << e.what() << std::endl;
-        _parserState = REQ_PARSE_ERROR;
-    }
-    // testFeed();
+	while (_accumulator)
+	{
+		/* Get a new line */
+		pos = _accumulator.find(CRLF);
+		if (pos != _accumulator.npos) {
+			line         = _accumulator.substr(0, pos);
+			_accumulator = _accumulator.substr(pos + 2); // + 2 to skip CRLF
+		} else {
+			_parserState = REQ_PARSE_PARTIAL;
+			return;
+		}
+
+		/* Parse the line */
+		try {
+			switch (_parsingPhase) {
+			case PARSING_REQUEST_LINE:
+				parseRequestLine(line);
+				_parsingPhase = PARSING_HEADERS;
+				break;
+			}
+			// ... how to handle adding headers ?
+		} catch (std::exception& e) {
+			std::cout << e.what() << std::endl;
+			_parserState = REQ_PARSE_ERROR;
+		}
+		_accumulator.eraseLine(line); // to implement
+		if (_parsingPhase == PARSING_COMPLETE)
+			break ;
+	}
+	// testFeed();
 }
 
 RequestParser::RequestParser(void) : _parsingPhase(PARSING_REQUEST_LINE) {
