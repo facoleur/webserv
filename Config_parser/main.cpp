@@ -25,6 +25,33 @@ void applyDefaults(Config &cfg) {
   }
 }
 
+void validateCompatibility(const Config &cfg) {
+  for (size_t i = 0; i < cfg.servers.size(); ++i) {
+    const ServerConfig &srv = cfg.servers[i];
+    for (size_t j = 0; j < srv.locations.size(); ++j) {
+      const LocationConfig &loc = srv.locations[j];
+
+      // Example: POST on a location that doesn't look like an upload endpoint.
+      // (No CGI feature in our minimal structs yet; add a check later if/when
+      // CGI exists.)
+      if (loc.methods.count("POST") && loc.redirect.status == 0 &&
+          loc.root.find("upload") == std::string::npos) {
+        std::cerr
+            << "Warning: Location " << loc.path
+            << " allows POST but is not obviously an upload route (no 'upload' "
+               "in root and no redirect). "
+               "Consider restricting methods or implementing POST handling.\n";
+      }
+
+      // Example: DELETE on static root
+      if (loc.methods.count("DELETE") && loc.redirect.status != 0) {
+        std::cerr << "Warning: Location " << loc.path
+                  << " defines DELETE but has a redirect\n";
+      }
+    }
+  }
+}
+
 int main(int argc, char **argv) {
   try {
     if (argc < 2) {
@@ -34,6 +61,7 @@ int main(int argc, char **argv) {
     ConfigParser p;
     Config cfg = p.parseFile(argv[1]);
     //    applyDefaults(cfg);
+    validateCompatibility(cfg);
     std::cout << "OK. servers=" << cfg.servers.size() << "\n";
     for (size_t i = 0; i < cfg.servers.size(); ++i) {
       const ServerConfig &s = cfg.servers[i];
