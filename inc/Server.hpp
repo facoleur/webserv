@@ -2,26 +2,35 @@
 
 #pragma once
 
-#include <iostream>
-#include <map>
+#include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
+#include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-// #include "Config.hpp"
+#include <iostream>
+#include <map>
+#include <vector>
+
+#include "Config.hpp"
+
+class MockResponse;
 
 #define MAX_EVENTS 64
-#define TIMEOUT 30000
+#define TIMEOUT 2500
 #define READ_SIZE 10
 
 class Server {
-private:
-  Config conf;
+  private:
+    Config conf;
 
-public:
-  Server(Config &conf);
+  public:
+    Server(Config& conf);
 
-  void run();
-
-  ~Server();
+    void         run();
+    MockResponse process_request(std::string& request);
+    void         print_request();
+    void         disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
+    ~Server();
 };
