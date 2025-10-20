@@ -1,6 +1,30 @@
 #include "Parser.hpp"
 #include <iostream>
 
+void applyDefaults(Config &cfg) {
+  for (size_t i = 0; i < cfg.servers.size(); ++i) {
+    ServerConfig &srv = cfg.servers[i];
+
+    if (srv.root.empty())
+      srv.root = "./www";
+    if (srv.index_files.empty())
+      srv.index_files.push_back("index.html");
+    if (srv.methods.empty())
+      srv.methods.insert("GET");
+
+    for (size_t j = 0; j < srv.locations.size(); ++j) {
+      LocationConfig &loc = srv.locations[j];
+
+      if (loc.root.empty())
+        loc.root = srv.root; // inherit from server
+      if (loc.index_files.empty())
+        loc.index_files = srv.index_files;
+      if (loc.methods.empty())
+        loc.methods = srv.methods;
+    }
+  }
+}
+
 int main(int argc, char **argv) {
   try {
     if (argc < 2) {
@@ -9,6 +33,7 @@ int main(int argc, char **argv) {
     }
     ConfigParser p;
     Config cfg = p.parseFile(argv[1]);
+    //    applyDefaults(cfg);
     std::cout << "OK. servers=" << cfg.servers.size() << "\n";
     for (size_t i = 0; i < cfg.servers.size(); ++i) {
       const ServerConfig &s = cfg.servers[i];

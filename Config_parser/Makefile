@@ -54,7 +54,8 @@ leaks:
 	@leaks -atExit -- ./$(NAME)
 
 CONF_DIR := ./conf
-CONF_FILES := $(wildcard $(CONF_DIR)/*.conf)
+#CONF_FILES := $(wildcard $(CONF_DIR)/*.conf)
+CONF_FILES := $(CONF_DIR)/default.conf
 PARSER_BIN := ./webserv   # adapt if your binary has another name
 VERBOSE = 1
 
