@@ -160,7 +160,9 @@ void ConfigParser::parseServer() {
         if (eof())
           throw ParseError("unexpected EOF in index directive");
         Token f = next();
-        if (f.s == "{" || f.s == "}" || f.s == ";") {
+        if (f.s == "{" || f.s == "}" || f.s == ";" || f.s == "server" ||
+            f.s == "location" || f.s == "root" || f.s == "methods" ||
+            f.s == "return" || f.s == "host") {
           std::ostringstream msg;
           msg << "invalid token '" << f.s << "' in index directive at line "
               << f.line << ", col " << f.col;
@@ -234,8 +236,14 @@ void ConfigParser::parseLocation(ServerConfig &srv) {
         if (eof())
           throw ParseError("unexpected EOF in index directive");
         Token f = next();
-        if (f.s == "{" || f.s == "}" || f.s == ";")
-          throw ParseError("invalid token in index directive (location)");
+        if (f.s == "{" || f.s == "}" || f.s == ";" || f.s == "server" ||
+            f.s == "location" || f.s == "root" || f.s == "methods" ||
+            f.s == "return" || f.s == "host") {
+          std::ostringstream msg;
+          msg << "invalid token '" << f.s << "' in index directive at line "
+              << f.line << ", col " << f.col;
+          throw ParseError(msg.str());
+        }
         loc.index_files.push_back(f.s);
       }
       continue;
@@ -264,7 +272,8 @@ void ConfigParser::parseLocation(ServerConfig &srv) {
           tgt.s == ";")
         throw ParseError("invalid return directive (location)");
       loc.redirect.status = code;
-      loc.redirect.target = tgt.s;
+      loc.redirect.target = tgt.s; // we dont manage "return 301 /new
+                                   // page.html;", it's not required
       expect(";", "missing ';' after return");
       continue;
     }

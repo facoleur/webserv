@@ -52,3 +52,30 @@ re: fclean all
 
 leaks:
 	@leaks -atExit -- ./$(NAME)
+
+CONF_DIR := ./conf
+CONF_FILES := $(wildcard $(CONF_DIR)/*.conf)
+PARSER_BIN := ./webserv   # adapt if your binary has another name
+VERBOSE = 1
+
+test:
+	@echo "\n🔍 Running parser tests on config files..."
+	@for f in $(CONF_FILES); do \
+		echo "--------------------------------------"; \
+		echo "Testing $$f"; \
+		if [ "$(VERBOSE)" = "1" ]; then \
+			if $(PARSER_BIN) $$f; then \
+				echo "✅ $$f -> OK"; \
+			else \
+				echo "❌ $$f -> FAILED"; \
+			fi; \
+		else \
+			if $(PARSER_BIN) $$f > /dev/null 2>&1; then \
+				echo "✅ $$f -> OK"; \
+			else \
+				echo "❌ $$f -> FAILED"; \
+			fi; \
+		fi; \
+	done
+	@echo "--------------------------------------"
+	@echo "Test suite completed."
