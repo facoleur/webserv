@@ -49,11 +49,18 @@ void RequestParser::feed(char* buf, Request* req) {
 	while (_accumulator)
 	{
 		/* Get a new line */
-		pos = _accumulator.find(CRLF);
-		if (pos != _accumulator.npos) {
-			line         = _accumulator.substr(0, pos);
-			_accumulator = _accumulator.substr(pos + 2); // + 2 to skip CRLF
-		} else {
+		if (_parsingPhase == PARSING_REQUEST_LINE || _parsingPhase == PARSING_HEADERS)
+		{
+			pos = _accumulator.find(CRLF);
+			if (pos != _accumulator.npos) {
+				line         = _accumulator.substr(0, pos);
+				_accumulator = _accumulator.substr(pos + 2); // + 2 to skip CRLF
+		}
+			else if {
+				_parserState = REQ_PARSE_PARTIAL;
+			return;
+		}
+		else if { // if body
 			_parserState = REQ_PARSE_PARTIAL;
 			return;
 		}
@@ -71,7 +78,7 @@ void RequestParser::feed(char* buf, Request* req) {
 			std::cout << e.what() << std::endl;
 			_parserState = REQ_PARSE_ERROR;
 		}
-		_accumulator.eraseLine(line); // to implement
+		_accumulator.eraseLine(line); // to implement => USE STRINGSTREAMS !
 		if (_parsingPhase == PARSING_COMPLETE)
 			break ;
 	}
@@ -120,11 +127,29 @@ RequestParser::RequestParser(void) : _parsingPhase(PARSING_REQUEST_LINE) {
                 case REQ_PARSE_PARTIAL:
                     continue;
                 case REQ_PARSE_COMPLETE:
-                    handle_request(req);
+					while (request_parsers[sockFd].getState() == REQ_PARSE_COMPLETE)
+					{
+						handle_request(req);
+						request_parsers[sockFd].feed(buf, req);
+					}
+					if (request_parsers[sockFd].getState() == REQ_PARSE_ERROR)
+						return REQ_PARSE_ERR;
+					else
+						continue;
                 case REQ_PARSE_ERROR:
                     req_par.clear(req); // clear the parser and the Request
                     return REQ_PARSE_ERR;
+
+			
         }
     }
+
+handle_requests(queue requests)
+{
+	if (fd == POLLOUT)
+		read(fichier, buf, 8196);
+		write(clientFd, buf, 8196);
+}
+
 
 */
