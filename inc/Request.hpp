@@ -7,7 +7,7 @@
 
 enum requestMethod { GET, POST, DELETE, UNKNOWN };
 
-enum requestValidity { VALID_REQUEST, INVALID_REQUEST };
+enum requestValidity { VALIDITY_UNSET, VALID_REQUEST, INVALID_REQUEST };
 
 // stores and validates (semantically) an HTTP request
 class Request {
@@ -17,6 +17,8 @@ class Request {
     std::string        _path;
     std::string        _queryString;
     int                _protocolVersion;
+    enum StatusCode    _statusCode;
+
     std::vector<std::pair<std::string, std::string>>
                 _headers; // lferro: use map, more useable for the next user; and append during parsing if duplicate
     std::string _body;
@@ -58,4 +60,19 @@ class Request {
     void setHeaders(std::vector<std::string, std::string>);
     void setBody(std::string);
     void setValidity(enum requestValidity);
+    void setStatusCode(enum StatusCode);
 };
+
+Request::Request(void) : _validity(VALIDITY_UNSET),_statusCode(NO_STATUS)
+{
+}
+
+void Request::setValidity(enum requestValidity val)
+{
+  this->_validity = val;
+}
+
+void Request::setStatusCode(enum StatusCode val)
+{
+  this->_statusCode = val;
+}
