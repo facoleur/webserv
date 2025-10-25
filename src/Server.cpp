@@ -126,5 +126,5 @@ void Server::handle_requests(std::queue<Request>& req) {
     std::cout << req.front() << std::endl;
 }
 
-
-Server::~Server() {}
+Server::~Server() {
+}
