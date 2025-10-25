@@ -4,6 +4,7 @@
 **/webserv-en-subject-23-1.pdf
 **/webserv_subject-23-1.md
 .vscode/**
+.vscode/
 .vscode/settings.json
 wiki/**
 wiki
