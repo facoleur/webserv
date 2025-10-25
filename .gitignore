@@ -6,3 +6,5 @@
 .vscode/settings.json
 wiki/**
 wiki
+bin/
+webserv

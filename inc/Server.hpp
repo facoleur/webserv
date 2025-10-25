@@ -29,29 +29,27 @@ class MockResponse;
 enum ClientState { WAITING, READING, WRITING, CLOSED };
 
 struct ClientContext {
-    // ClientContext() {
-    //     std::memset(buffer, 0, sizeof(buffer));
-    // }
     ClientState         state;
     RequestParser       req_parser;
     std::queue<Request> requests;
-    char                buffer[READ_SIZE + 1];
     MockResponse        response;
 };
 
 class Server {
   private:
-    Config               _config;
+    // Config               _config;
     struct ClientContext _state;
 
   public:
-    Server(Config& conf);
+    Server();
     void         new_connection();
     void         existing_connection();
     void         run();
     MockResponse process_request(Request& request);
-    void         print_request();
-    void         disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
+    void         handle_requests(std::queue<Request>& req);
+
+    void print_request();
+    void disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
     ~Server() {
     }
 };
