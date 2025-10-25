@@ -6,6 +6,8 @@
 #include <map>
 #include <utility>
 
+#include "Request.hpp"
+
 class ReasonPhrase {
   private:
     static std::map<int, std::string> _reasonPhrase;

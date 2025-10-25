@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cstring>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <poll.h>
@@ -11,9 +12,13 @@
 
 #include <iostream>
 #include <map>
+#include <queue>
 #include <vector>
 
 #include "Config.hpp"
+#include "MockResponse.hpp"
+#include "Request.hpp"
+#include "RequestParser.hpp"
 
 class MockResponse;
 
@@ -21,16 +26,32 @@ class MockResponse;
 #define TIMEOUT 2500
 #define READ_SIZE 10
 
+enum ClientState { WAITING, READING, WRITING, CLOSED };
+
+struct ClientContext {
+    // ClientContext() {
+    //     std::memset(buffer, 0, sizeof(buffer));
+    // }
+    ClientState         state;
+    RequestParser       req_parser;
+    std::queue<Request> requests;
+    char                buffer[READ_SIZE + 1];
+    MockResponse        response;
+};
+
 class Server {
   private:
-    Config conf;
+    Config               _config;
+    struct ClientContext _state;
 
   public:
     Server(Config& conf);
-
+    void         new_connection();
+    void         existing_connection();
     void         run();
-    MockResponse process_request(std::string& request);
+    MockResponse process_request(Request& request);
     void         print_request();
     void         disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
-    ~Server();
+    ~Server() {
+    }
 };

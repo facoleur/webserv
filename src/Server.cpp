@@ -2,8 +2,8 @@
 
 #include "Server.hpp"
 #include "MockRequest.hpp"
-#include "MockRequestParser.hpp"
 #include "MockResponse.hpp"
+#include "RequestParser.hpp"
 
 std::ostream& operator<<(std::ostream& os, struct pollfd pfd) {
     os << "fd: " << pfd.fd << std::endl;
@@ -24,10 +24,18 @@ void Server::disconnect_client(int& index, int& client_fd, struct pollfd* pfds, 
     nfds--;
 }
 
+void Server::new_connection() {
+}
+
+void Server::existing_connection() {
+}
+
 void Server::run() {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    fcntl(server_fd, F_SETFL, O_NONBLOCK);
+    fcntl(server_fd, F_SETFD, FD_CLOEXEC);
 
-    Config conf = this->conf;
+    Config conf = this->_config;
     // TODO: handle conf for ports etc
 
     struct sockaddr_in addr;
@@ -47,20 +55,20 @@ void Server::run() {
     pfds[0].events  = POLLIN;
     pfds[0].revents = 0;
 
-    // std::map<int, std::string>   requests;
-    std::map<int, MockRequestParser> requests;
+    std::map<int, struct ClientContext> context;
 
     while (1) {
         int n = poll(pfds, nfds, TIMEOUT);
-
         if (n < 0)
             std::cout << "poll err" << std::endl;
 
         for (int i = 0; i < nfds; i++) {
-            int client_fd = pfds[i].fd;
+            int cfd = pfds[i].fd;
 
-            if (client_fd == server_fd && (pfds[i].revents & POLLIN)) {
-                int new_client_fd = accept(client_fd, NULL, NULL);
+            if (cfd == server_fd && (pfds[i].revents & POLLIN)) {
+                int new_client_fd = accept(cfd, NULL, NULL);
+                fcntl(new_client_fd, F_SETFL, O_NONBLOCK);
+
                 if (new_client_fd < 0) {
                     std::cout << "client fd error" << std::endl;
                     continue;
@@ -78,48 +86,45 @@ void Server::run() {
                 continue;
             }
 
+            MockResponse res;
             if (pfds[i].revents & POLLIN) {
-                // int len = read(client_fd, &read_buffer, READ_SIZE);
-                // if (len <= 0) {
-                //     disconnect_client(i, client_fd, pfds, nfds);
-                // }
 
-                // read_buffer[len] = '\0';
-                // requests[client_fd] += read_buffer;
-                if (!requests[client_fd].parse(client_fd))
-                    disconnect_client(i, client_fd, pfds, nfds);
+                int len = read(cfd, context[cfd].buffer, READ_SIZE);
+                if (len <= 0) {
+                    disconnect_client(i, cfd, pfds, nfds);
+                }
 
-                // processing
+                context[cfd].buffer[len] = '\0';
+                // request: can be multiple requests -> find a way to fill multiple request
+                context[cfd].req_parser.feed(context[cfd].buffer, context[cfd].requests);
 
-                // if (requests[client_fd].find("0\r\n\r\n") != std::string::npos) {
-                //     // end of request (?)
-                //     MockResponse r        = process_request(requests[client_fd]);
-                //     std::string  response = r.getResponse();
-                //     write(client_fd, response.c_str(), response.size());
-
-                //     std::cout << "requests from client " << client_fd << ": " << requests[client_fd] << "[end]"
-                //               << std::endl;
-                //     requests[client_fd].clear();
-                // }
-
-                // processing
+                switch (context[cfd].req_parser.getState()) {
+                    case REQ_PARSE_PARTIAL:
+                        continue;
+                    case REQ_PARSE_COMPLETE:
+                        process_request(context[cfd].requests.front());
+                        context[cfd].requests.pop();
+                        break;
+                    case REQ_PARSE_ERROR:
+                        disconnect_client(i, cfd, pfds, nfds);
+                        break;
+                    default:
+                        break;
+                }
 
                 continue;
             }
+            if (POLLOUT && res) {
+                send(res);
+            }
 
             if (pfds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-                disconnect_client(i, client_fd, pfds, nfds);
+                disconnect_client(i, cfd, pfds, nfds);
             }
         }
     }
 }
 
-MockResponse Server::process_request(std::string& request) {
-    (void)request;
-    MockResponse res;
-
-    return res;
-}
-
-Server::~Server() {
+void Server::handle_requests(std::queue<Request>& req) {
+    std::cout << req.front() << std::endl;
 }
