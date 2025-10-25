@@ -15,7 +15,6 @@
 #include <queue>
 #include <vector>
 
-#include "Config.hpp"
 #include "MockResponse.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
