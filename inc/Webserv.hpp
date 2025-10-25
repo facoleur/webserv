@@ -9,6 +9,15 @@
 enum StatusCode
 {
 	NO_STATUS = 0,
+
+	// Success
+	OK = 200,
+	ACCEPTED = 202,
+	NO_CONTENT = 204,
+
+	// Redirections (3xx)
+
+	// Errors
 	BAD_REQUEST = 400,
 	FORBIDDEN = 403,
 	NOT_FOUND = 404,

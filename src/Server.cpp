@@ -114,6 +114,8 @@ void Server::run() {
     }
 }
 
+Response Server::handle_request() {}
+
 MockResponse Server::process_request(std::string& request) {
     (void)request;
     MockResponse res;
