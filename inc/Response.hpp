@@ -1,4 +1,4 @@
-// MockResponse.hpp
+// Response.hpp
 
 #pragma once
 
@@ -53,7 +53,7 @@ class Headers {
     }
 };
 
-class MockResponse {
+class Response {
   private:
     int                                        _statusCode;
     std::map<enum requestHeaders, std::string> _headers;
@@ -62,8 +62,8 @@ class MockResponse {
     std::string _serializedResponse;
 
   public:
-    MockResponse();
-    ~MockResponse();
+    Response();
+    ~Response();
 
     std::string& serializeResponse();
 

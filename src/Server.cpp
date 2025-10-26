@@ -1,7 +1,7 @@
 // Server.cpp
 
 #include "Server.hpp"
-#include "MockResponse.hpp"
+#include "Response.hpp"
 #include "RequestParser.hpp"
 
 std::ostream& operator<<(std::ostream& os, struct pollfd pfd) {
@@ -125,9 +125,11 @@ void Server::run() {
 void Server::handle_requests(ClientContext& context, int cfd) {
     std::cout << context.requests.front() << std::endl;
 
-    std::string mockResponse = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nHello";
+    Response
 
-    write(cfd, mockResponse.c_str(), mockResponse.size());
+    std::string Response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nHello";
+
+    write(cfd, Response.c_str(), Response.size());
 }
 
 Server::~Server() {
