@@ -116,14 +116,18 @@ void Server::run() {
                     continue;
                 }
 
-                handle_requests(context[cfd].requests);
+                handle_requests(context[cfd], cfd);
             }
         }
     }
 }
 
-void Server::handle_requests(std::queue<Request>& req) {
-    std::cout << req.front() << std::endl;
+void Server::handle_requests(ClientContext& context, int cfd) {
+    std::cout << context.requests.front() << std::endl;
+
+    std::string mockResponse = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nHello";
+
+    write(cfd, mockResponse.c_str(), mockResponse.size());
 }
 
 Server::~Server() {
