@@ -19,17 +19,21 @@ a Request object */
 class RequestParser {
 
   public:
-    void feed(char* buf, std::queue<Request> req_queue);
+    void feed(char* buf, std::queue<Request> &req_queue);
 
     // getters
     enum ParserState getState(void);
 
   private:
-    void    parseRequestLine(std::string& line);
-    void* parseMethod(std::string const& token);
-    void* parseHeaders(int sockFd);
-    void* parseHeader(std::string& line);
-    void* parseBody(int sockFd, size_t contentLength);
+    void    parseRequestLine(bool);
+    void    parseHeaders(void);
+  
+    void    parseMethod(std::string const& token);
+    void    parseHeader(std::string&);
+    void    parseBody(int sockFd, size_t contentLength);
+
+    void    handleParseError(Request &, std::queue<Request> &);
+    void    handleParsePartial(size_t);
 
     // attributes
     std::string       _accumulator;
@@ -37,4 +41,7 @@ class RequestParser {
     enum ParserState  _parserState;
     enum ParsingPhase _parsingPhase;
     enum StatusCode   _statusCode;
+    std::string       _firstSection; // request-line + headers
+    std::string       _requestLine;
+    std::string       _headers;
 };
