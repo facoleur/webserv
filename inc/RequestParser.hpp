@@ -24,6 +24,8 @@ class RequestParser {
     // getters
     enum ParserState getState(void);
 
+    struct RequestParsingError : std::exception { };
+
   private:
     void    parseRequestLine(bool);
     void    parseHeaders(void);
@@ -36,11 +38,12 @@ class RequestParser {
     void    handleParsePartial(size_t);
 
     // attributes
-    std::string       _accumulator;
-    size_t            _contentLength;
+
     enum ParserState  _parserState;
     enum ParsingPhase _parsingPhase;
     enum StatusCode   _statusCode;
+    size_t            _contentLength;
+    std::string       _accumulator;
     std::string       _firstSection; // request-line + headers
     std::string       _requestLine;
     std::string       _headers;
