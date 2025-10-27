@@ -13,6 +13,42 @@ static bool isSpace(char c) {
          c == '\f';
 }
 
+static bool isIPv4(const std::string &s) {
+  // Accept only dotted-quad a.b.c.d with each part 0..255 and only digits
+  int parts = 0;
+  size_t i = 0, n = s.size();
+  while (i < n) {
+    if (parts == 4)
+      return false; // too many parts
+    if (!std::isdigit(static_cast<unsigned char>(s[i])))
+      return false;
+
+    int val = 0;
+    int digits = 0;
+
+    while (i < n && std::isdigit(static_cast<unsigned char>(s[i]))) {
+      val = val * 10 + (s[i] - '0');
+      if (val > 255)
+        return false;
+      ++i;
+      ++digits;
+    }
+    if (digits == 0)
+      return false;
+
+    ++parts;
+
+    if (parts < 4) {
+      if (i >= n || s[i] != '.')
+        return false; // need dot between parts
+      ++i;            // skip '.'
+      if (i >= n)
+        return false; // must have digits after dot
+    }
+  }
+  return parts == 4;
+}
+
 std::vector<ConfigParser::Token>
 ConfigParser::tokenize(const std::string &text) {
   std::vector<Token> out;
@@ -138,6 +174,12 @@ void ConfigParser::parseServer() {
             << ", col " << ip.col;
         throw ParseError(msg.str());
       }
+      if (!isIPv4(ip.s)) {
+        std::ostringstream msg;
+        msg << "invalid IPv4 address '" << ip.s << "' at line " << ip.line
+            << ", col " << ip.col;
+        throw ParseError(msg.str());
+      }
       srv.host = ip.s;
       expect(";", "missing ';' after host");
       continue;
@@ -160,9 +202,7 @@ void ConfigParser::parseServer() {
         if (eof())
           throw ParseError("unexpected EOF in index directive");
         Token f = next();
-        if (f.s == "{" || f.s == "}" || f.s == ";" || f.s == "server" ||
-            f.s == "location" || f.s == "root" || f.s == "methods" ||
-            f.s == "return" || f.s == "host") {
+        if (f.s == "{" || f.s == "}" || f.s == ";") {
           std::ostringstream msg;
           msg << "invalid token '" << f.s << "' in index directive at line "
               << f.line << ", col " << f.col;
@@ -236,9 +276,7 @@ void ConfigParser::parseLocation(ServerConfig &srv) {
         if (eof())
           throw ParseError("unexpected EOF in index directive");
         Token f = next();
-        if (f.s == "{" || f.s == "}" || f.s == ";" || f.s == "server" ||
-            f.s == "location" || f.s == "root" || f.s == "methods" ||
-            f.s == "return" || f.s == "host") {
+        if (f.s == "{" || f.s == "}" || f.s == ";") {
           std::ostringstream msg;
           msg << "invalid token '" << f.s << "' in index directive at line "
               << f.line << ", col " << f.col;
