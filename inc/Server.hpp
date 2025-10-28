@@ -47,7 +47,6 @@ class Server {
     void         run();
     MockResponse process_request(Request& request);
     bool         handle_requests(ClientContext&, int);
-
     void print_request();
     void disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
 };
