@@ -15,23 +15,23 @@ class Request {
     // Constructors
     Request(void);
     ~Request(void);
-	
+
     // Semantic validation
     void validateRequest(void); // performs all the necessary checks to set the _validity
     bool validateMethod(void);
-	bool validateTarget(void);
-	bool validateQueryString(void);
-	bool validateProtocolVersion(void);
-	bool validateHeaders(void);
-	bool validateBody(void);
+    bool validateTarget(void);
+    bool validateQueryString(void);
+    bool validateProtocolVersion(void);
+    bool validateHeaders(void);
+    bool validateBody(void);
 
     // Other functions
     bool hasHeader(std::string const&); // whether a specific header is present
     bool hasBody(void);
-	void printRequest(void);
+    void printRequest(void);
 
     // getters
-    std::string&                           getMethod(void);
+    enum requestMethod                     getMethod(void);
     std::string&                           getPath(void);
     std::string&                           getQueryString(void);
     std::string&                           getProtocolVersion(void);
@@ -49,14 +49,15 @@ class Request {
     void setValidity(enum requestValidity);
 
     friend std::ostream& operator<<(std::ostream& os, Request& req);
-    void setStatusCode(enum statusCode);
-	void printHeaders(std::ostream&);
+    void                 setStatusCode(enum statusCode);
+    void                 printHeaders(std::ostream&);
+
   private:
     // Attributes
-    std::string _method;
-    std::string _path;
-    std::string _queryString;
-    std::string _protocolVersion;
+    enum requestMethod _method;
+    std::string        _path;
+    std::string        _queryString;
+    std::string        _protocolVersion;
 
     std::vector<std::pair<std::string, std::string> >
                     _headers; // lferro: use map, more useable for the next user; and append during parsing if duplicate

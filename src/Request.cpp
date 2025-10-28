@@ -22,6 +22,10 @@ void Request::printRequest(void) {
     std::cout << "- validity: " << _validity << std::endl;
 }
 
+enum requestMethod Request::getMethod(void) {
+    return _method;
+}
+
 std::string& Request::getPath(void) {
     return _path;
 }
@@ -47,7 +51,14 @@ enum requestValidity Request::getValidity(void) {
 }
 
 void Request::setMethod(std::string& method) {
-    _method = method;
+    if (_method == "GET")
+		_method = GET;
+	else if (_method == "POST")
+		_method = POST;
+	else if (_method == "DELETE")
+        _method = DELETE;
+    else
+		_method = UNKNOWN;
 }
 
 void Request::setPath(std::string const& path) {
