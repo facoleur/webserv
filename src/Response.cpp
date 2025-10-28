@@ -7,17 +7,13 @@
 std::map<int, std::string>                 ReasonPhrase::_reasonPhrase;
 std::map<enum requestHeaders, std::string> Headers::_headersString;
 
-std::string Response::getResponse() const {
-    return _serializedResponse;
-}
-
 Response::Response() {
 }
 
 Response::~Response() {
 }
 
-std::string& Response::serializeResponse() {
+std::string& Response::serialize() {
     _serializedResponse.clear();
 
     _serializedResponse.append("HTTP/1.1 ");

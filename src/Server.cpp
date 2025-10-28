@@ -1,8 +1,8 @@
 // Server.cpp
 
 #include "Server.hpp"
-#include "Response.hpp"
 #include "RequestParser.hpp"
+#include "Response.hpp"
 
 std::ostream& operator<<(std::ostream& os, struct pollfd pfd) {
     os << "fd: " << pfd.fd << std::endl;
@@ -123,9 +123,10 @@ void Server::run() {
 }
 
 void Server::handle_requests(ClientContext& context, int cfd) {
-    std::cout << context.requests.front() << std::endl;
+    // std::cout << context.requests.front() << std::endl;
+    std::cout << "tset" << std::endl;
 
-    Response
+    Response response;
 
     std::string Response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nHello";
 

@@ -14,6 +14,7 @@ class ReasonPhrase {
 
     static void init() {
         _reasonPhrase[200] = "OK";
+        _reasonPhrase[202] = "Accepted";
         _reasonPhrase[301] = "Redirect";
         _reasonPhrase[400] = "Bad Request";
         _reasonPhrase[404] = "Not Found";
@@ -65,7 +66,5 @@ class Response {
     Response();
     ~Response();
 
-    std::string& serializeResponse();
-
-    std::string getResponse() const;
+    std::string& serialize();
 };

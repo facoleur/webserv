@@ -37,6 +37,6 @@ async function sendChunkedPostRequest(url) {
 
 const url = "http://localhost:8080";
 
-sendGetRequest(url);
-sendPostRequest(url);
+// sendGetRequest(url);
+// sendPostRequest(url);
 sendChunkedPostRequest(url);
