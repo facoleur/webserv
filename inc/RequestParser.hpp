@@ -6,8 +6,7 @@
 #include <sstream>
 #include <queue>
 
-#define READ_BUF_SIZE 8192
-#define MAX_LINE_SIZE 8016
+#define READ_BUF_SIZE 8000
 #define CRLF std::string("\r\n")
 
 enum ParserState { REQ_PARSE_START, REQ_PARSE_PARTIAL, REQ_PARSE_COMPLETE, REQ_PARSE_ERROR };
@@ -27,18 +26,20 @@ class RequestParser {
     struct RequestParsingError : std::exception { };
 
   private:
-    void    parseRequestLine(bool);
+	// Main parsing functions
+    void    parseRequestLine(Request &, bool);
     void    parseHeaders(void);
-  
-    void    parseMethod(std::string const& token);
     void    parseHeader(std::string&);
     void    parseBody(int sockFd, size_t contentLength);
 
+	// Helpers
+	void	splitRequestLine(std::vector<std::string> &, std::string &line);
+
+	// Error handling
     void    handleParseError(Request &, std::queue<Request> &);
     void    handleParsePartial(size_t);
 
     // attributes
-
     enum ParserState  _parserState;
     enum ParsingPhase _parsingPhase;
     enum StatusCode   _statusCode;
@@ -47,4 +48,5 @@ class RequestParser {
     std::string       _firstSection; // request-line + headers
     std::string       _requestLine;
     std::string       _headers;
+    std::string       _body;
 };

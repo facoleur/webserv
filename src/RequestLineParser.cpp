@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 
-std::vector<std::string> &split_line(std::vector<std::string> &split, std::string &line);
+std::vector<std::string> &splitRequestLine(std::vector<std::string> &split, std::string &line);
 
 int main(void)
 {
@@ -19,13 +19,16 @@ int main(void)
     for (size_t k = 0; k < 7; k++)
 	{
 		std::cout << "requestLine[" << k << "]: '" << _requestLine[k] << "'" << std::endl;
-		split = split_line(split, _requestLine[k]);
+		split = splitRequestLine(split, _requestLine[k]);
 		if (!split.empty())
+		{
 			std::cout << "=> split: (size: " << split.size() << ") - {"<< split[0] << "}-{" << split[1] << "}-{" << split[2] << "}" << std::endl;
+			split.clear();
+		}
 	}
 }
 
-std::vector<std::string> &split_line(std::vector<std::string> &split, std::string &line)
+std::vector<std::string> &splitRequestLine(std::vector<std::string> &split, std::string &line)
 {
     size_t                      pos;
 

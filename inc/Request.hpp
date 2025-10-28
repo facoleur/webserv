@@ -5,74 +5,58 @@
 #include "Webserv.hpp"
 #include <vector>
 
-enum requestMethod { GET, POST, DELETE, UNKNOWN };
-
-enum requestValidity { VALIDITY_UNSET, VALID_REQUEST, INVALID_REQUEST };
+enum requestValidity { VALID_REQUEST, INVALID_REQUEST };
 
 // stores and validates (semantically) an HTTP request
 class Request {
-  private:
-    // Attributes
-    enum requestMethod _method;
-    std::string        _path;
-    std::string        _queryString;
-    int                _protocolVersion;
-    enum StatusCode    _statusCode;
-
-    std::vector<std::pair<std::string, std::string>>
-                _headers; // lferro: use map, more useable for the next user; and append during parsing if duplicate
-    std::string _body;
-    enum requestValidity _validity;
-
   public:
     // Constructors
     Request(void);
     ~Request(void);
+	
+    // Semantic validation
+    void validateRequest(void); // performs all the necessary checks to set the _validity
+    bool validateMethod(void);
+	bool validateTarget(void);
+	bool validateQueryString(void);
+	bool validateProtocolVersion(void);
+	bool validateHeaders(void);
+	bool validateBody(void);
 
-    // Functions
-    // presence checks
+    // Other functions
     bool hasHeader(std::string const&); // whether a specific header is present
     bool hasBody(void);
-
-    // validity checks => semantic validation
-    bool isMethodValid(void);
-    bool isPathValid(void);
-    bool isQueryStringValid(void);
-    bool isProtocolVersionValid(void);
-    bool isHeadersValid(void);
-    bool isBodyValid(void);
-    bool isRequestValid(void);
+	void printRequest(void);
 
     // getters
-    enum requestMethod                     getMethod(void);
+    std::string&                           getMethod(void);
     std::string&                           getPath(void);
     std::string&                           getQueryString(void);
-    int                                    getProtocolVersion(void);
+    std::string&                           getProtocolVersion(void);
     std::vector<std::string, std::string>& getHeaders(void);
     std::string&                           getBody(void);
     enum requestValidity                   getValidity(void);
 
     // setters
-    void setMethod(enum requestMethod);
-    void setPath(std::string);
-    void setQueryString(std::string);
-    void setProtocolVersion(int);
+    void setMethod(std::string&);
+    void setPath(std::string const&);
+    void setQueryString(std::string const&);
+    void setProtocolVersion(std::string&);
     void setHeaders(std::vector<std::string, std::string>);
-    void setBody(std::string);
+    void setBody(std::string const&);
     void setValidity(enum requestValidity);
     void setStatusCode(enum StatusCode);
+
+  private:
+    // Attributes
+    std::string _method;
+    std::string _path;
+    std::string _queryString;
+    std::string _protocolVersion;
+
+    std::vector<std::pair<std::string, std::string> >
+                    _headers; // lferro: use map, more useable for the next user; and append during parsing if duplicate
+    std::string     _body;
+    enum StatusCode _statusCode;
+    enum requestValidity _validity;
 };
-
-Request::Request(void) : _validity(VALIDITY_UNSET),_statusCode(NO_STATUS)
-{
-}
-
-void Request::setValidity(enum requestValidity val)
-{
-  this->_validity = val;
-}
-
-void Request::setStatusCode(enum StatusCode val)
-{
-  this->_statusCode = val;
-}
