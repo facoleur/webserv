@@ -7,7 +7,7 @@ CCFLAGS = -Wall -Werror -Wextra -std=c++98
 RM = rm -rf
 MKDIR = mkdir -p
 
-SRCS = main.cpp Parser.cpp
+SRCS = main.cpp Parser.cpp Config.cpp
 SRC_DIR = .
 INC_DIR = .
 OBJS = $(patsubst %.cpp, $(OBJ_DIR)/%.o, $(notdir $(SRCS)))

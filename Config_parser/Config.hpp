@@ -29,8 +29,27 @@ struct ServerConfig {
   std::vector<LocationConfig> locations;
 };
 
-struct Config {
+class Config {
+public:
+  Config() {}
+  // Config(const Config& other);
+  // Config& operator=(const Config& other);
+  // ~Config();
+
+  // Mutations
+  void clearServers() { servers.clear(); }
+  void addServer(const ServerConfig &s) { servers.push_back(s); }
+
+  // Queries
+  size_t serverCount() const { return servers.size(); }
+  const std::vector<ServerConfig> &getServers() const { return servers; }
+  std::vector<ServerConfig> &getServers() { return servers; }
+
+private:
   std::vector<ServerConfig> servers;
 };
+
+void applyDefaults(Config &cfg);
+void validateCompatibility(const Config &cfg);
 
 #endif

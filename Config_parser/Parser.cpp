@@ -140,7 +140,7 @@ Config ConfigParser::parseFile(const std::string &path) {
 }
 
 Config ConfigParser::parseString(const std::string &text) {
-  cfg_.servers.clear();
+  cfg_.clearServers();
   toks_ = tokenize(text);
   i_ = 0;
   parseConfig();
@@ -248,7 +248,7 @@ void ConfigParser::parseServer() {
         << ", col " << t.col << ")";
     throw ParseError(oss.str());
   }
-  cfg_.servers.push_back(srv);
+  cfg_.addServer(srv);
 }
 
 void ConfigParser::parseLocation(ServerConfig &srv) {
