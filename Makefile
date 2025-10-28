@@ -7,14 +7,10 @@ CCFLAGS = -Wall -Werror -Wextra -std=c++98
 RM = rm -rf
 MKDIR = mkdir -p
 
-NAME = webserv
-
-
-SRCS = main.cpp Server.cpp Config.cpp MockRequest.cpp MockRequestParser.cpp
+SRCS =	main.cpp Server.cpp Config.cpp
 SRC_DIR = src/
-INC_DIR = inc/
+INC_DIR = .
 OBJS = $(patsubst %.cpp, $(OBJ_DIR)/%.o, $(notdir $(SRCS)))
-
 OBJ_DIR = bin
 BIN_DIR = bin
 

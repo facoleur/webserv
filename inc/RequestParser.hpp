@@ -27,7 +27,7 @@ class RequestParser {
 
   private:
 	// Main parsing functions
-    void    parseRequestLine(Request &, bool);
+    void    parseRequestLine(Request &);
     void    parseHeaders(void);
     void    parseHeader(std::string&);
     void    parseBody(int sockFd, size_t contentLength);

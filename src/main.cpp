@@ -2,15 +2,15 @@
 
 #include "Server.hpp"
 
-int main(int argc, char const* argv[]) {
+int main(int argc, char const *argv[]) {
 
-    (void)argc;
-    (void)argv;
+  (void)argc;
+  (void)argv;
 
-    Config conf;
+  Config conf;
 
-    Server serv(conf);
+  Server serv(conf);
 
-    serv.run();
-    return 0;
+  serv.run();
+  return 0;
 }

@@ -22,10 +22,9 @@ void RequestParser::splitRequestLine(std::vector<std::string>& split, std::strin
     return;
 }
 
-void RequestParser::parseRequestLine(Request& req, bool pureRequestLine) {
+void RequestParser::parseRequestLine(Request& req) {
     size_t                   queryPos;
     std::vector<std::string> split;
-    enum requestMethod       requestMethod;
 
     /* split line */
     splitRequestLine(split, _requestLine);
@@ -105,15 +104,15 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
             {
             case PARSING_REQUEST_LINE:
                 pos = _firstSection.find(CRLF);
-                if (pos != std::string::npos) {
+                if (pos != std::string::npos) { // request-line + headers
                     _requestLine  = _firstSection.substr(0, pos);
                     _firstSection = _firstSection.substr(pos);
-                    parseRequestLine(req, false);
+                    parseRequestLine(req);
                     _parsingPhase = PARSING_HEADERS;
-                } else {
+                } else { // pure request-line, no headers
                     _requestLine = _firstSection;
                     _firstSection.clear();
-                    parseRequestLine(req, true);
+                    parseRequestLine(req);
                     _parsingPhase = PARSING_COMPLETE;
                 }
                 break;
@@ -123,7 +122,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
 			// case PARSING_BODY:
 			// 	parseBody();
 			// 	break;
-            case PARSING_COMPLETE: // this part won't throw
+            case PARSING_COMPLETE: // n.b.: this part cannot throw
                 req.validateRequest();
                 req.printRequest();
                 reqQueue.push(req);

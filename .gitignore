@@ -6,3 +6,7 @@
 .vscode/settings.json
 wiki/**
 wiki
+.vscode/
+*.o
+webserv
+**/RequestLineParser.cpp
