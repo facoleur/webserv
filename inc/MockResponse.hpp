@@ -63,6 +63,7 @@ class MockResponse {
 
   public:
     MockResponse();
+    MockResponse(int);
     ~MockResponse();
 
     std::string& serializeResponse();

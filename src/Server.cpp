@@ -22,6 +22,9 @@ void Server::disconnect_client(int& index, int& client_fd, struct pollfd* pfds, 
 Server::Server() {
 }
 
+Server::~Server() {
+}
+
 void Server::new_connection() {
 }
 
@@ -64,19 +67,17 @@ void Server::run() {
 
         for (int i = 0; i < nfds; i++) {
             int cfd = pfds[i].fd;
-
-            if (pfds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-                disconnect_client(i, cfd, pfds, nfds);
+            if (pfds[i].revents & (POLLERR | POLLNVAL)) { //  POLLHUP | => below POLLIN handling
+              	std::cout << "disconnect 1" << std::endl;
+				disconnect_client(i, cfd, pfds, nfds);
                 continue;
             }
-
             if (cfd == server_fd && (pfds[i].revents & POLLIN)) {
                 int new_client_fd = accept(cfd, NULL, NULL);
                 if (new_client_fd < 0) {
                     std::cout << "accept error" << std::endl;
                     continue;
                 }
-
                 fcntl(new_client_fd, F_SETFL, O_NONBLOCK);
 
                 pfds[nfds].fd      = new_client_fd;
@@ -89,42 +90,71 @@ void Server::run() {
 
                 std::cout << "new client connected" << std::endl;
                 std::cout << pfds[i] << std::endl;
-
                 continue;
             }
 
             if (pfds[i].revents & POLLIN) {
                 char tmp[READ_SIZE + 1];
-                int  len = read(cfd, tmp, READ_SIZE);
-
-                if (len <= 0) {
+				                int  len = read(cfd, tmp, READ_SIZE);
+				                if (len <= 0) {
+									std::cout << "disconnect 2" << std::endl; // triggered in case of simple invalid request, like "printf "GET /index.html HTTP/1.0\r\n" | nc localhost 8080" => false ? should answer BAD REQUEST
                     disconnect_client(i, cfd, pfds, nfds);
                     continue;
                 }
 
-                tmp[len] = '\0';
+				tmp[len] = '\0'; // not sure this is necessary
 
+				/* Request parsing and handling: new version */
                 context[cfd].req_parser.feed(tmp, context[cfd].requests);
-
-                enum ParserState ps = context[cfd].req_parser.getState();
-
+				                enum ParserState ps = context[cfd].req_parser.getState();
                 if (ps == REQ_PARSE_PARTIAL)
-                    continue;
-
-                if (ps == REQ_PARSE_ERROR) {
-                    disconnect_client(i, cfd, pfds, nfds);
+				{
+					continue;
+				}
+								bool allRequestsValid = handle_requests(context[cfd], cfd); // => handles Request parse errors AND Request semantic errors
+								if (!allRequestsValid) {
+					std::cout << "One invalid request, disconnecting client" << std::endl;
+                    std::cout << "disconnect 3" << std::endl;
+					disconnect_client(i, cfd, pfds, nfds);
                     continue;
                 }
-
-                handle_requests(context[cfd].requests);
             }
+			if (pfds[i].revents & POLLHUP) {
+				std::cout << "disconnect 4" << std::endl;
+				disconnect_client(i, cfd, pfds, nfds);
+				continue;
+			}
         }
     }
 }
 
-void Server::handle_requests(std::queue<Request>& req) {
-    std::cout << req.front() << std::endl;
-}
+bool Server::handle_requests(ClientContext& context, int cfd) {
+	std::string responseString;
+	std::cout << "request queue size: " << context.requests.size() << std::endl;
+	while (!context.requests.empty())
+	{
+		std::cout << context.requests.front() << std::endl;
+		context.requests.pop();
+	}
 
-Server::~Server() {
+	// while (!context.requests.empty())
+	// {
+	// 	std::cout << "handle_requests() loop - size: " << context.requests.size() << std::endl;
+	// 	if (context.requests.front().getValidity() == INVALID_REQUEST)
+	// 	{
+	// 		std::cout << "handle_requests(): invalid request found" << std::endl;
+	// 		MockResponse resp(400);
+	// 		responseString = resp.getResponse();
+	// 		write(cfd, responseString.c_str(), responseString.size());
+	// 		return false;
+	// 	}
+	// 	std::cout << "handle_requests(): valid request being handled" << std::endl;
+	// 	MockResponse resp(200);
+	// 	responseString = resp.getResponse();
+	// 	write(cfd, responseString.c_str(), responseString.size());
+	// 	context.requests.pop();
+	// }
+	// std::cout << "tset" << std::endl;
+	// close(cfd);
+	return true;
 }

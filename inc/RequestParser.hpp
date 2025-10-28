@@ -24,7 +24,7 @@ class RequestParser {
 	~RequestParser(void);
 
 	// Main function
-    void feed(char* buf, std::queue<Request> &req_queue);
+    void feed(char*, std::queue<Request> &);
 
     // getters
     enum ParserState getState(void);
@@ -48,7 +48,7 @@ class RequestParser {
     // attributes
     enum ParserState  _parserState;
     enum ParsingPhase _parsingPhase;
-    enum StatusCode   _statusCode;
+    enum statusCode   _statusCode;
     size_t            _contentLength;
     std::string       _accumulator;
     std::string       _firstSection; // request-line + headers

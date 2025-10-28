@@ -14,9 +14,7 @@ class Request {
   public:
     // Constructors
     Request(void);
-    Request(enum requestValidity validit);
     ~Request(void);
-    void mockRequest();
 	
     // Semantic validation
     void validateRequest(void); // performs all the necessary checks to set the _validity
@@ -51,8 +49,8 @@ class Request {
     void setValidity(enum requestValidity);
 
     friend std::ostream& operator<<(std::ostream& os, Request& req);
-    void setStatusCode(enum StatusCode);
-
+    void setStatusCode(enum statusCode);
+	void printHeaders(std::ostream&);
   private:
     // Attributes
     std::string _method;
@@ -63,7 +61,7 @@ class Request {
     std::vector<std::pair<std::string, std::string> >
                     _headers; // lferro: use map, more useable for the next user; and append during parsing if duplicate
     std::string     _body;
-    enum StatusCode _statusCode;
+    enum statusCode _statusCode;
     enum requestValidity _validity;
 };
 

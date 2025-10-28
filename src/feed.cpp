@@ -88,7 +88,10 @@ ParserState feed(string data, queue<Request> &req) {
 				setState REQ_PARTIAL
 				return
 
-			headersString = buffer.substr(headerEnd);
+			headersString += buffer.substr(headerEnd);
+			if (headersString.size >= READ_SIZE)
+				return REQ_ERROR
+	
 			Request req;
 			parseHeaders(headersString, &req);
 

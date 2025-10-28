@@ -6,7 +6,7 @@
 #include <iostream>
 #include <string>
 
-enum StatusCode
+enum statusCode
 {
 	NO_STATUS = 0,
 

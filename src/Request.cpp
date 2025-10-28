@@ -66,7 +66,7 @@ void Request::setValidity(enum requestValidity val) {
     _validity = val;
 }
 
-void Request::setStatusCode(enum StatusCode val) {
+void Request::setStatusCode(enum statusCode val) {
     _statusCode = val;
 }
 
@@ -107,7 +107,7 @@ bool Request::validateMethod(void) {
 // }
 
 bool Request::validateProtocolVersion(void) {
-    if (_protocolVersion == "HTTP/1.0")
+    if (_protocolVersion == "HTTP/1.0" || _protocolVersion == "HTTP/1.1")
         return true;
     else
         return false;

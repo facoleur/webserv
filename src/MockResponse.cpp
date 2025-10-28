@@ -11,7 +11,10 @@ std::string MockResponse::getResponse() const {
     return _serializedResponse;
 }
 
-MockResponse::MockResponse() {
+MockResponse::MockResponse() : _statusCode(200) {
+}
+
+MockResponse::MockResponse(int statusCode) : _statusCode(statusCode) {
 }
 
 MockResponse::~MockResponse() {
