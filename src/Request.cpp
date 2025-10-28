@@ -51,11 +51,11 @@ enum requestValidity Request::getValidity(void) {
 }
 
 void Request::setMethod(std::string& method) {
-    if (_method == "GET")
+    if (method == "GET")
 		_method = GET;
-	else if (_method == "POST")
+	else if (method == "POST")
 		_method = POST;
-	else if (_method == "DELETE")
+	else if (method == "DELETE")
         _method = DELETE;
     else
 		_method = UNKNOWN;
@@ -103,7 +103,7 @@ void Request::validateRequest(void) // performs all the necessary checks to set 
 
 // validity checks => semantic validation
 bool Request::validateMethod(void) {
-    if (_method == "GET" || _method == "POST" || _method == "DELETE")
+    if (_method == GET || _method == POST || _method == DELETE)
         return true;
     return false;
 }
