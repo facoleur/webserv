@@ -97,7 +97,7 @@ void Server::run() {
                 char tmp[READ_SIZE + 1];
 				                int  len = read(cfd, tmp, READ_SIZE);
 				                if (len <= 0) {
-									std::cout << "disconnect 2" << std::endl; // triggered in case of simple invalid request, like "printf "GET /index.html HTTP/1.0\r\n" | nc localhost 8080" => false ? should answer BAD REQUEST
+									std::cout << "disconnect 2" << std::endl; // triggered in case of simple invalid request, like "printf "GET /index.html HTTP/1.0\r\n" | nc localhost 8080" => false ? should answer BAD REQUEST: see issue https://github.com/facoleur/webserv/issues/18
                     disconnect_client(i, cfd, pfds, nfds);
                     continue;
                 }
@@ -118,6 +118,8 @@ void Server::run() {
 					disconnect_client(i, cfd, pfds, nfds);
                     continue;
                 }
+                
+				handle_requests(context[cfd], cfd);
             }
 			if (pfds[i].revents & POLLHUP) {
 				std::cout << "disconnect 4" << std::endl;
@@ -154,7 +156,6 @@ bool Server::handle_requests(ClientContext& context, int cfd) {
 	// 	write(cfd, responseString.c_str(), responseString.size());
 	// 	context.requests.pop();
 	// }
-	// std::cout << "tset" << std::endl;
 	// close(cfd);
 	return true;
 }
