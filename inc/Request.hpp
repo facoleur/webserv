@@ -5,6 +5,8 @@
 #include "Webserv.hpp"
 #include <vector>
 
+enum requestMethod { GET, POST, DELETE, UNKNOWN };
+enum requestHeaders { HOST, CONTENT_LENGTH, TRANSFER_ENCODING, CONTENT_TYPE, CONNECTION, ACCEPT };
 enum requestValidity { VALID_REQUEST, INVALID_REQUEST };
 
 // stores and validates (semantically) an HTTP request
@@ -12,7 +14,9 @@ class Request {
   public:
     // Constructors
     Request(void);
+    Request(enum requestValidity validit);
     ~Request(void);
+    void mockRequest();
 	
     // Semantic validation
     void validateRequest(void); // performs all the necessary checks to set the _validity
@@ -45,6 +49,8 @@ class Request {
     void setHeaders(std::vector<std::string, std::string>);
     void setBody(std::string const&);
     void setValidity(enum requestValidity);
+
+    friend std::ostream& operator<<(std::ostream& os, Request& req);
     void setStatusCode(enum StatusCode);
 
   private:
@@ -60,3 +66,5 @@ class Request {
     enum StatusCode _statusCode;
     enum requestValidity _validity;
 };
+
+std::ostream& operator<<(std::ostream& os, Request& req);

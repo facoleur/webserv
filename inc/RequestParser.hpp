@@ -1,8 +1,9 @@
-// RequestParser.hpp
+// Request Parser.hpp
 
 #pragma once
 
 #include "Request.hpp"
+#include <queue>
 #include <sstream>
 #include <queue>
 
@@ -18,6 +19,11 @@ a Request object */
 class RequestParser {
 
   public:
+	// Constructors
+	RequestParser(void);
+	~RequestParser(void);
+
+	// Main function
     void feed(char* buf, std::queue<Request> &req_queue);
 
     // getters

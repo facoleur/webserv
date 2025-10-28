@@ -22,10 +22,6 @@ void Request::printRequest(void) {
     std::cout << "- validity: " << _validity << std::endl;
 }
 
-enum requestValidity Request::getValidity(void) {
-    return _validity;
-}
-
 std::string& Request::getPath(void) {
     return _path;
 }
@@ -101,14 +97,14 @@ bool Request::validateMethod(void) {
     return false;
 }
 
-bool Request::validateTarget(void) {
-}
+// bool Request::validateTarget(void) {
+// }
 
-bool Request::validateQueryString(void) {
-    if (_queryString.empty())
-        return true;
-    // ...
-}
+// bool Request::validateQueryString(void) {
+//     if (_queryString.empty())
+//         return true;
+//     // ...
+// }
 
 bool Request::validateProtocolVersion(void) {
     if (_protocolVersion == "HTTP/1.0")
@@ -117,11 +113,11 @@ bool Request::validateProtocolVersion(void) {
         return false;
 }
 
-bool Request::validateHeaders(void) {
-}
+// bool Request::validateHeaders(void) {
+// }
 
-bool Request::validateBody(void) {
-}
+// bool Request::validateBody(void) {
+// }
 
 // in class Request OR in handle_requests
 // if (INVALID_REQUEST)

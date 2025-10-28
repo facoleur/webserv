@@ -2,11 +2,13 @@
 **/Webserv-notes-fallan.md
 .github/**
 **/webserv-en-subject-23-1.pdf
+**/webserv_subject-23-1.md
+..vscode/
 .vscode/**
 .vscode/settings.json
 wiki/**
 wiki
-.vscode/
-*.o
+bin/
 webserv
+*.o
 **/RequestLineParser.cpp

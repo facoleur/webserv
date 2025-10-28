@@ -7,6 +7,13 @@ RequestParser::RequestParser(void)
       _accumulator(), _firstSection(), _requestLine(), _headers(), _body() {
 }
 
+RequestParser::~RequestParser(void) {
+}
+
+enum ParserState RequestParser::getState(void) {
+	return _parserState;
+}
+
 // splits the line in three. Throws if only two spaces found
 void RequestParser::splitRequestLine(std::vector<std::string>& split, std::string& line) {
     size_t pos;
@@ -70,67 +77,67 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
 
     while (!_accumulator.empty()) {
         switch (_parsingPhase) {
-        case PARSING_REQUEST_LINE:
-        case PARSING_HEADERS:
-            pos = _accumulator.find(CRLF + CRLF);
-            if (pos == std::string::npos && _accumulator.size() >= READ_BUF_SIZE)
-                return handleParseError(req, reqQueue);
-            else if (pos == std::string::npos) {
-                _firstSection += _accumulator;
+            case PARSING_REQUEST_LINE:
+            case PARSING_HEADERS:
+                pos = _accumulator.find(CRLF + CRLF);
+                if (pos == std::string::npos && _accumulator.size() >= READ_BUF_SIZE)
+                    return handleParseError(req, reqQueue);
+                else if (pos == std::string::npos) {
+                    _firstSection += _accumulator;
+                    if (_firstSection.size() >= READ_BUF_SIZE)
+                        return handleParseError(req, reqQueue);
+                    _accumulator.clear();
+                    _parserState = REQ_PARSE_PARTIAL;
+                    return;
+                }
+                _firstSection += _accumulator.substr(0, pos);
                 if (_firstSection.size() >= READ_BUF_SIZE)
                     return handleParseError(req, reqQueue);
-                _accumulator.clear();
-                _parserState = REQ_PARSE_PARTIAL;
-                return;
-            }
-            _firstSection += _accumulator.substr(0, pos);
-            if (_firstSection.size() >= READ_BUF_SIZE)
-                return handleParseError(req, reqQueue);
-            _accumulator = _accumulator.substr(pos);
-            break;
-        case PARSING_BODY:
-            // ...
-            break;
-        case PARSING_COMPLETE:
-            // ??
-            break;
-        default:
-            break;
+                _accumulator = _accumulator.substr(pos);
+                break;
+            case PARSING_BODY:
+                // ...
+                break;
+            case PARSING_COMPLETE:
+                // ??
+                break;
+            default:
+                break;
         }
 
         /* Parse the line */
         try {
             switch (_parsingPhase) // internal
             {
-            case PARSING_REQUEST_LINE:
-                pos = _firstSection.find(CRLF);
-                if (pos != std::string::npos) { // request-line + headers
-                    _requestLine  = _firstSection.substr(0, pos);
-                    _firstSection = _firstSection.substr(pos);
-                    parseRequestLine(req);
-                    _parsingPhase = PARSING_HEADERS;
-                } else { // pure request-line, no headers
-                    _requestLine = _firstSection;
-                    _firstSection.clear();
-                    parseRequestLine(req);
-                    _parsingPhase = PARSING_COMPLETE;
-                }
-                break;
-			// case PARSING_HEADERS:
-			// 	parseHeaders();
-			// 	break;
-			// case PARSING_BODY:
-			// 	parseBody();
-			// 	break;
-            case PARSING_COMPLETE: // n.b.: this part cannot throw
-                req.validateRequest();
-                req.printRequest();
-                reqQueue.push(req);
-                if (req.getValidity() == INVALID_REQUEST)
-                    return;
-                break;
-            default:
-                break;
+                case PARSING_REQUEST_LINE:
+                    pos = _firstSection.find(CRLF);
+                    if (pos != std::string::npos) { // request-line + headers
+                        _requestLine  = _firstSection.substr(0, pos);
+                        _firstSection = _firstSection.substr(pos);
+                        parseRequestLine(req);
+                        _parsingPhase = PARSING_HEADERS;
+                    } else { // pure request-line, no headers
+                        _requestLine = _firstSection;
+                        _firstSection.clear();
+                        parseRequestLine(req);
+                        _parsingPhase = PARSING_COMPLETE;
+                    }
+                    break;
+                    // case PARSING_HEADERS:
+                    // 	parseHeaders();
+                    // 	break;
+                    // case PARSING_BODY:
+                    // 	parseBody();
+                    // 	break;
+                case PARSING_COMPLETE: // n.b.: this part cannot throw
+                    req.validateRequest();
+                    req.printRequest();
+                    reqQueue.push(req);
+                    if (req.getValidity() == INVALID_REQUEST)
+                        return;
+                    break;
+                default:
+                    break;
             }
         } catch (RequestParsingError& e) {
             return handleParseError(req, reqQueue);

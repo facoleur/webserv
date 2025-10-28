@@ -1,5 +1,6 @@
 # Minimal clang-format for webserv
 ---
+Standard: Cpp03
 IndentWidth: 4
 ColumnLimit: 120
 UseTab: Never
@@ -10,3 +11,4 @@ DerivePointerAlignment: false
 AllowShortFunctionsOnASingleLine: false
 AlignTrailingComments: true
 IndentAccessModifiers: false
+IndentCaseLabels: true

@@ -2,18 +2,22 @@
 
 #pragma once
 
+#include <cstring>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <poll.h>
-#include <sys/epoll.h>
+// #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 #include <iostream>
 #include <map>
+#include <queue>
 #include <vector>
 
-#include "Config.hpp"
+#include "MockResponse.hpp"
+#include "Request.hpp"
+#include "RequestParser.hpp"
 
 class MockResponse;
 
@@ -21,17 +25,29 @@ class MockResponse;
 #define TIMEOUT 2500
 #define READ_SIZE 10
 
+enum ClientState { WAITING, READING, WRITING, CLOSED };
+
+struct ClientContext {
+    ClientState         state;
+    RequestParser       req_parser;
+    std::queue<Request> requests;
+    MockResponse        response;
+};
+
 class Server {
   private:
-    Config conf;
+    // Config               _config;
+    struct ClientContext _state;
 
   public:
-    Server(Config& conf);
-
-    void         run();
-    MockResponse process_request(std::string& request);
-    Response     handle_request(Request request);
-    void         print_request();
-    void         disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
+    Server();
     ~Server();
+    void         new_connection();
+    void         existing_connection();
+    void         run();
+    MockResponse process_request(Request& request);
+    void         handle_requests(std::queue<Request>& req);
+
+    void print_request();
+    void disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
 };
