@@ -46,7 +46,7 @@ class Server {
     void         existing_connection();
     void         run();
     MockResponse process_request(Request& request);
-    void         handle_requests(std::queue<Request>& req);
+    void         handle_requests(ClientContext& req, int cfd);
 
     void print_request();
     void disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
