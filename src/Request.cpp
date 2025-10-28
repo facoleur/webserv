@@ -3,23 +3,11 @@
 #include "Request.hpp"
 
 Request::Request(void)
-    : _method(), _path(), _queryString(), _protocolVersion(), _headers(), _body(), _statusCode(NO_STATUS),
+    : _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _headers(), _body(), _statusCode(NO_STATUS),
       _validity(INVALID_REQUEST) {
 }
 
 Request::~Request(void) {
-}
-
-void Request::printRequest(void) {
-    std::cout << "Request: " << std::endl;
-    std::cout << "- method: " << _method << std::endl;
-    std::cout << "- path: " << _path << std::endl;
-    std::cout << "- queryString: " << _queryString << std::endl;
-    std::cout << "- protocolVersion: " << _protocolVersion << std::endl;
-    // std::cout << "- headers: " << _headers << std::endl;
-    // std::cout << "- body: " << _body << std::endl;
-    std::cout << "- statusCode: " << _statusCode << std::endl;
-    std::cout << "- validity: " << _validity << std::endl;
 }
 
 enum requestMethod Request::getMethod(void) {
@@ -52,13 +40,13 @@ enum requestValidity Request::getValidity(void) {
 
 void Request::setMethod(std::string& method) {
     if (method == "GET")
-		_method = GET;
-	else if (method == "POST")
-		_method = POST;
-	else if (method == "DELETE")
+        _method = GET;
+    else if (method == "POST")
+        _method = POST;
+    else if (method == "DELETE")
         _method = DELETE;
     else
-		_method = UNKNOWN;
+        _method = UNKNOWN;
 }
 
 void Request::setPath(std::string const& path) {
