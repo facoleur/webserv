@@ -1,6 +1,7 @@
 // RequestParser.cpp
 
-#include "../inc/RequestParser.hpp"
+#include "RequestParser.hpp"
+#include "Server.hpp"
 
 RequestParser::RequestParser(void)
     : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_REQUEST_LINE), _statusCode(NO_STATUS), _contentLength(0),
@@ -35,11 +36,11 @@ void RequestParser::parseRequestLine(Request& req) {
 
     /* split line */
     splitRequestLine(split, _requestLine);
-
-    /* set method */
+	
+	/* set method */
     if (split[0].empty())
         throw RequestParsingError();
-    req.setMethod(split[0]);
+	req.setMethod(split[0]);
 
     /* set request-target path and query-string */
     if (split[1].empty())
@@ -80,18 +81,18 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
             case PARSING_HEADERS:
                 pos = _accumulator.find(CRLF + CRLF);
                 if (pos == std::string::npos) {
-                    _firstSection += _accumulator;
-                    if (_firstSection.size() >= READ_BUF_SIZE)
+                    _firstSection += _accumulator.substr(0, pos);
+                    if (_firstSection.size() >= 8000)
                         return handleParseError(req, reqQueue);
                     _accumulator.clear();
                     _parserState = REQ_PARSE_PARTIAL;
-                    return;
+					return;
                 } else {
                     _firstSection += _accumulator.substr(0, pos);
                     if (_firstSection.size() >= READ_BUF_SIZE)
                         return handleParseError(req, reqQueue);
                     _accumulator = _accumulator.substr(pos + 4);
-                }
+				}
                 break;
             case PARSING_BODY:
                 // ...

@@ -12,11 +12,12 @@ std::ostream& operator<<(std::ostream& os, struct pollfd pfd) {
 }
 
 void Server::disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds) {
-    std::cout << "client disconnected" << std::endl;
+    // handle_requests(context[cfd], cfd);
     pfds[index] = pfds[nfds];
     index--;
     close(client_fd);
     nfds--;
+    std::cout << "client disconnected" << std::endl; // moved to after close() in case close fails
 }
 
 Server::Server() {
@@ -30,6 +31,8 @@ void Server::new_connection() {
 
 void Server::existing_connection() {
 }
+
+void send_bad_request(int cfd);
 
 void Server::run() {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -68,8 +71,8 @@ void Server::run() {
         for (int i = 0; i < nfds; i++) {
             int cfd = pfds[i].fd;
             if (pfds[i].revents & (POLLERR | POLLNVAL)) { //  POLLHUP | => below POLLIN handling
-              	std::cout << "disconnect 1" << std::endl;
-				disconnect_client(i, cfd, pfds, nfds);
+                std::cout << "disconnect 1" << std::endl;
+                disconnect_client(i, cfd, pfds, nfds);
                 continue;
             }
             if (cfd == server_fd && (pfds[i].revents & POLLIN)) {
@@ -94,68 +97,91 @@ void Server::run() {
             }
 
             if (pfds[i].revents & POLLIN) {
-                char tmp[READ_SIZE + 1];
-				                int  len = read(cfd, tmp, READ_SIZE);
-				                if (len <= 0) {
-									std::cout << "disconnect 2" << std::endl; // triggered in case of simple invalid request, like "printf "GET /index.html HTTP/1.0\r\n" | nc localhost 8080" => false ? should answer BAD REQUEST: see issue https://github.com/facoleur/webserv/issues/18
+                ParserState ps = REQ_PARSE_START;
+                char        tmp[READ_SIZE + 1];
+                int         len = read(cfd, tmp, READ_SIZE);
+                if (len <= 0) {
+                    std::cout << "disconnect 2"
+                              << std::endl; // triggered in case of simple invalid request, like "printf "GET
+                                            // /index.html HTTP/1.0\r\n" | nc localhost 8080" => false ? should answer
+                                            // BAD REQUEST: see issue https://github.com/facoleur/webserv/issues/18
+                    std::cout << "handle_requests 1" << std::endl;
+                    handle_requests(context[cfd], cfd);
+                    ps = context[cfd].req_parser.getState();
+                    if (context[cfd].req_parser.getState() == REQ_PARSE_PARTIAL)
+                        send_bad_request(cfd); // needed because the request was partial and not in the queue
                     disconnect_client(i, cfd, pfds, nfds);
                     continue;
                 }
 
-				tmp[len] = '\0'; // not sure this is necessary
+                tmp[len] = '\0';
 
-				/* Request parsing and handling: new version */
+                /* Request parsing and handling: new version */
                 context[cfd].req_parser.feed(tmp, context[cfd].requests);
-				                enum ParserState ps = context[cfd].req_parser.getState();
-                if (ps == REQ_PARSE_PARTIAL)
-				{
-					continue;
-				}
-								bool allRequestsValid = handle_requests(context[cfd], cfd); // => handles Request parse errors AND Request semantic errors
-								if (!allRequestsValid) {
-					std::cout << "One invalid request, disconnecting client" << std::endl;
-                    std::cout << "disconnect 3" << std::endl;
-					disconnect_client(i, cfd, pfds, nfds);
+                ps = context[cfd].req_parser.getState();
+                if (ps == REQ_PARSE_PARTIAL) {
                     continue;
                 }
-                
-				handle_requests(context[cfd], cfd);
+                std::cout << "handle_requests 2" << std::endl;
+                requestValidity lastRequestValidity =
+                    handle_requests(context[cfd], cfd); // => handles Request parse errors AND Request semantic errors
+                if (lastRequestValidity == INVALID_REQUEST) {
+                    std::cout << "One invalid request, disconnecting client" << std::endl;
+                    std::cout << "disconnect 3" << std::endl;
+                    disconnect_client(i, cfd, pfds, nfds);
+                    continue;
+                }
             }
-			if (pfds[i].revents & POLLHUP) {
-				std::cout << "disconnect 4" << std::endl;
-				disconnect_client(i, cfd, pfds, nfds);
-				continue;
-			}
+            if (pfds[i].revents & POLLHUP) {
+                std::cout << "disconnect 4" << std::endl;
+                disconnect_client(i, cfd, pfds, nfds);
+                continue;
+            }
         }
     }
 }
 
-bool Server::handle_requests(ClientContext& context, int cfd) {
-	std::string responseString;
-	std::cout << "request queue size: " << context.requests.size() << std::endl;
-	while (!context.requests.empty())
-	{
-		std::cout << context.requests.front() << std::endl;
-		context.requests.pop();
-	}
+requestValidity Server::handle_requests(ClientContext& context, int cfd) {
+    (void)cfd;
+    requestValidity lastRequestValidity;
+    std::string     responseString;
+    std::cout << "handle_requests - queue size: " << context.requests.size() << std::endl;
+    while (!context.requests.empty()) {
+        std::cout << context.requests.front() << std::endl;
+        lastRequestValidity = context.requests.front().getValidity();
+		if (lastRequestValidity == INVALID_REQUEST)
+		{
+			std::cout << "handle_requests() exiting with: INVALID_REQUEST" << std::endl;
+			context.requests.pop();
+			break;
+		}
+        context.requests.pop();
+    }
+	if (lastRequestValidity == VALID_REQUEST)
+        std::cout << "handle_requests() exiting with: VALID_REQUEST" << std::endl;
 
-	// while (!context.requests.empty())
-	// {
-	// 	std::cout << "handle_requests() loop - size: " << context.requests.size() << std::endl;
-	// 	if (context.requests.front().getValidity() == INVALID_REQUEST)
-	// 	{
-	// 		std::cout << "handle_requests(): invalid request found" << std::endl;
-	// 		MockResponse resp(400);
-	// 		responseString = resp.getResponse();
-	// 		write(cfd, responseString.c_str(), responseString.size());
-	// 		return false;
-	// 	}
-	// 	std::cout << "handle_requests(): valid request being handled" << std::endl;
-	// 	MockResponse resp(200);
-	// 	responseString = resp.getResponse();
-	// 	write(cfd, responseString.c_str(), responseString.size());
-	// 	context.requests.pop();
-	// }
-	// close(cfd);
-	return true;
+    // while (!context.requests.empty())
+    // {
+    // 	std::cout << "handle_requests() loop - size: " << context.requests.size() << std::endl;
+    // 	if (context.requests.front().getValidity() == INVALID_REQUEST)
+    // 	{
+    // 		std::cout << "handle_requests(): invalid request found" << std::endl;
+    // 		MockResponse resp(400);
+    // 		responseString = resp.getResponse();
+    // 		write(cfd, responseString.c_str(), responseString.size());
+    // 		return false;
+    // 	}
+    // 	std::cout << "handle_requests(): valid request being handled" << std::endl;
+    // 	MockResponse resp(200);
+    // 	responseString = resp.getResponse();
+    // 	write(cfd, responseString.c_str(), responseString.size());
+    // 	context.requests.pop();
+    // }
+    // close(cfd);
+    return lastRequestValidity;
+}
+
+void send_bad_request(int cfd) {
+    (void)cfd;
+    std::cout << "HTTP/1.0 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
 }

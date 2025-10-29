@@ -75,13 +75,19 @@ void Request::setStatusCode(enum statusCode val) {
 void Request::validateRequest(void) // performs all the necessary checks to set the _validity
 {
     if (!validateMethod())
-        return (setStatusCode(NOT_IMPLEMENTED));
+	{
+		std::cout << "Request: couldn't validate method" << std::endl;	
+		return (setStatusCode(NOT_IMPLEMENTED));
+	}
     // if (!validateTarget())
     //     return; // n.b.: various possible error codes, set by validateTarget()
     // if (!validateQueryString())
     //     return; // ?
     if (!validateProtocolVersion())
+	{
+		std::cout << "Request: couldn't validate protocol version" << std::endl;	
         return (setStatusCode(HTTP_VERSION_NOT_SUPPORTED));
+	}
     // if (!validateHeaders())
     //     return; // ?
     // if (!validateBody())

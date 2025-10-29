@@ -2,7 +2,7 @@
 
 NAME = webserv
 CC = c++
-CCFLAGS = #-Wall -Werror -Wextra -std=c++98
+CCFLAGS = -Wall -Werror -Wextra -std=c++98
 
 RM = rm -rf
 MKDIR = mkdir -p
@@ -10,7 +10,8 @@ MKDIR = mkdir -p
 NAME = webserv
 
 
-SRCS = main.cpp Server.cpp  Request.cpp RequestParser.cpp RequestUtils.cpp MockResponse.cpp utils.cpp ConfigParser.cpp
+SRCS = main.cpp Server.cpp Request.cpp RequestParser.cpp RequestUtils.cpp MockResponse.cpp utils.cpp ConfigParser.cpp
+HEADERS = Config.hpp ConfigParser.hpp MockResponse.hpp Request.hpp RequestParser.hpp Server.hpp Webserv.hpp utils.hpp
 
 SRC_DIR = src/
 INC_DIR = inc/
@@ -38,7 +39,7 @@ $(NAME): $(OBJS)
 	@echo "$(GREEN)The Makefile of $(NAME) has been compied!$(DEF_COLOR)"
 	@echo "$(YELLOW)Use this command in the folder root: ./$(NAME) to start\n$(DEF_COLOR)"
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(addprefix $(INC_DIR)/, $(HEADERS))
 	@echo "Creating ./$@"
 	@$(MKDIR) $(BIN_DIR)
 	@$(CC) $(CCFLAGS) -I$(INC_DIR) -c $< -o $@

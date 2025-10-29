@@ -42,11 +42,11 @@ class Server {
   public:
     Server();
     ~Server();
-    void         new_connection();
-    void         existing_connection();
-    void         run();
-    MockResponse process_request(Request& request);
-    bool         handle_requests(ClientContext&, int);
-    void print_request();
-    void disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
+    void            new_connection();
+    void            existing_connection();
+    void            run();
+    MockResponse    process_request(Request& request);
+    requestValidity handle_requests(ClientContext&, int);
+    void            print_request();
+    void            disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
 };
