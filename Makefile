@@ -58,3 +58,6 @@ re: fclean all
 
 leaks:
 	@leaks -atExit -- ./$(NAME)
+
+debug: CCFLAGS += -DDEBUG_MODE
+debug: re

@@ -18,6 +18,7 @@
 #include "MockResponse.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
+#include "Webserv.hpp"
 
 class MockResponse;
 

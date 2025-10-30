@@ -12,3 +12,4 @@ bin/
 webserv
 *.o
 **/RequestLineParser.cpp
+**/prompt-check-code.md

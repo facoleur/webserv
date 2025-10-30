@@ -31,8 +31,8 @@ void RequestParser::splitRequestLine(std::vector<std::string>& split, std::strin
 }
 
 void RequestParser::parseRequestLine(Request& req) {
-    size_t                   queryPos;
     std::vector<std::string> split;
+    size_t                   queryPos;
 
     /* split line */
     splitRequestLine(split, _requestLine);
@@ -63,6 +63,7 @@ void RequestParser::parseRequestLine(Request& req) {
 }
 
 void RequestParser::handleParseError(Request& req, std::queue<Request>& reqQueue) {
+	DEBUG_LOG("Parse error");
     req.setValidity(INVALID_REQUEST);
     reqQueue.push(req);
     _parserState = REQ_PARSE_ERROR;
@@ -81,8 +82,8 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
             case PARSING_HEADERS:
                 pos = _accumulator.find(CRLF + CRLF);
                 if (pos == std::string::npos) {
-                    _firstSection += _accumulator.substr(0, pos);
-                    if (_firstSection.size() >= 8000)
+                    _firstSection += _accumulator; // .substr(0, pos)
+                    if (_firstSection.size() >= READ_BUF_SIZE)
                         return handleParseError(req, reqQueue);
                     _accumulator.clear();
                     _parserState = REQ_PARSE_PARTIAL;
@@ -137,8 +138,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
                 reqQueue.push(req);
                 if (req.getValidity() == INVALID_REQUEST)
                     return;
-				Request empty;
-				req = empty;
+				req = Request();
 				_parsingPhase = PARSING_REQUEST_LINE;
             }
         } catch (RequestParsingError& e) {

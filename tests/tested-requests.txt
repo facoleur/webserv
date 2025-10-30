@@ -1,0 +1,31 @@
+**Ok**
+printf "GET /index.html HTTP/1.1\r\n\r\n" | nc localhost 8080
+printf "GET /index.html? HTTP/1.1\r\n\r\n" | nc localhost 8080
+printf "GET /index.html?blabla HTTP/1.1\r\n\r\n" | nc localhost 8080
+printf "POST /index.html?blabla HTTP/1.1\r\n\r\n" | nc localhost 8080
+
+**Parse errors**
+***Spaces***
+printf "GET  /index.html HTTP/1.1\r\n\r\n" | nc localhost 8080
+printf "GET /index.html  HTTP/1.1\r\n\r\n" | nc localhost 8080
+printf " GET /index.html HTTP/1.1\r\n\r\n" | nc localhost 8080
+printf "GET /index.html HTTP/1.1\r\n\r\n " | nc localhost 8080
+printf "GET /index.html HTTP/1.1 \r\n\r\n" | nc localhost 8080
+printf "GET /index.htmlHTTP/1.1\r\n\r\n" | nc localhost 8080
+printf "GET/index.html HTTP/1.1\r\n\r\n" | nc localhost 8080
+printf "GET/index.htmlHTTP/1.1\r\n\r\n" | nc localhost 8080
+printf "GET/index.htmlHTTP/1.1\r\n\r\n d d" | nc localhost 8080
+printf "GET /index.html	HTTP/1.1\r\n\r\n" | nc localhost 8080
+printf "GET /index.html 	HTTP/1.1\r\n\r\n" | nc localhost 8080
+
+***request-target***
+printf "GET index.html HTTP/1.1\r\n\r\n" | nc localhost 8080
+printf "GET index.html? HTTP/1.1\r\n\r\n" | nc localhost 8080
+printf "GET /index.html?  HTTP/1.1\r\n\r\n" | nc localhost 8080
+
+***protocol-version***
+printf "GET /index.html HTTP/1.11\r\n\r\n" | nc localhost 8080
+printf "GET /index.html HTTP/1.01\r\n\r\n" | nc localhost 8080
+
+***Semantic errors***
+printf "POSTGET /index.html?blabla HTTP/1.1\r\n\r\n" | nc localhost 8080
