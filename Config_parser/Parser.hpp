@@ -28,6 +28,25 @@ private:
   void parseConfig();
   void parseServer();
   void parseLocation(ServerConfig &srv);
+  // Reusable directive handlers (no behavior change vs previous code)
+  bool parseDirectiveRoot(ServerConfig &srv);
+  bool parseDirectiveRoot(LocationConfig &loc);
+  bool parseDirectiveIndex(ServerConfig &srv);
+  bool parseDirectiveIndex(LocationConfig &loc);
+  bool parseDirectiveMethods(ServerConfig &srv);
+  bool parseDirectiveMethods(LocationConfig &loc);
+  bool parseDirectiveReturn(ServerConfig &srv);
+  bool parseDirectiveReturn(LocationConfig &loc);
+  bool parseDirectiveListen(ServerConfig &srv);
+  bool parseDirectiveErrorPage(ServerConfig &srv);
+  bool parseDirectiveAutoIndex(ServerConfig &srv);
+  bool parseDirectiveAutoIndex(LocationConfig &loc);
+  bool parseDirectiveClientMaxBodySize(ServerConfig &srv);
+  bool parseDirectiveClientMaxBodySize(LocationConfig &loc);
+  bool parseDirectiveCgi(ServerConfig &srv);
+  bool parseDirectiveCgi(LocationConfig &loc);
+  bool parseDirectiveUploadEnable(LocationConfig &loc);
+  bool parseDirectiveUploadStore(LocationConfig &loc);
 
   bool accept(const std::string &kw);
   void expect(const std::string &kw, const char *err);

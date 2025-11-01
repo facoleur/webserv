@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
 
     ConfigParser p;
     Config cfg = p.parseFile(configPath);
-    //    applyDefaults(cfg);
+    applyDefaults(cfg);
     const std::vector<ServerConfig> &servers = cfg.getServers();
     validateCompatibility(cfg);
     std::cout << "OK. servers=" << cfg.serverCount() << "\n";

@@ -184,60 +184,13 @@ void ConfigParser::parseServer() {
       expect(";", "missing ';' after host");
       continue;
     }
-    if (accept("root")) {
-      Token p = next();
-      if (p.s == ";" || p.s == "{" || p.s == "}" || p.s.empty()) {
-        std::ostringstream msg;
-        msg << "invalid root value '" << p.s << "' at line " << p.line
-            << ", col " << p.col;
-        throw ParseError(msg.str());
-      }
-      srv.root = p.s;
-      expect(";", "missing ';' after root");
-      continue;
-    }
-    if (accept("index")) {
-      // at least one filename, until ';'
-      while (!accept(";")) {
-        if (eof())
-          throw ParseError("unexpected EOF in index directive");
-        Token f = next();
-        if (f.s == "{" || f.s == "}" || f.s == ";") {
-          std::ostringstream msg;
-          msg << "invalid token '" << f.s << "' in index directive at line "
-              << f.line << ", col " << f.col;
-          throw ParseError(msg.str());
-        }
-        srv.index_files.push_back(f.s);
-      }
-      continue;
-    }
-    if (accept("methods")) {
-      bool has = false;
-      while (!accept(";")) {
-        if (eof())
-          throw ParseError("unexpected EOF in methods directive");
-        Token m = next();
-        if (!isMethod(m.s))
-          throw ParseError("invalid method '" + m.s +
-                           "' (allowed: GET POST DELETE)");
-        srv.methods.insert(m.s);
-        has = true;
-      }
-      if (!has)
-        throw ParseError("methods directive requires at least one method");
-      continue;
-    }
-    if (accept("return")) {
-      Token st = next();
-      Token tgt = next();
-      int code = toInt(st.s);
-      if (code <= 0 || tgt.s.empty() || tgt.s == "{" || tgt.s == "}" ||
-          tgt.s == ";")
-        throw ParseError("invalid return directive");
-      srv.redirect.status = code;
-      srv.redirect.target = tgt.s;
-      expect(";", "missing ';' after return");
+
+    // Server-only + common directives
+    if (parseDirectiveListen(srv) || parseDirectiveErrorPage(srv) ||
+        parseDirectiveAutoIndex(srv) ||
+        parseDirectiveClientMaxBodySize(srv) || parseDirectiveCgi(srv) ||
+        parseDirectiveRoot(srv) || parseDirectiveIndex(srv) ||
+        parseDirectiveMethods(srv) || parseDirectiveReturn(srv)) {
       continue;
     }
 
@@ -263,56 +216,12 @@ void ConfigParser::parseLocation(ServerConfig &srv) {
     if (eof())
       throw ParseError("unexpected EOF inside location block");
 
-    if (accept("root")) {
-      Token p = next();
-      if (p.s == ";" || p.s == "{" || p.s == "}" || p.s.empty())
-        throw ParseError("invalid root value in location");
-      loc.root = p.s;
-      expect(";", "missing ';' after root");
-      continue;
-    }
-    if (accept("index")) {
-      while (!accept(";")) {
-        if (eof())
-          throw ParseError("unexpected EOF in index directive");
-        Token f = next();
-        if (f.s == "{" || f.s == "}" || f.s == ";") {
-          std::ostringstream msg;
-          msg << "invalid token '" << f.s << "' in index directive at line "
-              << f.line << ", col " << f.col;
-          throw ParseError(msg.str());
-        }
-        loc.index_files.push_back(f.s);
-      }
-      continue;
-    }
-    if (accept("methods")) {
-      bool has = false;
-      while (!accept(";")) {
-        if (eof())
-          throw ParseError("unexpected EOF in methods directive");
-        Token m = next();
-        if (!isMethod(m.s))
-          throw ParseError("invalid method '" + m.s + "' in location");
-        loc.methods.insert(m.s);
-        has = true;
-      }
-      if (!has)
-        throw ParseError(
-            "methods directive requires at least one method (location)");
-      continue;
-    }
-    if (accept("return")) {
-      Token st = next();
-      Token tgt = next();
-      int code = toInt(st.s);
-      if (code <= 0 || tgt.s.empty() || tgt.s == "{" || tgt.s == "}" ||
-          tgt.s == ";")
-        throw ParseError("invalid return directive (location)");
-      loc.redirect.status = code;
-      loc.redirect.target = tgt.s; // we dont manage "return 301 /new
-                                   // page.html;", it's not required
-      expect(";", "missing ';' after return");
+    // Shared directives + location-only
+    if (parseDirectiveAutoIndex(loc) ||
+        parseDirectiveClientMaxBodySize(loc) || parseDirectiveCgi(loc) ||
+        parseDirectiveUploadEnable(loc) || parseDirectiveUploadStore(loc) ||
+        parseDirectiveRoot(loc) || parseDirectiveIndex(loc) ||
+        parseDirectiveMethods(loc) || parseDirectiveReturn(loc)) {
       continue;
     }
 
@@ -325,6 +234,265 @@ void ConfigParser::parseLocation(ServerConfig &srv) {
   }
 
   srv.locations.push_back(loc);
+}
+
+// -------- Reusable directive handlers (server + location) --------
+
+bool ConfigParser::parseDirectiveListen(ServerConfig &srv) {
+  if (!accept("listen"))
+    return false;
+  Token p = next();
+  int port = toInt(p.s);
+  if (port < 1 || port > 65535)
+    throw ParseError("invalid listen port");
+  srv.listen_ports.push_back(port);
+  expect(";", "missing ';' after listen");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveErrorPage(ServerConfig &srv) {
+  if (!accept("error_page"))
+    return false;
+  Token c = next();
+  int code = toInt(c.s);
+  Token path = next();
+  if (code < 100 || code > 599 || path.s.empty() || path.s == ";" ||
+      path.s == "{" || path.s == "}")
+    throw ParseError("invalid error_page directive");
+  srv.error_pages[code] = path.s;
+  expect(";", "missing ';' after error_page");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveAutoIndex(ServerConfig &srv) {
+  if (!accept("autoindex"))
+    return false;
+  Token v = next();
+  if (v.s == "on")
+    srv.autoindex = true;
+  else if (v.s == "off")
+    srv.autoindex = false;
+  else
+    throw ParseError("invalid autoindex value (use on|off)");
+  expect(";", "missing ';' after autoindex");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveAutoIndex(LocationConfig &loc) {
+  if (!accept("autoindex"))
+    return false;
+  Token v = next();
+  if (v.s == "on")
+    loc.autoindex = true;
+  else if (v.s == "off")
+    loc.autoindex = false;
+  else
+    throw ParseError("invalid autoindex value (use on|off)");
+  loc.autoindex_set = true;
+  expect(";", "missing ';' after autoindex");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveClientMaxBodySize(ServerConfig &srv) {
+  if (!accept("client_max_body_size"))
+    return false;
+  Token v = next();
+  int sz = toInt(v.s);
+  if (sz <= 0)
+    throw ParseError("invalid client_max_body_size (must be > 0)");
+  srv.client_max_body_size = static_cast<size_t>(sz);
+  expect(";", "missing ';' after client_max_body_size");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveClientMaxBodySize(LocationConfig &loc) {
+  if (!accept("client_max_body_size"))
+    return false;
+  Token v = next();
+  int sz = toInt(v.s);
+  if (sz <= 0)
+    throw ParseError("invalid client_max_body_size (must be > 0)");
+  loc.client_max_body_size = static_cast<size_t>(sz);
+  expect(";", "missing ';' after client_max_body_size");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveCgi(ServerConfig &srv) {
+  if (!accept("cgi"))
+    return false;
+  Token ext = next();
+  Token interp = next();
+  if (ext.s.empty() || ext.s[0] != '.' || interp.s.empty() || interp.s == ";")
+    throw ParseError("invalid cgi directive (use: cgi .ext /path/to/interpreter;)");
+  srv.cgi_map[ext.s] = interp.s;
+  expect(";", "missing ';' after cgi");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveCgi(LocationConfig &loc) {
+  if (!accept("cgi"))
+    return false;
+  Token ext = next();
+  Token interp = next();
+  if (ext.s.empty() || ext.s[0] != '.' || interp.s.empty() || interp.s == ";")
+    throw ParseError("invalid cgi directive (use: cgi .ext /path/to/interpreter;)");
+  loc.cgi_map[ext.s] = interp.s;
+  expect(";", "missing ';' after cgi");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveUploadEnable(LocationConfig &loc) {
+  if (!accept("upload_enable"))
+    return false;
+  Token v = next();
+  if (v.s == "on")
+    loc.upload_enable = true;
+  else if (v.s == "off")
+    loc.upload_enable = false;
+  else
+    throw ParseError("invalid upload_enable value (use on|off)");
+  expect(";", "missing ';' after upload_enable");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveUploadStore(LocationConfig &loc) {
+  if (!accept("upload_store"))
+    return false;
+  Token p = next();
+  if (p.s.empty() || p.s == ";" || p.s == "{" || p.s == "}")
+    throw ParseError("invalid upload_store path");
+  loc.upload_store = p.s;
+  expect(";", "missing ';' after upload_store");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveRoot(ServerConfig &srv) {
+  if (!accept("root"))
+    return false;
+  Token p = next();
+  if (p.s == ";" || p.s == "{" || p.s == "}" || p.s.empty()) {
+    std::ostringstream msg;
+    msg << "invalid root value '" << p.s << "' at line " << p.line
+        << ", col " << p.col;
+    throw ParseError(msg.str());
+  }
+  srv.root = p.s;
+  expect(";", "missing ';' after root");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveRoot(LocationConfig &loc) {
+  if (!accept("root"))
+    return false;
+  Token p = next();
+  if (p.s == ";" || p.s == "{" || p.s == "}" || p.s.empty())
+    throw ParseError("invalid root value in location");
+  loc.root = p.s;
+  expect(";", "missing ';' after root");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveIndex(ServerConfig &srv) {
+  if (!accept("index"))
+    return false;
+  while (!accept(";")) {
+    if (eof())
+      throw ParseError("unexpected EOF in index directive");
+    Token f = next();
+    if (f.s == "{" || f.s == "}" || f.s == ";") {
+      std::ostringstream msg;
+      msg << "invalid token '" << f.s << "' in index directive at line "
+          << f.line << ", col " << f.col;
+      throw ParseError(msg.str());
+    }
+    srv.index_files.push_back(f.s);
+  }
+  return true;
+}
+
+bool ConfigParser::parseDirectiveIndex(LocationConfig &loc) {
+  if (!accept("index"))
+    return false;
+  while (!accept(";")) {
+    if (eof())
+      throw ParseError("unexpected EOF in index directive");
+    Token f = next();
+    if (f.s == "{" || f.s == "}" || f.s == ";") {
+      std::ostringstream msg;
+      msg << "invalid token '" << f.s << "' in index directive at line "
+          << f.line << ", col " << f.col;
+      throw ParseError(msg.str());
+    }
+    loc.index_files.push_back(f.s);
+  }
+  return true;
+}
+
+bool ConfigParser::parseDirectiveMethods(ServerConfig &srv) {
+  if (!accept("methods"))
+    return false;
+  bool has = false;
+  while (!accept(";")) {
+    if (eof())
+      throw ParseError("unexpected EOF in methods directive");
+    Token m = next();
+    if (!isMethod(m.s))
+      throw ParseError("invalid method '" + m.s +
+                       "' (allowed: GET POST DELETE)");
+    srv.methods.insert(m.s);
+    has = true;
+  }
+  if (!has)
+    throw ParseError("methods directive requires at least one method");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveMethods(LocationConfig &loc) {
+  if (!accept("methods"))
+    return false;
+  bool has = false;
+  while (!accept(";")) {
+    if (eof())
+      throw ParseError("unexpected EOF in methods directive");
+    Token m = next();
+    if (!isMethod(m.s))
+      throw ParseError("invalid method '" + m.s + "' in location");
+    loc.methods.insert(m.s);
+    has = true;
+  }
+  if (!has)
+    throw ParseError("methods directive requires at least one method (location)");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveReturn(ServerConfig &srv) {
+  if (!accept("return"))
+    return false;
+  Token st = next();
+  Token tgt = next();
+  int code = toInt(st.s);
+  if (code <= 0 || tgt.s.empty() || tgt.s == "{" || tgt.s == "}" ||
+      tgt.s == ";")
+    throw ParseError("invalid return directive");
+  srv.redirect.status = code;
+  srv.redirect.target = tgt.s;
+  expect(";", "missing ';' after return");
+  return true;
+}
+
+bool ConfigParser::parseDirectiveReturn(LocationConfig &loc) {
+  if (!accept("return"))
+    return false;
+  Token st = next();
+  Token tgt = next();
+  int code = toInt(st.s);
+  if (code <= 0 || tgt.s.empty() || tgt.s == "{" || tgt.s == "}" ||
+      tgt.s == ";")
+    throw ParseError("invalid return directive (location)");
+  loc.redirect.status = code;
+  loc.redirect.target = tgt.s; // comment retained from previous code
+  expect(";", "missing ';' after return");
+  return true;
 }
 
 bool ConfigParser::accept(const std::string &kw) {
