@@ -1,16 +1,21 @@
-.PHONY: all clean fclean re leaks test
+.PHONY: all clean fclean re leaks conftest
 
 NAME = webserv
 CC = c++
-CCFLAGS = -Wall -Werror -Wextra -std=c++98
+CCFLAGS = #-Wall -Werror -Wextra -std=c++98
 
 RM = rm -rf
 MKDIR = mkdir -p
 
-SRCS =	main.cpp Server.cpp Config.cpp
+NAME = webserv
+
+
+SRCS = main.cpp Server.cpp  Request.cpp RequestParser.cpp RequestUtils.cpp MockResponse.cpp utils.cpp ConfigParser.cpp
+
 SRC_DIR = src/
-INC_DIR = .
+INC_DIR = inc/
 OBJS = $(patsubst %.cpp, $(OBJ_DIR)/%.o, $(notdir $(SRCS)))
+
 OBJ_DIR = bin
 BIN_DIR = bin
 
@@ -52,3 +57,18 @@ re: fclean all
 
 leaks:
 	@leaks -atExit -- ./$(NAME)
+
+CONF_DIR := ./conf
+CONF_FILES ?=
+CONF_FILTER ?= *.conf
+PARSER_BIN := ./webserv
+VERBOSE = 1
+
+conftest:
+	@CONF_DIR="$(CONF_DIR)" CONF_FILES="$(CONF_FILES)" PARSER_BIN="$(PARSER_BIN)" VERBOSE="$(VERBOSE)" \
+		CONF_FILTER="$(CONF_FILTER)" \
+		./scripts/run_parser_tests.sh
+
+# Usage:
+#   make test CONF_FILTER=default.conf
+#   make test CONF_FILES="./conf/default.conf ./conf/basic.conf"
