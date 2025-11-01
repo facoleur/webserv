@@ -1,6 +1,9 @@
 #include "Config.hpp"
+#include "ConfigFile.hpp"
 #include "Parser.hpp"
 #include <iostream>
+#include <string>
+#include <unistd.h>
 
 int main(int argc, char **argv) {
   try {
@@ -8,8 +11,24 @@ int main(int argc, char **argv) {
       std::cerr << "Usage: " << argv[0] << " <config.conf>\n";
       return 1;
     }
+    const std::string configPath(argv[1]);
+    int type = ConfigFile::getTypePath(configPath);
+    if (type == -1) {
+      std::cerr << "Error: cannot access config file '" << configPath << "'\n";
+      return 1;
+    }
+    if (type != 1) {
+      std::cerr << "Error: '" << configPath << "' is not a regular file\n";
+      return 1;
+    }
+    if (ConfigFile::checkFile(configPath, R_OK) != 0) {
+      std::cerr << "Error: '" << configPath
+                << "' is not readable (check permissions)\n";
+      return 1;
+    }
+
     ConfigParser p;
-    Config cfg = p.parseFile(argv[1]);
+    Config cfg = p.parseFile(configPath);
     //    applyDefaults(cfg);
     const std::vector<ServerConfig> &servers = cfg.getServers();
     validateCompatibility(cfg);

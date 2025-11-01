@@ -7,7 +7,7 @@ CCFLAGS = -Wall -Werror -Wextra -std=c++98
 RM = rm -rf
 MKDIR = mkdir -p
 
-SRCS = main.cpp Parser.cpp Config.cpp
+SRCS = main.cpp Parser.cpp Config.cpp ConfigFile.cpp
 SRC_DIR = .
 INC_DIR = .
 OBJS = $(patsubst %.cpp, $(OBJ_DIR)/%.o, $(notdir $(SRCS)))
@@ -54,29 +54,15 @@ leaks:
 	@leaks -atExit -- ./$(NAME)
 
 CONF_DIR := ./conf
-#CONF_FILES := $(wildcard $(CONF_DIR)/*.conf)
-CONF_FILES := $(CONF_DIR)/default.conf
-PARSER_BIN := ./webserv   # adapt if your binary has another name
+CONF_FILES ?=
+CONF_FILTER ?= *.conf
+PARSER_BIN := ./webserv
 VERBOSE = 1
 
 test:
-	@echo "\n🔍 Running parser tests on config files..."
-	@for f in $(CONF_FILES); do \
-		echo "--------------------------------------"; \
-		echo "Testing $$f"; \
-		if [ "$(VERBOSE)" = "1" ]; then \
-			if $(PARSER_BIN) $$f; then \
-				echo "✅ $$f -> OK"; \
-			else \
-				echo "❌ $$f -> FAILED"; \
-			fi; \
-		else \
-			if $(PARSER_BIN) $$f > /dev/null 2>&1; then \
-				echo "✅ $$f -> OK"; \
-			else \
-				echo "❌ $$f -> FAILED"; \
-			fi; \
-		fi; \
-	done
-	@echo "--------------------------------------"
-	@echo "Test suite completed."
+	@CONF_DIR="$(CONF_DIR)" CONF_FILES="$(CONF_FILES)" PARSER_BIN="$(PARSER_BIN)" VERBOSE="$(VERBOSE)" \
+		CONF_FILTER="$(CONF_FILTER)" \
+		./scripts/run_parser_tests.sh
+# Usage:
+#   make test CONF_FILTER=default.conf
+#   make test CONF_FILES="./conf/default.conf ./conf/basic.conf"

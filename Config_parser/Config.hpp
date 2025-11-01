@@ -38,7 +38,7 @@ public:
   // Queries
   size_t serverCount() const { return servers.size(); }
   const std::vector<ServerConfig> &getServers() const { return servers; }
-  //   std::vector<ServerConfig> &getServers() { return servers; }
+     std::vector<ServerConfig> &getServers() { return servers; }
 
 private:
   std::vector<ServerConfig> servers;
