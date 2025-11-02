@@ -1,4 +1,4 @@
-.PHONY: all clean fclean re leaks test
+.PHONY: all clean fclean re leaks conftest
 
 NAME = webserv
 CC = c++
@@ -57,3 +57,18 @@ re: fclean all
 
 leaks:
 	@leaks -atExit -- ./$(NAME)
+
+CONF_DIR := ./conf
+CONF_FILES ?=
+CONF_FILTER ?= *.conf
+PARSER_BIN := ./webserv
+VERBOSE = 1
+
+conftest:
+	@CONF_DIR="$(CONF_DIR)" CONF_FILES="$(CONF_FILES)" PARSER_BIN="$(PARSER_BIN)" VERBOSE="$(VERBOSE)" \
+		CONF_FILTER="$(CONF_FILTER)" \
+		./scripts/run_parser_tests.sh
+
+# Usage:
+#   make test CONF_FILTER=default.conf
+#   make test CONF_FILES="./conf/default.conf ./conf/basic.conf"
