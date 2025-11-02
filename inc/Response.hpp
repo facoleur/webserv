@@ -64,6 +64,7 @@ class Response {
 
   public:
     Response();
+    Response(int statusCode);
     ~Response();
 
     std::string& serialize();

@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <poll.h>
-#include <sys/epoll.h>
+// #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -18,6 +18,7 @@
 #include "Request.hpp"
 #include "RequestParser.hpp"
 #include "Response.hpp"
+#include "Webserv.hpp"
 
 class Response;
 
@@ -41,8 +42,14 @@ class Server {
     void     existing_connection();
     void     run();
     Response process_request(Request& request);
-    void     handle_requests(ClientContext& req, int cfd);
+    // void     handle_requests(ClientContext& req, int cfd);
 
-    void print_request();
-    void disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
+    void            print_request();
+    void            disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
+    void            new_connection();
+    void            existing_connection();
+    void            run();
+    requestValidity handle_requests(ClientContext&, int);
+    void            print_request();
+    void            disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
 };
