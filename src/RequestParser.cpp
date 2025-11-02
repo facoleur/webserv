@@ -36,11 +36,12 @@ void RequestParser::parseRequestLine(Request& req) {
 
     /* split line */
     splitRequestLine(split, _requestLine);
-	
-	/* set method */
+
+    /* set method */
     if (split[0].empty())
         throw RequestParsingError();
-	req.setMethod(split[0]);
+
+    req.setMethod(split[0]);
 
     /* set request-target path and query-string */
     if (split[1].empty())
@@ -63,7 +64,7 @@ void RequestParser::parseRequestLine(Request& req) {
 }
 
 void RequestParser::handleParseError(Request& req, std::queue<Request>& reqQueue) {
-	DEBUG_LOG("Parse error");
+    DEBUG_LOG("Parse error");
     req.setValidity(INVALID_REQUEST);
     reqQueue.push(req);
     _parserState = REQ_PARSE_ERROR;
@@ -87,13 +88,13 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
                         return handleParseError(req, reqQueue);
                     _accumulator.clear();
                     _parserState = REQ_PARSE_PARTIAL;
-					return;
+                    return;
                 } else {
                     _firstSection += _accumulator.substr(0, pos);
                     if (_firstSection.size() >= READ_BUF_SIZE)
                         return handleParseError(req, reqQueue);
                     _accumulator = _accumulator.substr(pos + 4);
-				}
+                }
                 break;
             case PARSING_BODY:
                 // ...
@@ -124,22 +125,22 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
             }
             if (_parsingPhase == PARSING_HEADERS) {
                 // 	parseHeaders();
-				if (true) // has header content-length
-					_parsingPhase = PARSING_BODY;
-				else
-					_parsingPhase = PARSING_COMPLETE;
+                if (true) // has header content-length
+                    _parsingPhase = PARSING_BODY;
+                else
+                    _parsingPhase = PARSING_COMPLETE;
             }
             if (_parsingPhase == PARSING_BODY) {
                 // 	parseBody();
-				_parsingPhase = PARSING_COMPLETE;
+                _parsingPhase = PARSING_COMPLETE;
             }
             if (_parsingPhase == PARSING_COMPLETE) {
                 req.validateRequest();
                 reqQueue.push(req);
                 if (req.getValidity() == INVALID_REQUEST)
                     return;
-				req = Request();
-				_parsingPhase = PARSING_REQUEST_LINE;
+                req           = Request();
+                _parsingPhase = PARSING_REQUEST_LINE;
             }
         } catch (RequestParsingError& e) {
             return handleParseError(req, reqQueue);

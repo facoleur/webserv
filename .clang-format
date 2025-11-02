@@ -12,3 +12,4 @@ AllowShortFunctionsOnASingleLine: false
 AlignTrailingComments: true
 IndentAccessModifiers: false
 IndentCaseLabels: true
+AllowShortIfStatementsOnASingleLine: false

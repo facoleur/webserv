@@ -80,7 +80,7 @@ void Request::printHeaders(std::ostream& os) {
 
     for (std::vector<std::pair<std::string, std::string> >::iterator it = _headers.begin(); it != _headers.end();
          it++) {
-			os << (*it).first << ": " << (*it).second << std::endl;
+        os << (*it).first << ": " << (*it).second << std::endl;
     }
 }
 
@@ -90,11 +90,13 @@ std::ostream& operator<<(std::ostream& os, Request& req) {
     os << "Method:           " << req._method << std::endl;
     os << "Path:             " << req._path << std::endl;
     os << "Query String:     " << req._queryString << std::endl;
-    os << "Headers:          "; req.printHeaders(os); os << std::endl;
+    os << "Headers:          ";
+    req.printHeaders(os);
+    os << std::endl;
     os << "Body:             " << req._body << std::endl;
     os << "Protocol version: " << req._protocolVersion << std::endl;
     os << "Status code:      " << req._statusCode << std::endl;
     os << "Validity:         " << req._validity << std::endl;
-	os << "--------------------------------" << std::endl;
+    os << "--------------------------------" << std::endl;
     return os;
 }

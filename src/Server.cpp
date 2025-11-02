@@ -101,9 +101,10 @@ void Server::run() {
                 char        tmp[READ_SIZE + 1];
                 int         len = read(cfd, tmp, READ_SIZE);
                 if (len <= 0) {
-                     DEBUG_LOG("disconnect 2"); // triggered in case of simple invalid request, like "printf "GET
-                                            // /index.html HTTP/1.0\r\n" | nc localhost 8080" => false ? should answer
-                                            // BAD REQUEST: see issue https://github.com/facoleur/webserv/issues/18
+                    DEBUG_LOG(
+                        "disconnect 2"); // triggered in case of simple invalid request, like "printf "GET
+                                         // /index.html HTTP/1.0\r\n" | nc localhost 8080" => false ? should answer
+                                         // BAD REQUEST: see issue https://github.com/facoleur/webserv/issues/18
                     DEBUG_LOG("handle_requests 1");
                     handle_requests(context[cfd], cfd);
                     ps = context[cfd].req_parser.getState();
@@ -121,19 +122,19 @@ void Server::run() {
                 if (ps == REQ_PARSE_PARTIAL) {
                     continue;
                 }
-               DEBUG_LOG("handle_requests 2");
+                DEBUG_LOG("handle_requests 2");
                 requestValidity lastRequestValidity =
                     handle_requests(context[cfd], cfd); // => handles Request parse errors AND Request semantic errors
                 if (lastRequestValidity == INVALID_REQUEST) {
                     DEBUG_LOG("One invalid request, disconnecting client");
-                     DEBUG_LOG("disconnect 3");
-					send_bad_request(cfd);
+                    DEBUG_LOG("disconnect 3");
+                    send_bad_request(cfd);
                     disconnect_client(i, cfd, pfds, nfds);
                     continue;
                 }
             }
             if (pfds[i].revents & POLLHUP) {
-                 DEBUG_LOG("disconnect 4");
+                DEBUG_LOG("disconnect 4");
                 disconnect_client(i, cfd, pfds, nfds);
                 continue;
             }
@@ -157,20 +158,19 @@ requestValidity Server::handle_requests(ClientContext& context, int cfd) {
     requestValidity lastRequestValidity;
     std::string     responseString;
     DEBUG_LOG("handle_requests queue size: ");
-	DEBUG_LOG(context.requests.size());
+    DEBUG_LOG(context.requests.size());
     while (!context.requests.empty()) {
-		DEBUG_LOG(context.requests.front());
+        DEBUG_LOG(context.requests.front());
         lastRequestValidity = context.requests.front().getValidity();
-		if (lastRequestValidity == INVALID_REQUEST)
-		{
-			DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
-			context.requests.pop();
-			break;
-		}
+        if (lastRequestValidity == INVALID_REQUEST) {
+            DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
+            context.requests.pop();
+            break;
+        }
         context.requests.pop();
     }
-	if (lastRequestValidity == VALID_REQUEST)
-       DEBUG_LOG("handle_requests() exiting with: VALID_REQUEST");
+    if (lastRequestValidity == VALID_REQUEST)
+        DEBUG_LOG("handle_requests() exiting with: VALID_REQUEST");
 
     // while (!context.requests.empty())
     // {
@@ -191,7 +191,7 @@ requestValidity Server::handle_requests(ClientContext& context, int cfd) {
     // }
     // close(cfd);
     return lastRequestValidity;
-// >>>>>>> feat-request
+    // >>>>>>> feat-request
 }
 
 void send_bad_request(int cfd) {

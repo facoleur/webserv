@@ -17,7 +17,4 @@ void ResponseHandler::handleGet(Request& req) {
     std::string path = req.getPath();
 
     std::ifstream file(path.c_str());
-
-
-
 }

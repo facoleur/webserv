@@ -38,18 +38,12 @@ class Server {
   public:
     Server();
     ~Server();
-    void     new_connection();
-    void     existing_connection();
-    void     run();
-    Response process_request(Request& request);
-    // void     handle_requests(ClientContext& req, int cfd);
 
-    void            print_request();
-    void            disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
+    Response        process_request(Request& request);
     void            new_connection();
     void            existing_connection();
     void            run();
-    requestValidity handle_requests(ClientContext&, int);
+    requestValidity handle_requests(ClientContext& context, int cfd);
     void            print_request();
     void            disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
 };

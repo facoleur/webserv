@@ -10,8 +10,8 @@ MKDIR = mkdir -p
 NAME = webserv
 
 
-SRCS = main.cpp Server.cpp Request.cpp RequestParser.cpp RequestUtils.cpp MockResponse.cpp utils.cpp ConfigParser.cpp
-HEADERS = Config.hpp ConfigParser.hpp MockResponse.hpp Request.hpp RequestParser.hpp Server.hpp Webserv.hpp utils.hpp
+SRCS = main.cpp Server.cpp Request.cpp RequestParser.cpp RequestUtils.cpp utils.cpp ConfigParser.cpp
+HEADERS = Config.hpp ConfigParser.hpp Request.hpp RequestParser.hpp Server.hpp Webserv.hpp utils.hpp
 
 SRC_DIR = src/
 INC_DIR = inc/
@@ -58,9 +58,6 @@ re: fclean all
 
 leaks:
 	@leaks -atExit -- ./$(NAME)
-
-debug: CCFLAGS += -DDEBUG_MODE
-debug: re
 
 debug: CCFLAGS += -DDEBUG_MODE
 debug: re

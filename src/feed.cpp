@@ -1,130 +1,108 @@
 // feed.cpp
 // pseudocode by lferro 24/10
 
-buffer
-isHeaderDone
-isChunked
-contentLength
-headersString
-bodyString
+buffer isHeaderDone isChunked contentLength headersString bodyString
 
+    ParserState
+    feed(string data, queue<Request>& req) {
+    buffer.append(data);
 
-ParserState feed(string data, queue<Request> &req) {
-	buffer.append(data);
+    while (true) {
 
-	while (true) {
+        // handle headers
+        if (!isheaderDone) {
 
-		// handle headers
-		if (!isheaderDone) {
+            headerEnd = buffer.find(/ r / n / r / n)
 
-			headerEnd = buffer.find(/r/n/r/n)
+                            if (buffer.size <= 4 * READ_SIZE) return REQ_ERROR
 
-			if (buffer.size <= 4 * READ_SIZE)
-				return REQ_ERROR
+                        if (headerEnd == npos) // not found
+                        setState REQ_PARTIAL return
 
-			if (headerEnd == npos) // not found
-				setState REQ_PARTIAL
-				return
+                        headersString = buffer.substr(headerEnd);
+            Request req;
+            parseHeaders(headersString, &req);
 
-			headersString = buffer.substr(headerEnd);
-			Request req;
-			parseHeaders(headersString, &req);
+            isHeaderDone = true;
 
-			isHeaderDone = true;
+            isChunked = isChunked(req.headers);
 
-			isChunked = isChunked(req.headers);
+            buffer.erase(headersString)
 
-			buffer.erase(headersString)
+                if (!isChunked) contentlength = getcontentlength(req.headers)
 
-			if (!isChunked) contentlength = getcontentlength(req.headers)
+                if (!isChunked && !contentLength) {
+                requests.push(req);
+                clearParser();
+            }
 
-			if (!isChunked && !contentLength) {
-				requests.push(req);
-				clearParser();
-			}
+            continue;
+        }
 
-			continue;
-		}
+        // handle body
+        if (chunked) {
+            parseChunkedBody(buffer);
+        }
+        if (contentlength) {
+            if (buffer.size() < contentlength)
+                return PARTIAL
+        }
+        req.body = buffer.substr(contentlength) buffer.erase(body) requests.push(req) clearParser()
 
-		// handle body
-		if (chunked) {
-			parseChunkedBody(buffer);
-		}
-		if (contentlength) {
-			if (buffer.size() < contentlength)
-				return PARTIAL
-		}
-		req.body = buffer.substr(contentlength)
-		buffer.erase(body)
-		requests.push(req)
-		clearParser()
-
-		return ERROR;
-
-	}
+                       return ERROR;
+    }
 }
-buffer
-isHeaderDone
-isChunked
-contentLength
-headersString
-bodyString
+buffer isHeaderDone isChunked contentLength headersString bodyString
 
+    ParserState
+    feed(string data, queue<Request>& req) {
+    buffer.append(data);
 
-ParserState feed(string data, queue<Request> &req) {
-	buffer.append(data);
+    while (true) {
 
-	while (true) {
+        // handle headers
+        if (!isheaderDone) {
 
-		// handle headers
-		if (!isheaderDone) {
+            headerEnd = buffer.find(/ r / n / r / n)
 
-			headerEnd = buffer.find(/r/n/r/n)
+                            if (buffer.size <= 4 * READ_SIZE) return REQ_ERROR
 
-			if (buffer.size <= 4 * READ_SIZE)
-				return REQ_ERROR
+                        if (headerEnd == npos) // not found
+                        setState REQ_PARTIAL return
 
-			if (headerEnd == npos) // not found
-				setState REQ_PARTIAL
-				return
+                        headersString += buffer.substr(headerEnd);
+            if (headersString.size >= READ_SIZE)
+                return REQ_ERROR
 
-			headersString += buffer.substr(headerEnd);
-			if (headersString.size >= READ_SIZE)
-				return REQ_ERROR
-	
-			Request req;
-			parseHeaders(headersString, &req);
+                    Request req;
+            parseHeaders(headersString, &req);
 
-			isHeaderDone = true;
+            isHeaderDone = true;
 
-			isChunked = isChunked(req.headers);
+            isChunked = isChunked(req.headers);
 
-			buffer.erase(headersString)
+            buffer.erase(headersString)
 
-			if (!isChunked) contentlength = getcontentlength(req.headers)
+                if (!isChunked) contentlength = getcontentlength(req.headers)
 
-			if (!isChunked && !contentLength) {
-				requests.push(req);
-				clearParser();
-			}
+                if (!isChunked && !contentLength) {
+                requests.push(req);
+                clearParser();
+            }
 
-			continue;
-		}
+            continue;
+        }
 
-		// handle body
-		if (chunked) {
-			parseChunkedBody(buffer);
-		}
-		if (contentlength) {
-			if (buffer.size() < contentlength)
-				return PARTIAL
-		}
-		req.body = buffer.substr(contentlength)
-		buffer.erase(body)
-		requests.push(req)
-		clearParser()
+        // handle body
+        if (chunked) {
+            parseChunkedBody(buffer);
+        }
+        if (contentlength) {
+            if (buffer.size() < contentlength)
+                return PARTIAL
+        }
+        req.body = buffer.substr(contentlength) buffer.erase(body) requests.push(req) clearParser()
 
-		return ERROR;
-
-	}
+                       return ERROR;
+    }
 }
