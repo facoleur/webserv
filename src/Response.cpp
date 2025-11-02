@@ -13,6 +13,9 @@ Response::Response() : _statusCode(200) {
 Response::Response(int statusCode) : _statusCode(statusCode) {
 }
 
+Response::~Response() {
+}
+
 std::string& Response::serialize() {
     _serializedResponse.clear();
 

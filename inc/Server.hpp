@@ -27,8 +27,9 @@ class Response;
 #define READ_SIZE 10
 
 struct ClientContext {
-    RequestParser       req_parser;
-    std::queue<Request> requests;
+    RequestParser        req_parser;
+    std::queue<Request>  requests;
+    std::queue<Response> responses;
 };
 
 class Server {

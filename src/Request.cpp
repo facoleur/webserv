@@ -10,7 +10,7 @@ Request::Request(void)
 Request::~Request(void) {
 }
 
-enum requestMethod Request::getMethod(void) {
+enum requestMethod Request::getMethod(void) const {
     return _method;
 }
 

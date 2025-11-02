@@ -2,20 +2,60 @@
 
 #include "RequestRouter.hpp"
 
-bool resource_exist(const std::string& path) {
+RequestRouter::RequestRouter() {
 }
-bool is_method_allowed(const Request& req) {
-}
-std::string resolvePath(const Request& req) {
+RequestRouter::~RequestRouter() {
 }
 
-Response handle_get(const Request& req, const std::string& path) {
+bool RequestRouter::resource_exist(const std::string& path) {
+    (void)path;
+    return true;
 }
-Response handle_post(const Request& req, const std::string& path) {
+
+bool RequestRouter::is_method_allowed(const Request& req) {
+    (void)req;
+    return true;
 }
-Response handle_delete(const Request& req, const std::string& path) {
+
+bool RequestRouter::is_cgi_request(const std::string& path) {
+    (void)path;
+    return true;
 }
-Response handle_cgi(const Request& req, const std::string& path) {
+
+std::string RequestRouter::resolvePath(const Request& req) {
+    (void)req;
+    return "path";
+}
+
+Response RequestRouter::handle_get(const Request& req, const std::string& path) {
+    (void)req;
+    (void)path;
+    Response res;
+    return res;
+}
+Response RequestRouter::handle_post(const Request& req, const std::string& path) {
+    (void)req;
+    (void)path;
+    Response res;
+    return res;
+}
+Response RequestRouter::handle_delete(const Request& req, const std::string& path) {
+    (void)req;
+    (void)path;
+    Response res;
+    return res;
+}
+Response RequestRouter::handle_cgi(const Request& req, const std::string& path) {
+    (void)req;
+    (void)path;
+    Response res;
+    return res;
+}
+
+Response RequestRouter::make_error_response(int status_code) {
+    (void)status_code;
+    Response res;
+    return res;
 }
 
 Response RequestRouter::route(const Request& req) {

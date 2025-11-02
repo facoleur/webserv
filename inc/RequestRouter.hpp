@@ -16,7 +16,7 @@ class RequestRouter {
     Response handle_delete(const Request& req, const std::string& path);
     Response handle_cgi(const Request& req, const std::string& path);
 
-    Response makeErrorResponse(enum statusCode status);
+    Response make_error_response(int status_code);
 
   public:
     RequestRouter();

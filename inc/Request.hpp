@@ -31,7 +31,7 @@ class Request {
     void printRequest(void);
 
     // getters
-    requestMethod                          getMethod(void);
+    requestMethod                          getMethod(void) const;
     std::string&                           getPath(void);
     std::string&                           getQueryString(void);
     std::string&                           getProtocolVersion(void);
