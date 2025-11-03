@@ -24,7 +24,7 @@ class Response;
 
 #define MAX_EVENTS 64
 #define TIMEOUT 2500
-#define READ_SIZE 10
+#define READ_SIZE 8000
 
 class ClientContext {
   public:

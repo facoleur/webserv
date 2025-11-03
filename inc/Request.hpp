@@ -32,7 +32,7 @@ class Request {
 
     // getters
     requestMethod                          getMethod(void) const;
-    std::string&                            getPath(void);
+    std::string&                           getPath(void);
     std::string&                           getQueryString(void);
     std::string&                           getProtocolVersion(void);
     std::vector<std::string, std::string>& getHeaders(void);

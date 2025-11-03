@@ -136,8 +136,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
             }
             if (_parsingPhase == PARSING_COMPLETE) {
                 reqQueue.push(req);
-                if (req.getValidity() == INVALID_REQUEST)
-                    return;
+                DEBUG_LOG(req);
                 req           = Request();
                 _parsingPhase = PARSING_REQUEST_LINE;
             }
