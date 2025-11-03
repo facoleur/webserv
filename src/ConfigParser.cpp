@@ -1,4 +1,4 @@
-#include "Parser.hpp"
+#include "ConfigParser.hpp"
 #include <cctype>
 #include <cstdlib>
 #include <fstream>
@@ -123,6 +123,14 @@ ConfigParser::tokenize(const std::string &text) {
 
 bool ConfigParser::isMethod(const std::string &m) {
   return m == "GET" || m == "POST" || m == "DELETE";
+}
+
+// Map a method string to the project's enum
+static requestMethod toMethod(const std::string &s) {
+  if (s == "GET") return GET;
+  if (s == "POST") return POST;
+  if (s == "DELETE") return DELETE;
+  return UNKNOWN;
 }
 
 int ConfigParser::toInt(const std::string &s) {
@@ -436,10 +444,11 @@ bool ConfigParser::parseDirectiveMethods(ServerConfig &srv) {
     if (eof())
       throw ParseError("unexpected EOF in methods directive");
     Token m = next();
-    if (!isMethod(m.s))
+    requestMethod em = toMethod(m.s);
+    if (em == UNKNOWN)
       throw ParseError("invalid method '" + m.s +
                        "' (allowed: GET POST DELETE)");
-    srv.methods.insert(m.s);
+    srv.methods.insert(em);
     has = true;
   }
   if (!has)
@@ -455,9 +464,10 @@ bool ConfigParser::parseDirectiveMethods(LocationConfig &loc) {
     if (eof())
       throw ParseError("unexpected EOF in methods directive");
     Token m = next();
-    if (!isMethod(m.s))
+    requestMethod em = toMethod(m.s);
+    if (em == UNKNOWN)
       throw ParseError("invalid method '" + m.s + "' in location");
-    loc.methods.insert(m.s);
+    loc.methods.insert(em);
     has = true;
   }
   if (!has)

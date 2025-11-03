@@ -2,7 +2,7 @@
 
 NAME = webserv
 CC = c++
-CCFLAGS = #-Wall -Werror -Wextra -std=c++98
+CCFLAGS = -Wall -Werror -Wextra -std=c++98
 
 RM = rm -rf
 MKDIR = mkdir -p
@@ -10,7 +10,7 @@ MKDIR = mkdir -p
 NAME = webserv
 
 
-SRCS = main.cpp Server.cpp  Request.cpp RequestParser.cpp RequestUtils.cpp MockResponse.cpp utils.cpp ConfigParser.cpp
+SRCS = main.cpp Server.cpp Request.cpp RequestParser.cpp RequestUtils.cpp MockResponse.cpp Utils.cpp ConfigParser.cpp Config.cpp
 
 SRC_DIR = src/
 INC_DIR = inc/

@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "Request.hpp" // for enum requestMethod
+
 struct Redirect {
   int status;         // 0 = pas de redir
   std::string target; // comme "/picture.img" ou "http://..."

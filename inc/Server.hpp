@@ -18,6 +18,8 @@
 #include "MockResponse.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
+#include "Config.hpp"
+#include "utils.hpp"
 
 class MockResponse;
 
@@ -32,15 +34,18 @@ struct ClientContext {
     RequestParser       req_parser;
     std::queue<Request> requests;
     MockResponse        response;
+    size_t              server_index; // which server accepted the client
 };
 
 class Server {
   private:
-    // Config               _config;
+    const Config*        _cfg; // not owning pointer
     struct ClientContext _state;
+    std::map<int, size_t> _listenerToServerIdx; // listen fd -> server index
 
   public:
     Server();
+    Server(const Config& cfg);
     ~Server();
     void         new_connection();
     void         existing_connection();

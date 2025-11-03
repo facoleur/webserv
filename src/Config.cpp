@@ -16,7 +16,7 @@ void applyDefaults(Config &cfg) {
     if (srv.index_files.empty())
       srv.index_files.push_back("index.html");
     if (srv.methods.empty())
-      srv.methods.insert("GET");
+      srv.methods.insert(GET);
     if (srv.client_max_body_size == 0)
       srv.client_max_body_size = 1048576; // 1 MiB
     // srv.autoindex defaults to false (constructor)
@@ -74,7 +74,7 @@ void validateCompatibility(const Config &cfg) {
       // Example: POST on a location that doesn't look like an upload endpoint.
       // (No CGI feature in our minimal structs yet; add a check later if/when
       // CGI exists.)
-      if (loc.methods.count("POST") && loc.redirect.status == 0 &&
+      if (loc.methods.count(POST) && loc.redirect.status == 0 &&
           loc.root.find("upload") == std::string::npos) {
         std::cerr
             << "Warning: Location " << loc.path
@@ -84,7 +84,7 @@ void validateCompatibility(const Config &cfg) {
       }
 
       // Example: DELETE on static root
-      if (loc.methods.count("DELETE") && loc.redirect.status != 0) {
+      if (loc.methods.count(DELETE) && loc.redirect.status != 0) {
         std::cerr << "Warning: Location " << loc.path
                   << " defines DELETE but has a redirect\n";
       }
