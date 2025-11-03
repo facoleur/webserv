@@ -117,25 +117,21 @@ void Server::run() {
 
                 tmp[len] = '\0';
 
-                /* Request parsing and handling: new version */
                 context[cfd].req_parser.feed(tmp, context[cfd].requests);
                 ps = context[cfd].req_parser.getState();
                 if (ps == REQ_PARSE_PARTIAL) {
                     continue;
                 }
                 DEBUG_LOG("handle_requests 2");
-                requestValidity lastRequestValidity =
-                    handle_requests(context[cfd], cfd); // => handles Request parse errors AND Request semantic errors
+                requestValidity lastRequestValidity = handle_requests(context[cfd], cfd);
                 if (lastRequestValidity == INVALID_REQUEST) {
-                    DEBUG_LOG("One invalid request, disconnecting client");
-                    DEBUG_LOG("disconnect 3");
-                    send_bad_request(cfd);
+                    DEBUG_LOG("disconnect 3 : invalid request found in the queue");
                     disconnect_client(i, cfd, pfds, nfds);
                     continue;
                 }
             }
             if (pfds[i].revents & POLLHUP) {
-                DEBUG_LOG("disconnect 4");
+                DEBUG_LOG("disconnect 4 : POLLHUP");
                 disconnect_client(i, cfd, pfds, nfds);
                 continue;
             }
@@ -145,8 +141,12 @@ void Server::run() {
 
 requestValidity Server::handle_requests(ClientContext& context, int cfd) {
     (void)cfd;
+    requestValidity lastRequestValidity;
+    std::string     responseString;
+    RequestRouter   router;
 
-    RequestRouter router;
+    DEBUG_LOG("handle_requests queue size: ");
+    DEBUG_LOG(context.requests.size());
     while (!context.requests.empty()) {
         Request& req = context.requests.front();
 
@@ -171,5 +171,7 @@ requestValidity Server::handle_requests(ClientContext& context, int cfd) {
 
 void send_bad_request(int cfd) {
     (void)cfd;
-    std::cout << "HTTP/1.0 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
+    std::cout << "RESPONSE: " << std::endl
+              << "---------" << std::endl
+              << "HTTP/1.0 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
 }

@@ -65,6 +65,7 @@ void RequestParser::parseRequestLine(Request& req) {
 
 void RequestParser::handleParseError(Request& req, std::queue<Request>& reqQueue) {
     DEBUG_LOG("Parse error");
+    req.setStatusCode(BAD_REQUEST);
     req.setValidity(INVALID_REQUEST);
     reqQueue.push(req);
     _parserState = REQ_PARSE_ERROR;
@@ -135,7 +136,6 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
                 _parsingPhase = PARSING_COMPLETE;
             }
             if (_parsingPhase == PARSING_COMPLETE) {
-                req.validateRequest();
                 reqQueue.push(req);
                 if (req.getValidity() == INVALID_REQUEST)
                     return;
