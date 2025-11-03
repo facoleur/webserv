@@ -4,6 +4,7 @@
 #include "RequestParser.hpp"
 #include "RequestRouter.hpp"
 #include "Response.hpp"
+#include "utils.hpp"
 
 std::ostream& operator<<(std::ostream& os, struct pollfd pfd) {
     os << "fd: " << pfd.fd << std::endl;
@@ -12,9 +13,12 @@ std::ostream& operator<<(std::ostream& os, struct pollfd pfd) {
     return os;
 }
 
-void Server::disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds) {
-    // handle_requests(context[cfd], cfd);
-    pfds[index] = pfds[nfds];
+void Server::disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds,
+                               std::map<int, ClientContext>& context) {
+
+    // handle_requests(context[client_fd], client_fd);
+    context.erase(client_fd);
+    pfds[index] = pfds[nfds - 1];
     index--;
     close(client_fd);
     nfds--;
@@ -73,7 +77,7 @@ void Server::run() {
             int cfd = pfds[i].fd;
             if (pfds[i].revents & (POLLERR | POLLNVAL)) { //  POLLHUP | => below POLLIN handling
                 DEBUG_LOG("disconnect 1");
-                disconnect_client(i, cfd, pfds, nfds);
+                disconnect_client(i, cfd, pfds, nfds, context);
                 continue;
             }
             if (cfd == server_fd && (pfds[i].revents & POLLIN)) {
@@ -101,52 +105,72 @@ void Server::run() {
                 ParserState ps = REQ_PARSE_START;
                 char        tmp[READ_SIZE + 1];
                 int         len = read(cfd, tmp, READ_SIZE);
-                if (len <= 0) {
-                    // DEBUG_LOG(
-                    //     "disconnect 2"); // triggered in case of simple invalid request, like "printf "GET
-                    //                      // /index.html HTTP/1.0\r\n" | nc localhost 8080" => false ? should answer
-                    //                      // BAD REQUEST: see issue https://github.com/facoleur/webserv/issues/18
-                    // DEBUG_LOG("handle_requests 1");
-                    // handle_requests(context[cfd], cfd);
-                    // ps = context[cfd].req_parser.getState();
-                    // if (context[cfd].req_parser.getState() == REQ_PARSE_PARTIAL)
-                    //     send_bad_request(cfd); // needed because the request was partial and not in the queue
-                    disconnect_client(i, cfd, pfds, nfds);
+
+                if (len == 0 && context[cfd].req_parser.getState() == REQ_PARSE_PARTIAL) {
+                    // add_bad_request_to_queue(cfd); // needed because the request was partial and not in the queue
+                    DEBUG_LOG("handle_requests: len == 0");
+                    handle_requests(context[cfd], pfds[i]);
+                    disconnect_client(i, cfd, pfds, nfds, context);
+                    continue;
+                }
+                if (len < 0) {
+                    DEBUG_LOG("disconnect 2");
+                    disconnect_client(i, cfd, pfds, nfds, context);
                     continue;
                 }
 
                 tmp[len] = '\0';
 
                 context[cfd].req_parser.feed(tmp, context[cfd].requests);
+                DEBUG_LOG("blocked here ?");
                 ps = context[cfd].req_parser.getState();
                 if (ps == REQ_PARSE_PARTIAL) {
+                    DEBUG_LOG("Req partial");
                     continue;
                 }
                 DEBUG_LOG("handle_requests 2");
-                requestValidity lastRequestValidity = handle_requests(context[cfd], cfd);
+                requestValidity lastRequestValidity = handle_requests(context[cfd], pfds[i]);
                 if (lastRequestValidity == INVALID_REQUEST) {
                     DEBUG_LOG("disconnect 3 : invalid request found in the queue");
-                    disconnect_client(i, cfd, pfds, nfds);
+                    disconnect_client(i, cfd, pfds, nfds, context);
                     continue;
                 }
             }
             if (pfds[i].revents & POLLHUP) {
                 DEBUG_LOG("disconnect 4 : POLLHUP");
-                disconnect_client(i, cfd, pfds, nfds);
+                disconnect_client(i, cfd, pfds, nfds, context);
                 continue;
+            }
+
+            if (pfds[i].revents & POLLOUT) {
+                std::string& buf = context[cfd].write_buffer;
+                while (!buf.empty()) {
+                    ssize_t sent = write(cfd, buf.data(), buf.size());
+                    DEBUG_LOG("written bytes: " + to_string(sent));
+                    if (sent > 0) {
+                        buf.erase(0, sent);
+                        continue;
+                    }
+                    if (sent == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                        break; // socket buffer full, wait for next POLLOUT
+                    }
+                    // error or connection closed
+                    disconnect_client(i, cfd, pfds, nfds, context);
+                    break;
+                }
+                if (buf.empty()) {
+                    pfds[i].events &= ~POLLOUT; // Stop watching for POLLOUT. ~ : bitwise NOT
+                }
             }
         }
     }
 }
 
-requestValidity Server::handle_requests(ClientContext& context, int cfd) {
-    (void)cfd;
-    requestValidity lastRequestValidity;
-    std::string     responseString;
-    RequestRouter   router;
+requestValidity Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
+    std::string   responseString;
+    RequestRouter router;
 
-    DEBUG_LOG("handle_requests queue size: ");
-    DEBUG_LOG(context.requests.size());
+    DEBUG_LOG("handle_requests queue size: " + to_string(context.requests.size()));
     while (!context.requests.empty()) {
         Request& req = context.requests.front();
 
@@ -154,24 +178,27 @@ requestValidity Server::handle_requests(ClientContext& context, int cfd) {
 
         if (reqValidity == INVALID_REQUEST) {
             DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
-            context.responses.push(Response(400));
+            Response res(400);
+            context.write_buffer.append(res.serialize());
+            pfd.events |= POLLOUT; // result: pfd.events == POLLIN | POLLOUT
             context.requests.pop();
             return INVALID_REQUEST;
         }
 
         DEBUG_LOG("handle_requests() exiting with: VALID_REQUEST");
         Response res = router.route(req);
-        context.responses.push(res);
-
+        context.write_buffer.append(res.serialize());
+        pfd.events |= POLLOUT;
         context.requests.pop();
     }
 
     return VALID_REQUEST;
 }
 
-void send_bad_request(int cfd) {
-    (void)cfd;
-    std::cout << "RESPONSE: " << std::endl
-              << "---------" << std::endl
-              << "HTTP/1.0 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
-}
+// not used
+// void send_bad_request(int cfd) {
+//     (void)cfd;
+//     std::cout << "RESPONSE: " << std::endl
+//               << "---------" << std::endl
+//               << "HTTP/1.0 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
+// }

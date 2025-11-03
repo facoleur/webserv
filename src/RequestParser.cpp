@@ -76,7 +76,6 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
     Request req;
 
     _accumulator += buf;
-
     while (!_accumulator.empty()) {
         /* 1. extract the content */
         switch (_parsingPhase) {

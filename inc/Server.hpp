@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <poll.h>
-// #include <sys/epoll.h>
+#include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -26,10 +26,12 @@ class Response;
 #define TIMEOUT 2500
 #define READ_SIZE 10
 
-struct ClientContext {
-    RequestParser        req_parser;
-    std::queue<Request>  requests;
-    std::queue<Response> responses;
+class ClientContext {
+  public:
+    RequestParser       req_parser;
+    std::queue<Request> requests;
+    struct pollfd       pfd;
+    std::string         write_buffer;
 };
 
 class Server {
@@ -40,11 +42,11 @@ class Server {
     Server();
     ~Server();
 
-    Response        process_request(Request& request);
+    Response        process_request(Request&);
     void            new_connection();
     void            existing_connection();
     void            run();
-    requestValidity handle_requests(ClientContext& context, int cfd);
+    requestValidity handle_requests(ClientContext&, struct pollfd&);
     void            print_request();
-    void            disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
+    void            disconnect_client(int&, int&, struct pollfd*, int&, std::map<int, ClientContext>&);
 };
