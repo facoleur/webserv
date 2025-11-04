@@ -215,11 +215,3 @@ requestValidity Server::handle_requests(ClientContext& context, struct pollfd& p
 
     return VALID_REQUEST;
 }
-
-// not used
-// void send_bad_request(int cfd) {
-//     (void)cfd;
-//     std::cout << "RESPONSE: " << std::endl
-//               << "---------" << std::endl
-//               << "HTTP/1.0 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
-// }
