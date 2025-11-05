@@ -74,8 +74,9 @@ void Server::run() {
 
     while (1) {
         int n = poll(pfds, nfds, TIMEOUT);
+        DEBUG_LOG("\n***** poll *****");
         if (n < 0) {
-            std::cout << "poll err" << std::endl;
+            DEBUG_LOG("poll err");
             continue;
         }
 
@@ -90,32 +91,26 @@ void Server::run() {
             if (cfd == server_fd && (pfds[i].revents & POLLIN)) {
                 int new_client_fd = accept(cfd, NULL, NULL);
                 if (new_client_fd < 0) {
-                    std::cout << "accept error" << std::endl;
+                    DEBUG_LOG("accept error");
                     continue;
                 }
                 fcntl(new_client_fd, F_SETFL, O_NONBLOCK);
-
-                pfds[nfds].fd      = new_client_fd;
-                pfds[nfds].events  = POLLIN;
-                pfds[nfds].revents = 0;
-
+                pfds[nfds].fd          = new_client_fd;
+                pfds[nfds].events      = POLLIN;
+                pfds[nfds].revents     = 0;
                 context[new_client_fd] = ClientContext();
-
                 nfds++;
-
-                std::cout << "new client connected" << std::endl;
-                std::cout << pfds[i] << std::endl;
+                DEBUG_LOG("new client connected");
+                DEBUG_LOG(pfds[i]);
                 continue;
             }
+            DEBUG_LOG("cfd == served_fd passed");
 
             if (pfds[i].revents & POLLIN) {
-                DEBUG_LOG("Pollin!");
-
-                char tmp[READ_SIZE + 1];
-                int  len = read(cfd, tmp, READ_SIZE);
-
+                DEBUG_LOG("Pollin revents");
+                char           tmp[READ_SIZE + 1];
+                int            len = read(cfd, tmp, READ_SIZE);
                 ClientContext& ctx = context[cfd];
-
                 /* Reading */
                 if (len == 0) { // client closed their send side
                     if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
@@ -123,10 +118,10 @@ void Server::run() {
                         DEBUG_LOG("handle_requests: len == 0, partial request. added bad request to queue");
                     }
                     handle_requests(context[cfd], pfds[i]);
+                    DEBUG_LOG("disconnect 1: read returned 0");
                     disconnect_client(i, cfd, pfds, nfds, context);
                     continue;
                 }
-
                 if (len < 0) {
                     if (errno == EAGAIN || errno == EWOULDBLOCK) { // No more data available right now - this is normal
                         DEBUG_LOG("EAGAIN - no more data");
@@ -136,32 +131,25 @@ void Server::run() {
                     disconnect_client(i, cfd, pfds, nfds, context);
                     continue;
                 }
-
-                tmp[len] = '\0';
-
                 /* Parsing */
+                tmp[len] = '\0';
                 ctx.req_parser.feed(tmp, ctx.requests);
-
-                if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
+                if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) { /* Need to parse more */
                     DEBUG_LOG("Req partial");
                     continue;
                 }
-
-                /* Response preparation */
                 handle_requests(ctx, pfds[i]);
                 if (!ctx.write_buffer.empty()) {
-                    pfds[i].events |= POLLOUT;
+                    pfds[i].events |= POLLOUT; // ??
                 }
-            }
-
-            if (pfds[i].revents & POLLHUP) {
-                DEBUG_LOG("disconnect 4 : POLLHUP");
-                disconnect_client(i, cfd, pfds, nfds, context);
+                DEBUG_LOG("\"if (pfds[i].revents & POLLIN)\": continuing");
                 continue;
             }
+            DEBUG_LOG("Pollin passed");
 
             /* Response handling */
             if (pfds[i].revents & POLLOUT) {
+                DEBUG_LOG("Pollout revents");
                 std::string& buf = context[cfd].write_buffer;
                 while (!buf.empty()) {
                     ssize_t sent = write(cfd, buf.data(), buf.size());
@@ -180,8 +168,19 @@ void Server::run() {
                 if (buf.empty()) {
                     pfds[i].events &= ~POLLOUT; // Stop watching for POLLOUT. ~ : bitwise NOT
                 }
+                continue;
             }
+            DEBUG_LOG("Pollout passed");
+
+            if (pfds[i].revents & POLLHUP) {
+                DEBUG_LOG("disconnect 4 : POLLHUP");
+                disconnect_client(i, cfd, pfds, nfds, context);
+                continue;
+            }
+            DEBUG_LOG("Pollhup passed");
+            DEBUG_LOG("end of for loop");
         }
+        DEBUG_LOG("end of while loop");
     }
 }
 
@@ -189,7 +188,7 @@ requestValidity Server::handle_requests(ClientContext& context, struct pollfd& p
     std::string   responseString;
     RequestRouter router;
 
-    (void)pfd;
+    // (void)pfd;
 
     DEBUG_LOG("handle_requests queue size: " + to_string(context.requests.size()));
     while (!context.requests.empty()) {
@@ -206,12 +205,11 @@ requestValidity Server::handle_requests(ClientContext& context, struct pollfd& p
         //     context.requests.pop();
         //     return INVALID_REQUEST;
         // }
-
-        DEBUG_LOG("handle_requests() exiting with VALID OR INVALID REQUEST (UNDEFINED)");
         Response res = router.route(req);
         context.write_buffer.append(res.serialize());
         context.requests.pop();
     }
-
+    pfd.events = POLLOUT; // not sure why it must be = and not |= but it works this way
+    DEBUG_LOG("handle_requests() exiting");
     return VALID_REQUEST;
 }
