@@ -165,7 +165,7 @@ void Server::run() {
                     disconnect_client(i, cfd, pfds, nfds, context);
                     break;
                 }
-                if (buf.empty()) {
+                if (buf.empty()) {              // why this condition ?
                     pfds[i].events &= ~POLLOUT; // Stop watching for POLLOUT. ~ : bitwise NOT
                 }
                 continue;
@@ -209,7 +209,7 @@ requestValidity Server::handle_requests(ClientContext& context, struct pollfd& p
         context.write_buffer.append(res.serialize());
         context.requests.pop();
     }
-    pfd.events = POLLOUT; // not sure why it must be = and not |= but it works this way
+    pfd.events &= POLLOUT; // works with both = and &=, but not with |=
     DEBUG_LOG("handle_requests() exiting");
     return VALID_REQUEST;
 }
