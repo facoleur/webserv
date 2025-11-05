@@ -37,8 +37,6 @@ void Server::new_connection() {
 void Server::existing_connection() {
 }
 
-void send_bad_request(int cfd);
-
 void add_bad_request_to_queue(ClientContext& context) {
     Request req;
     req.setStatusCode(BAD_REQUEST);
