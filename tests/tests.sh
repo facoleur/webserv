@@ -39,7 +39,7 @@ WEBSERV_PORT=8080
 NGINX_PORT=8081
 
 ## Toggles to obtain different tests
-TOGGLE_TESTS=TEST_VALID # Options: TEST_INVALID TEST_ALL
+TOGGLE_TESTS=TEST_ALL # Options: TEST_VALID TEST_INVALID TEST_ALL
 PRINT_EACH_TEST=TRUE
 
 ## Request elements
@@ -57,8 +57,8 @@ PATHS_INVALID=(' ' / /blabla /blabla.html /blabla.htm)
 PROTOCOLS_VALID=(HTTP/1.0 HTTP/1.1)
 PROTOCOLS_INVALID=('' ' ' HTTP/0.9 HTTP/2 HTTP)
 
-ENDING_VALID=( "\r\n\r\n" )
-ENDING_INVALID=( "\r\n\r\n " " \r\n\r\n" "\r" "\n" "" )
+ENDING_VALID=( $'\r\n\r\n' )
+ENDING_INVALID=( $'\r\n' $'\r\n\r\n ' $' \r\n\r\n' $'\r' $'\n' $'' )
 
 ## Selection of request elements
 if [[ $TOGGLE_TESTS == "TEST_VALID" ]]; then
@@ -67,35 +67,42 @@ if [[ $TOGGLE_TESTS == "TEST_VALID" ]]; then
 	QUERY_STRINGS=("${QUERY_STRINGS_VALID[@]}")
 	PROTOCOLS=("${PROTOCOLS_VALID[@]}")
 	ENDING=("${ENDING_VALID[@]}")
-	printf 'Testing valid requests (methods, paths, query strings, protocol versions and ending (CRLF))\n'
+	# printf 'Testing valid requests (methods, paths, query strings, protocol versions and ending (CRLF))\n'
 elif [[ $TOGGLE_TESTS == "TEST_INVALID" ]]; then
 	METHODS=("${METHODS_INVALID[@]}")
 	PATHS=("${PATHS_INVALID[@]}")
 	QUERY_STRINGS=("${QUERY_STRINGS_INVALID[@]}")
 	PROTOCOLS=("${PROTOCOLS_INVALID[@]}")
 	ENDING=("${ENDING_INVALID[@]}")
-	printf 'Testing invalid requests (methods, paths, query strings, protocol versions and ending (CRLF))\n'
+	# printf 'Testing invalid requests (methods, paths, query strings, protocol versions and ending (CRLF))\n'
 else
 	METHODS=( "${METHODS_VALID[@]}" "${METHODS_INVALID[@]}" )
 	PATHS=( "${PATHS_VALID[@]}" "${PATHS_INVALID[@]}" )
 	QUERY_STRINGS=( "${QUERY_STRINGS_VALID[@]}" "${QUERY_STRINGS_INVALID[@]}" )
 	PROTOCOLS=( "${PROTOCOLS_VALID[@]}" "${PROTOCOLS_INVALID[@]}" )
 	ENDING=( "${ENDING_VALID[@]}" "${PROTOCOLS_INVALID[@]}" )
-	printf 'Testing valid and invalid requests (methods, paths, query strings, protocol versions and ending (CRLF))\n'
+	# printf 'Testing valid and invalid requests (methods, paths, query strings, protocol versions and ending (CRLF))\n'
 fi
-printf '************************************************************************************************\n'
+# printf '************************************************************************************************\n'
+
+## Test a simple GET request with invalid ending
+# printf 'Test: %s%s\n' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALID[0]}"
+# printf 'Test: %s%s' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALID[0]}" | nc localhost ${WEBSERV_PORT}
+
+printf 'Test: {%s%s}\n' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_VALID[0]}"
+printf "%s%s" "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_VALID[0]}" | nc localhost ${WEBSERV_PORT}
 
 
-## Send and print out each request
-for method in "${METHODS[@]}"; do
-	for paths in "${PATHS[@]}"; do
-		for protocol in "${PROTOCOLS[@]}"; do
-			for ending in "${ENDING[@]}"; do
-				if [[ $PRINT_EACH_TEST == TRUE ]]; then
-					printf 'Test: %s%s\n' "$method $paths $protocol" "$ending"
-				fi
-				printf '%s%s' "$method $paths $protocol" "$ending" | nc localhost ${WEBSERV_PORT}
-			done
-		done
-	done
-done
+## Test all possible requests (selected from VALID, INVALID, ALL)
+# for method in "${METHODS[@]}"; do
+# 	for paths in "${PATHS[@]}"; do
+# 		for protocol in "${PROTOCOLS[@]}"; do
+# 			for ending in "${ENDING[@]}"; do
+# 				if [[ $PRINT_EACH_TEST == TRUE ]]; then
+# 					printf 'Test: %s%s\n' "$method $paths $protocol" "$ending"
+# 				fi
+# 				printf '%s%s' "$method $paths $protocol" "$ending" | nc localhost ${WEBSERV_PORT}
+# 			done
+# 		done
+# 	done
+# done

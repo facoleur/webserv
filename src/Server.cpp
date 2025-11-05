@@ -120,7 +120,7 @@ void Server::run() {
                 if (len == 0) { // client closed their send side
                     if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
                         add_bad_request_to_queue(ctx); // the request was partial and not in the queue
-                        DEBUG_LOG("handle_requests: len == 0, partial request");
+                        DEBUG_LOG("handle_requests: len == 0, partial request. added bad request to queue");
                     }
                     handle_requests(context[cfd], pfds[i]);
                     disconnect_client(i, cfd, pfds, nfds, context);
@@ -207,7 +207,7 @@ requestValidity Server::handle_requests(ClientContext& context, struct pollfd& p
         //     return INVALID_REQUEST;
         // }
 
-        DEBUG_LOG("handle_requests() exiting with: VALID_REQUEST");
+        DEBUG_LOG("handle_requests() exiting with VALID OR INVALID REQUEST (UNDEFINED)");
         Response res = router.route(req);
         context.write_buffer.append(res.serialize());
         context.requests.pop();
