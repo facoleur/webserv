@@ -71,3 +71,20 @@ std::string ConfigFile::readFile(const std::string &path) {
 const std::string &ConfigFile::getPath() const { return path_; }
 
 int ConfigFile::getSize() const { return size_; }
+
+bool ConfigFile::validateConfigPath(const std::string &path, std::string &err) {
+  int type = getTypePath(path);
+  if (type == -1) {
+    err = std::string("Error: cannot access config file '") + path + "'";
+    return false;
+  }
+  if (type != 1) {
+    err = std::string("Error: '") + path + "' is not a regular file";
+    return false;
+  }
+  if (checkFile(path, R_OK) != 0) {
+    err = std::string("Error: '") + path + "' is not readable (check permissions)";
+    return false;
+  }
+  return true;
+}

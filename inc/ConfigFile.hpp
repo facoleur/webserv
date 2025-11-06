@@ -11,6 +11,8 @@ public:
   static int checkFile(const std::string &path, int mode);
   static int isFileExistAndReadable(const std::string &path,
                                     const std::string &index);
+  // Validate config path is a readable regular file; return false with err msg
+  static bool validateConfigPath(const std::string &path, std::string &err);
 
   std::string readFile(const std::string &path);
   const std::string &getPath() const;

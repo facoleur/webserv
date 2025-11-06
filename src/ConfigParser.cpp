@@ -49,6 +49,14 @@ static bool isIPv4(const std::string &s) {
   return parts == 4;
 }
 
+// Return true if token is a directive keyword (not valid as index filename)
+static bool isDirectiveKeyword(const std::string &s) {
+  return s == "root" || s == "methods" || s == "return" || s == "location" ||
+         s == "host" || s == "listen" || s == "error_page" ||
+         s == "autoindex" || s == "client_max_body_size" || s == "cgi" ||
+         s == "upload_enable" || s == "upload_store";
+}
+
 std::vector<ConfigParser::Token>
 ConfigParser::tokenize(const std::string &text) {
   std::vector<Token> out;
@@ -407,7 +415,8 @@ bool ConfigParser::parseDirectiveIndex(ServerConfig &srv) {
     if (eof())
       throw ParseError("unexpected EOF in index directive");
     Token f = next();
-    if (f.s == "{" || f.s == "}" || f.s == ";") {
+    // disallow punctuation and any known directive keywords inside index list
+    if (f.s == "{" || f.s == "}" || f.s == ";" || isDirectiveKeyword(f.s)) {
       std::ostringstream msg;
       msg << "invalid token '" << f.s << "' in index directive at line "
           << f.line << ", col " << f.col;
@@ -425,7 +434,7 @@ bool ConfigParser::parseDirectiveIndex(LocationConfig &loc) {
     if (eof())
       throw ParseError("unexpected EOF in index directive");
     Token f = next();
-    if (f.s == "{" || f.s == "}" || f.s == ";") {
+    if (f.s == "{" || f.s == "}" || f.s == ";" || isDirectiveKeyword(f.s)) {
       std::ostringstream msg;
       msg << "invalid token '" << f.s << "' in index directive at line "
           << f.line << ", col " << f.col;

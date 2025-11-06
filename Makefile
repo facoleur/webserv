@@ -10,7 +10,7 @@ MKDIR = mkdir -p
 NAME = webserv
 
 
-SRCS = main.cpp Server.cpp Request.cpp RequestParser.cpp RequestUtils.cpp MockResponse.cpp Utils.cpp ConfigParser.cpp Config.cpp
+SRCS = main.cpp Server.cpp Request.cpp RequestParser.cpp RequestUtils.cpp MockResponse.cpp Utils.cpp ConfigParser.cpp Config.cpp ConfigFile.cpp
 
 SRC_DIR = src/
 INC_DIR = inc/
@@ -61,7 +61,7 @@ leaks:
 CONF_DIR := ./config
 CONF_FILES ?=
 CONF_FILTER ?= *.conf
-CONF_NEGFILTER ?= *.conf
+#CONF_NEGFILTER ?= negative_*.conf
 PARSER_BIN := ./webserv
 VERBOSE = 1
 TEST_DIR := ./tests
