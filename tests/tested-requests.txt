@@ -9,7 +9,7 @@ printf "POST /index.html?blabla HTTP/1.1\r\n\r\n" | nc localhost 8080
 printf "GET  /index.html HTTP/1.1\r\n\r\n" | nc localhost 8080
 printf "GET /index.html  HTTP/1.1\r\n\r\n" | nc localhost 8080
 printf " GET /index.html HTTP/1.1\r\n\r\n" | nc localhost 8080
-printf "GET /index.html HTTP/1.1\r\n\r\n " | nc localhost 8080
+printf "GET /index.html HTTP/1.1\r\n\r\n " | nc localhost 8080 => seems like buggy handling
 printf "GET /index.html HTTP/1.1 \r\n\r\n" | nc localhost 8080
 printf "GET /index.htmlHTTP/1.1\r\n\r\n" | nc localhost 8080
 printf "GET/index.html HTTP/1.1\r\n\r\n" | nc localhost 8080

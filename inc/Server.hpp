@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <poll.h>
-#include <sys/epoll.h>
+// #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -26,8 +26,7 @@ class Response;
 #define TIMEOUT 2500
 #define READ_SIZE 8000
 
-class ClientContext {
-  public:
+struct ClientContext {
     RequestParser       req_parser;
     std::queue<Request> requests;
     struct pollfd       pfd;
