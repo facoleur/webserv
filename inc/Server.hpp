@@ -6,7 +6,6 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <poll.h>
-// #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -15,10 +14,12 @@
 #include <queue>
 #include <vector>
 
+#include "Config.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
 #include "Response.hpp"
 #include "Webserv.hpp"
+#include "utils.hpp"
 
 class Response;
 
@@ -31,14 +32,18 @@ struct ClientContext {
     std::queue<Request> requests;
     struct pollfd       pfd;
     std::string         write_buffer;
+    size_t              server_index; // which server accepted the client
 };
 
 class Server {
   private:
-    // Config               _config;
+    const Config*         _cfg; // not owning pointer
+    struct ClientContext  _state;
+    std::map<int, size_t> _listenerToServerIdx; // listen fd -> server index
 
   public:
     Server();
+    Server(const Config& cfg);
     ~Server();
 
     Response        process_request(Request&);
