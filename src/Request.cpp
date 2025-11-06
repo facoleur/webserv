@@ -3,7 +3,7 @@
 #include "Request.hpp"
 
 Request::Request(void)
-    : _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _headers(), _body(), _statusCode(NO_STATUS),
+    : _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _body(), _statusCode(NO_STATUS),
       _validity(INVALID_REQUEST) {
 }
 
@@ -14,7 +14,7 @@ enum requestMethod Request::getMethod(void) const {
     return _method;
 }
 
-std::string& Request::getPath(void) {
+std::string Request::getPath(void) const {
     return _path;
 }
 
@@ -29,6 +29,16 @@ std::string& Request::getProtocolVersion(void) {
 // std::vector<std::string, std::string>& Request::getHeaders(void) {
 //     return _headers;
 // }
+
+std::string Request::getHeader(enum requestHeaders headers) const {
+    for (std::map<enum requestHeaders, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); ++it) {
+        if (headers == (*it).first) {
+            std::string res = (*it).second;
+            return res;
+        }
+    }
+    return "";
+}
 
 std::string& Request::getBody(void) {
     return _body;

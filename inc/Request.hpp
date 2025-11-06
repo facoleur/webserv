@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Webserv.hpp"
+#include <map>
 #include <vector>
 
 enum requestMethod { GET, POST, DELETE, UNKNOWN };
@@ -32,10 +33,11 @@ class Request {
 
     // getters
     requestMethod                          getMethod(void) const;
-    std::string&                           getPath(void);
+    std::string                            getPath(void) const;
     std::string&                           getQueryString(void);
     std::string&                           getProtocolVersion(void);
     std::vector<std::string, std::string>& getHeaders(void);
+    std::string                            getHeader(enum requestHeaders) const;
     std::string&                           getBody(void);
     requestValidity                        getValidity(void);
 
@@ -62,11 +64,10 @@ class Request {
     std::string   _queryString;
     std::string   _protocolVersion;
 
-    std::vector<std::pair<std::string, std::string> >
-                    _headers; // lferro: use map, more useable for the next user; and append during parsing if duplicate
-    std::string     _body;
-    statusCode      _statusCode;
-    requestValidity _validity;
+    std::map<enum requestHeaders, std::string> _headers;
+    std::string                                _body;
+    statusCode                                 _statusCode;
+    requestValidity                            _validity;
 };
 
 std::ostream& operator<<(std::ostream& os, Request& req);

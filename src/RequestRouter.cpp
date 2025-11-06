@@ -7,6 +7,30 @@ RequestRouter::RequestRouter() {
 RequestRouter::~RequestRouter() {
 }
 
+bool get_matching_server(ServerConfig& srv, std::string& host) {
+    return srv.host == host;
+}
+
+ServerConfig& RequestRouter::match_server(const Request& req) {
+    std::string host = req.getHeader(HOST);
+
+    if (host == "")
+        return _all_configs.servers[0];
+
+    DEBUG_LOG("host: " + host);
+
+    std::vector<ServerConfig>::iterator it = _all_configs.servers.end();
+    for (std::vector<ServerConfig>::iterator it_srv = _all_configs.servers.begin();
+         it_srv != _all_configs.servers.end(); ++it_srv) {
+        if (it_srv->host == host) {
+            it = it_srv;
+            break;
+        }
+    }
+
+    return *it;
+}
+
 bool RequestRouter::resource_exist(const std::string& path) {
     (void)path;
     return true;
@@ -23,8 +47,14 @@ bool RequestRouter::is_cgi_request(const std::string& path) {
 }
 
 std::string RequestRouter::resolvePath(const Request& req) {
-    (void)req;
-    return "path";
+    std::string full_path;
+
+    full_path.append(_config.host);
+    full_path.append(req.getPath());
+
+    std::cout << full_path << std::endl;
+
+    return full_path;
 }
 
 Response RequestRouter::handle_get(const Request& req, const std::string& path) {
@@ -58,8 +88,15 @@ Response RequestRouter::make_error_response(int status_code) {
     return res;
 }
 
+bool is_same_server(const ServerConfig& server, std::string& host) {
+    return server.host == host;
+}
+
 Response RequestRouter::route(const Request& req) {
-    Response    response;
+    Response response;
+
+    _config = match_server(req);
+    std::cout << "ICIOK" << std::endl;
     std::string fullPath = resolvePath(req);
 
     if (!resource_exist(fullPath))

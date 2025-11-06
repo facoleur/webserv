@@ -78,8 +78,7 @@ std::ostream& operator<<(std::ostream& os, enum statusCode stat) {
 
 void Request::printHeaders(std::ostream& os) {
 
-    for (std::vector<std::pair<std::string, std::string> >::iterator it = _headers.begin(); it != _headers.end();
-         it++) {
+    for (std::map<enum requestHeaders, std::string>::iterator it = _headers.begin(); it != _headers.end(); it++) {
         os << (*it).first << ": " << (*it).second << std::endl;
     }
 }
