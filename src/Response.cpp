@@ -2,7 +2,7 @@
 
 #include "Response.hpp"
 #include "Request.hpp"
-#include "utils.hpp"
+#include "Utils.hpp"
 
 std::map<int, std::string>                 ReasonPhrase::_reasonPhrase;
 std::map<enum requestHeaders, std::string> Headers::_headersString;
