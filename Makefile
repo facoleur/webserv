@@ -1,4 +1,4 @@
-.PHONY: all clean fclean re leaks debug test
+.PHONY: all clean fclean re leaks debug configtest
 
 NAME = webserv
 CC = c++
@@ -10,7 +10,7 @@ MKDIR = mkdir -p
 NAME = webserv
 
 
-SRCS = main.cpp Server.cpp Request.cpp RequestParser.cpp RequestUtils.cpp utils.cpp ConfigParser.cpp Response.cpp RequestRouter.cpp
+SRCS = main.cpp Server.cpp Request.cpp RequestParser.cpp RequestUtils.cpp utils.cpp ConfigParser.cpp Response.cpp RequestRouter.cpp Config.cpp
 
 HEADERS = Config.hpp ConfigParser.hpp Request.hpp RequestParser.hpp Server.hpp Webserv.hpp utils.hpp Response.hpp RequestRouter.hpp
 
@@ -65,3 +65,27 @@ debug: re
 
 debug: CCFLAGS += -DDEBUG_MODE
 debug: re
+
+CONF_DIR := ./config
+CONF_FILES ?=
+CONF_FILTER ?= *.conf
+CONF_NEGFILTER ?= *.conf
+PARSER_BIN := ./webserv
+VERBOSE = 1
+TEST_DIR := ./tests
+TEST_CONF_FILE := run_config_parser_tests.sh
+
+conftest:
+	@CONF_DIR="$(CONF_DIR)" CONF_FILES="$(CONF_FILES)" PARSER_BIN="$(PARSER_BIN)" VERBOSE="$(VERBOSE)" \
+		CONF_FILTER="$(CONF_FILTER)" CONF_NEGFILTER="$(CONF_NEGFILTER)" \
+		$(TEST_DIR)/$(TEST_CONF_FILE)
+
+# Usage:
+#   make test CONF_FILTER=default.conf
+#   make test CONF_FILES="./conf/default.conf ./conf/basic.conf"
+# Run all positives + built-in negative checks:
+# make conftest
+# Only test specific negative files (skip positives):
+# make conftest CONF_NEGFILTER='invalid_*.conf'
+# Combine with a positive filter:
+# make conftest CONF_FILTER='*.conf' CONF_NEGFILTER='missing_*.conf'
