@@ -1,4 +1,5 @@
 .PHONY: all clean fclean re leaks debug conftest
+.PHONY: all clean fclean re leaks debug conftest
 
 NAME = webserv
 CC = c++

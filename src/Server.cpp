@@ -36,9 +36,6 @@ Server::Server(const Config& cfg) : _cfg(&cfg) {
 
 }*/
 
-Server::~Server() {
-}
-
 void Server::new_connection() {
 }
 
@@ -157,8 +154,8 @@ void Server::run() {
 
                 nfds++;
 
-                std::cout << "new client connected on server index " << context[new_client_fd].server_index
-                          << std::endl;
+                DEBUG_LOG("new client connected on server index ");
+                DEBUG_LOG(context[new_client_fd].server_index); // add to previous debug log with "+ to_string()"
                 // std::cout << pfds[i] << std::endl;
 
                 continue;
