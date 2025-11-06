@@ -7,6 +7,7 @@ verbose="${VERBOSE:-1}"
 conf_dir="${CONF_DIR:-./conf}"
 conf_files="${CONF_FILES:-}"
 conf_filter="${CONF_FILTER:-*.conf}"
+conf_negfilter="${CONF_NEGFILTER:-}"
 temp_unreadable=""
 neg_failures=0
 
@@ -31,8 +32,9 @@ if [[ ${#files[@]} -eq 0 ]]; then
   exit 1
 fi
 
-echo -e "\n🔍 Running parser tests on config files..."
-for f in "${files[@]}"; do
+if [[ -z "$conf_negfilter" ]]; then
+  echo -e "\n🔍 Running parser tests on config files..."
+  for f in "${files[@]}"; do
   echo "--------------------------------------"
   echo "Testing $f"
   if [[ "$verbose" == "1" ]]; then
@@ -48,9 +50,10 @@ for f in "${files[@]}"; do
       echo "❌ $f -> FAILED"
     fi
   fi
-done
-echo "--------------------------------------"
-echo "Test suite completed."
+  done
+  echo "--------------------------------------"
+  echo "Test suite completed."
+fi
 
 run_negative_test() {
   local label="$1"
@@ -78,6 +81,15 @@ run_negative_test() {
 }
 
 echo "🔁 Running negative parser checks..."
+
+if [[ -n "$conf_negfilter" ]]; then
+  shopt -s nullglob
+  neg_files=("$conf_dir"/$conf_negfilter)
+  shopt -u nullglob
+  for nf in "${neg_files[@]}"; do
+    run_negative_test "explicit negative conf" "$nf"
+  done
+fi
 
 missing_path="${conf_dir}/__nonexistent_config_$$.conf"
 while [[ -e "$missing_path" ]]; do

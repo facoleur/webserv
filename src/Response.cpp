@@ -1,23 +1,22 @@
-// MockResponse.cpp
+// Response.cpp
 
-#include "MockResponse.hpp"
+#include "Response.hpp"
 #include "Request.hpp"
-#include "utils.hpp"
+#include "Utils.hpp"
 
 std::map<int, std::string>                 ReasonPhrase::_reasonPhrase;
 std::map<enum requestHeaders, std::string> Headers::_headersString;
 
-std::string MockResponse::getResponse() const {
-    return _serializedResponse;
+Response::Response() : _statusCode(200) {
 }
 
-MockResponse::MockResponse() {
+Response::Response(int statusCode) : _statusCode(statusCode) {
 }
 
-MockResponse::~MockResponse() {
+Response::~Response() {
 }
 
-std::string& MockResponse::serializeResponse() {
+std::string& Response::serialize() {
     _serializedResponse.clear();
 
     _serializedResponse.append("HTTP/1.1 ");

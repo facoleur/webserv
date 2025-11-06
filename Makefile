@@ -1,8 +1,8 @@
-.PHONY: all clean fclean re leaks conftest
+.PHONY: all clean fclean re leaks debug conftest
 
 NAME = webserv
 CC = c++
-CCFLAGS = #-Wall -Werror -Wextra -std=c++98
+CCFLAGS = -Wall -Werror -Wextra -std=c++98
 
 RM = rm -rf
 MKDIR = mkdir -p
@@ -10,7 +10,9 @@ MKDIR = mkdir -p
 NAME = webserv
 
 
-SRCS = main.cpp Server.cpp  Request.cpp RequestParser.cpp RequestUtils.cpp MockResponse.cpp utils.cpp ConfigParser.cpp
+SRCS = main.cpp Config.cpp ConfigParser.cpp Request.cpp RequestParser.cpp RequestRouter.cpp RequestUtils.cpp Response.cpp Server.cpp Utils.cpp
+
+HEADERS = Config.hpp ConfigParser.hpp Request.hpp RequestParser.hpp RequestRouter.hpp Response.hpp Server.hpp Utils.hpp Webserv.hpp
 
 SRC_DIR = src/
 INC_DIR = inc/
@@ -38,7 +40,7 @@ $(NAME): $(OBJS)
 	@echo "$(GREEN)The Makefile of $(NAME) has been compied!$(DEF_COLOR)"
 	@echo "$(YELLOW)Use this command in the folder root: ./$(NAME) to start\n$(DEF_COLOR)"
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(addprefix $(INC_DIR)/, $(HEADERS))
 	@echo "Creating ./$@"
 	@$(MKDIR) $(BIN_DIR)
 	@$(CC) $(CCFLAGS) -I$(INC_DIR) -c $< -o $@
@@ -58,17 +60,32 @@ re: fclean all
 leaks:
 	@leaks -atExit -- ./$(NAME)
 
-CONF_DIR := ./conf
+debug: CCFLAGS += -DDEBUG_MODE
+debug: re
+
+debug: CCFLAGS += -DDEBUG_MODE
+debug: re
+
+CONF_DIR := ./config
 CONF_FILES ?=
 CONF_FILTER ?= *.conf
+CONF_NEGFILTER ?= *.conf
 PARSER_BIN := ./webserv
 VERBOSE = 1
+TEST_DIR := ./tests
+TEST_CONF_FILE := run_config_parser_tests.sh
 
 conftest:
 	@CONF_DIR="$(CONF_DIR)" CONF_FILES="$(CONF_FILES)" PARSER_BIN="$(PARSER_BIN)" VERBOSE="$(VERBOSE)" \
-		CONF_FILTER="$(CONF_FILTER)" \
-		./scripts/run_parser_tests.sh
+		CONF_FILTER="$(CONF_FILTER)" CONF_NEGFILTER="$(CONF_NEGFILTER)" \
+		$(TEST_DIR)/$(TEST_CONF_FILE)
 
 # Usage:
 #   make test CONF_FILTER=default.conf
 #   make test CONF_FILES="./conf/default.conf ./conf/basic.conf"
+# Run all positives + built-in negative checks:
+# make conftest
+# Only test specific negative files (skip positives):
+# make conftest CONF_NEGFILTER='invalid_*.conf'
+# Combine with a positive filter:
+# make conftest CONF_FILTER='*.conf' CONF_NEGFILTER='missing_*.conf'

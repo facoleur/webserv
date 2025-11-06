@@ -5,7 +5,6 @@
 #include "Request.hpp"
 #include <queue>
 #include <sstream>
-#include <queue>
 
 #define READ_BUF_SIZE 8000
 #define CRLF std::string("\r\n")
@@ -19,36 +18,36 @@ a Request object */
 class RequestParser {
 
   public:
-	// Constructors
-	RequestParser(void);
-	~RequestParser(void);
+    // Constructors
+    RequestParser(void);
+    ~RequestParser(void);
 
-	// Main function
-    void feed(char* buf, std::queue<Request> &req_queue);
+    // Main function
+    void feed(char*, std::queue<Request>&);
 
     // getters
     enum ParserState getState(void);
 
-    struct RequestParsingError : std::exception { };
+    struct RequestParsingError : std::exception {};
 
   private:
-	// Main parsing functions
-    void    parseRequestLine(Request &);
-    void    parseHeaders(void);
-    void    parseHeader(std::string&);
-    void    parseBody(int sockFd, size_t contentLength);
+    // Main parsing functions
+    void parseRequestLine(Request&);
+    void parseHeaders(void);
+    void parseHeader(std::string&);
+    void parseBody(int sockFd, size_t contentLength);
 
-	// Helpers
-	void	splitRequestLine(std::vector<std::string> &, std::string &line);
+    // Helpers
+    void splitRequestLine(std::vector<std::string>&, std::string& line);
 
-	// Error handling
-    void    handleParseError(Request &, std::queue<Request> &);
-    void    handleParsePartial(size_t);
+    // Error handling
+    void handleParseError(Request&, std::queue<Request>&);
+    void handleParsePartial(size_t);
 
     // attributes
     enum ParserState  _parserState;
     enum ParsingPhase _parsingPhase;
-    enum StatusCode   _statusCode;
+    enum statusCode   _statusCode;
     size_t            _contentLength;
     std::string       _accumulator;
     std::string       _firstSection; // request-line + headers

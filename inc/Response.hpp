@@ -1,4 +1,4 @@
-// MockResponse.hpp
+// Response.hpp
 
 #pragma once
 
@@ -14,6 +14,7 @@ class ReasonPhrase {
 
     static void init() {
         _reasonPhrase[200] = "OK";
+        _reasonPhrase[202] = "Accepted";
         _reasonPhrase[301] = "Redirect";
         _reasonPhrase[400] = "Bad Request";
         _reasonPhrase[404] = "Not Found";
@@ -53,7 +54,7 @@ class Headers {
     }
 };
 
-class MockResponse {
+class Response {
   private:
     int                                        _statusCode;
     std::map<enum requestHeaders, std::string> _headers;
@@ -62,10 +63,9 @@ class MockResponse {
     std::string _serializedResponse;
 
   public:
-    MockResponse();
-    ~MockResponse();
+    Response();
+    Response(int statusCode);
+    ~Response();
 
-    std::string& serializeResponse();
-
-    std::string getResponse() const;
+    std::string& serialize();
 };

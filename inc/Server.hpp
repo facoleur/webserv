@@ -15,39 +15,43 @@
 #include <queue>
 #include <vector>
 
-#include "MockResponse.hpp"
+#include "Config.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
+#include "Response.hpp"
+#include "Utils.hpp"
+#include "Webserv.hpp"
 
-class MockResponse;
+class Response;
 
 #define MAX_EVENTS 64
 #define TIMEOUT 2500
-#define READ_SIZE 10
-
-enum ClientState { WAITING, READING, WRITING, CLOSED };
+#define READ_SIZE 8000
 
 struct ClientContext {
-    ClientState         state;
     RequestParser       req_parser;
     std::queue<Request> requests;
-    MockResponse        response;
+    struct pollfd       pfd;
+    std::string         write_buffer;
+    size_t              server_index; // which server accepted the client
 };
 
 class Server {
   private:
-    // Config               _config;
-    struct ClientContext _state;
+    const Config*         _cfg; // not owning pointer
+    struct ClientContext  _state;
+    std::map<int, size_t> _listenerToServerIdx; // listen fd -> server index
 
   public:
     Server();
+    Server(const Config& cfg);
     ~Server();
-    void         new_connection();
-    void         existing_connection();
-    void         run();
-    MockResponse process_request(Request& request);
-    void         handle_requests(ClientContext& req, int cfd);
 
-    void print_request();
-    void disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds);
+    Response        process_request(Request&);
+    void            new_connection();
+    void            existing_connection();
+    void            run();
+    requestValidity handle_requests(ClientContext&, struct pollfd&);
+    void            print_request();
+    void            disconnect_client(int&, int&, struct pollfd*, int&, std::map<int, ClientContext>&);
 };
