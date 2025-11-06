@@ -36,6 +36,9 @@ Server::Server(const Config& cfg) : _cfg(&cfg) {
 
 }*/
 
+Server::~Server() {
+}
+
 void Server::new_connection() {
 }
 
