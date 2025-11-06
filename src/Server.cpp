@@ -4,7 +4,7 @@
 #include "RequestParser.hpp"
 #include "RequestRouter.hpp"
 #include "Response.hpp"
-#include "utils.hpp"
+#include "Utils.hpp"
 #include <arpa/inet.h>
 
 std::ostream& operator<<(std::ostream& os, struct pollfd pfd) {
@@ -26,14 +26,15 @@ void Server::disconnect_client(int& index, int& client_fd, struct pollfd* pfds, 
     std::cout << "client disconnected" << std::endl; // moved to after close() in case close fails
 }
 
-Server::Server() : _cfg(NULL) {}
+Server::Server() : _cfg(NULL) {
+}
 
-Server::Server(const Config& cfg) : _cfg(&cfg) {}
+Server::Server(const Config& cfg) : _cfg(&cfg) {
+}
 
 /* Server(const Config& cfg) {
-	
-}*/
 
+}*/
 
 Server::~Server() {
 }
@@ -54,7 +55,7 @@ void add_bad_request_to_queue(ClientContext& context) {
 
 void Server::run() {
     struct pollfd pfds[MAX_EVENTS];
-    int nfds = 0;
+    int           nfds = 0;
 
     // Create one listening socket per server:port
     std::vector<int> listen_fds;
@@ -64,8 +65,9 @@ void Server::run() {
             const ServerConfig& srv = servers[si];
             for (size_t pi = 0; pi < srv.listen_ports.size(); ++pi) {
                 int port = srv.listen_ports[pi];
-                int lfd = socket(AF_INET, SOCK_STREAM, 0);
-                if (lfd < 0) continue;
+                int lfd  = socket(AF_INET, SOCK_STREAM, 0);
+                if (lfd < 0)
+                    continue;
                 int opt = 1;
                 setsockopt(lfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
                 fcntl(lfd, F_SETFL, O_NONBLOCK);
@@ -74,11 +76,12 @@ void Server::run() {
                 struct sockaddr_in addr;
                 memset(&addr, 0, sizeof(addr));
                 addr.sin_family = AF_INET;
-                addr.sin_port = htons(port);
-                in_addr_t ip = INADDR_ANY;
+                addr.sin_port   = htons(port);
+                in_addr_t ip    = INADDR_ANY;
                 if (!srv.host.empty()) {
-                    in_addr a; 
-                    if (inet_aton(srv.host.c_str(), &a)) ip = a.s_addr;
+                    in_addr a;
+                    if (inet_aton(srv.host.c_str(), &a))
+                        ip = a.s_addr;
                 }
                 addr.sin_addr.s_addr = ip;
 
@@ -90,26 +93,34 @@ void Server::run() {
                     close(lfd);
                     continue;
                 }
-                pfds[nfds].fd = lfd;
-                pfds[nfds].events = POLLIN;
-                pfds[nfds].revents = 0;
+                pfds[nfds].fd             = lfd;
+                pfds[nfds].events         = POLLIN;
+                pfds[nfds].revents        = 0;
                 _listenerToServerIdx[lfd] = si;
                 listen_fds.push_back(lfd);
                 ++nfds;
-                if (nfds >= MAX_EVENTS) break;
+                if (nfds >= MAX_EVENTS)
+                    break;
             }
-            if (nfds >= MAX_EVENTS) break;
+            if (nfds >= MAX_EVENTS)
+                break;
         }
     } else {
         // Fallback: single listener on 8080 for development
         int lfd = socket(AF_INET, SOCK_STREAM, 0);
         fcntl(lfd, F_SETFL, O_NONBLOCK);
         fcntl(lfd, F_SETFD, FD_CLOEXEC);
-        struct sockaddr_in addr; memset(&addr, 0, sizeof(addr));
-        addr.sin_family = AF_INET; addr.sin_port = htons(8080); addr.sin_addr.s_addr = INADDR_ANY;
+        struct sockaddr_in addr;
+        memset(&addr, 0, sizeof(addr));
+        addr.sin_family      = AF_INET;
+        addr.sin_port        = htons(8080);
+        addr.sin_addr.s_addr = INADDR_ANY;
         bind(lfd, (struct sockaddr*)&addr, sizeof(addr));
         listen(lfd, SOMAXCONN);
-        pfds[nfds].fd = lfd; pfds[nfds].events = POLLIN; pfds[nfds].revents = 0; ++nfds;
+        pfds[nfds].fd      = lfd;
+        pfds[nfds].events  = POLLIN;
+        pfds[nfds].revents = 0;
+        ++nfds;
     }
 
     std::map<int, struct ClientContext> context;
@@ -138,15 +149,16 @@ void Server::run() {
                     continue;
                 }
                 fcntl(new_client_fd, F_SETFL, O_NONBLOCK);
-                pfds[nfds].fd          = new_client_fd;
-                pfds[nfds].events      = POLLIN;
-                pfds[nfds].revents     = 0;
-                context[new_client_fd] = ClientContext();
+                pfds[nfds].fd                       = new_client_fd;
+                pfds[nfds].events                   = POLLIN;
+                pfds[nfds].revents                  = 0;
+                context[new_client_fd]              = ClientContext();
                 context[new_client_fd].server_index = _listenerToServerIdx[cfd];
 
                 nfds++;
 
-                std::cout << "new client connected on server index " << context[new_client_fd].server_index << std::endl;
+                std::cout << "new client connected on server index " << context[new_client_fd].server_index
+                          << std::endl;
                 // std::cout << pfds[i] << std::endl;
 
                 continue;

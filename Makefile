@@ -1,8 +1,8 @@
-.PHONY: all clean fclean re leaks debug configtest
+.PHONY: all clean fclean re leaks debug conftest
 
 NAME = webserv
 CC = c++
-CCFLAGS = -Wall -Werror -Wextra -std=c++98
+CCFLAGS = -Wall -Werror -Wextra -std=c++98 -MMD -MP
 
 RM = rm -rf
 MKDIR = mkdir -p
@@ -10,16 +10,17 @@ MKDIR = mkdir -p
 NAME = webserv
 
 
-SRCS = main.cpp Server.cpp Request.cpp RequestParser.cpp RequestUtils.cpp utils.cpp ConfigParser.cpp Response.cpp RequestRouter.cpp Config.cpp
+SOURCE_FILES = main Server Request RequestParser RequestUtils Utils ConfigParser Response RequestRouter Config
 
 HEADERS = Config.hpp ConfigParser.hpp Request.hpp RequestParser.hpp Server.hpp Webserv.hpp utils.hpp Response.hpp RequestRouter.hpp
 
+OBJ_DIR = build/
 SRC_DIR = src/
 INC_DIR = inc/
-OBJS = $(patsubst %.cpp, $(OBJ_DIR)/%.o, $(notdir $(SRCS)))
 
-OBJ_DIR = bin
-BIN_DIR = bin
+SRCS = $(addprefix $(SRC_DIR), $(addsuffix .cpp, $(SOURCE_FILES)))
+OBJS = $(addprefix $(OBJ_DIR), $(addsuffix .o, $(SOURCE_FILES)))
+DEPS = $(OBJS:.o=.d)
 
 DEF_COLOR = \033[0;39m
 GRAY = \033[0;90m
@@ -31,18 +32,20 @@ MAGENTA = \033[0;95m
 CYAN = \033[0;96m
 WHITE = \033[0;97m
 
-
-all: $(NAME)
+all: $(OBJ_DIR) $(NAME)
 
 $(NAME): $(OBJS)
 	@echo "Creating $@"
-	@$(CC) $(CCFLAGS) $(OBJS) -o $(NAME)
+	@$(CC) $(CCFLAGS) -I$(INC_DIR) $(OBJS) -o $(NAME)
 	@echo "$(GREEN)The Makefile of $(NAME) has been compied!$(DEF_COLOR)"
 	@echo "$(YELLOW)Use this command in the folder root: ./$(NAME) to start\n$(DEF_COLOR)"
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(addprefix $(INC_DIR)/, $(HEADERS))
+$(OBJ_DIR):
+	@echo "Creating $(NAME) build directory"
+	mkdir -p $(OBJ_DIR)
+
+$(OBJ_DIR)%.o: $(SRC_DIR)%.cpp
 	@echo "Creating ./$@"
-	@$(MKDIR) $(BIN_DIR)
 	@$(CC) $(CCFLAGS) -I$(INC_DIR) -c $< -o $@
 
 clean:
@@ -63,9 +66,6 @@ leaks:
 debug: CCFLAGS += -DDEBUG_MODE
 debug: re
 
-debug: CCFLAGS += -DDEBUG_MODE
-debug: re
-
 CONF_DIR := ./config
 CONF_FILES ?=
 CONF_FILTER ?= *.conf
@@ -79,6 +79,9 @@ conftest:
 	@CONF_DIR="$(CONF_DIR)" CONF_FILES="$(CONF_FILES)" PARSER_BIN="$(PARSER_BIN)" VERBOSE="$(VERBOSE)" \
 		CONF_FILTER="$(CONF_FILTER)" CONF_NEGFILTER="$(CONF_NEGFILTER)" \
 		$(TEST_DIR)/$(TEST_CONF_FILE)
+
+
+-include $(DEPS)
 
 # Usage:
 #   make test CONF_FILTER=default.conf
