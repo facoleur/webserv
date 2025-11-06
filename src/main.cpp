@@ -1,8 +1,8 @@
 // main.cpp
 
-#include "Server.hpp"
-#include "ConfigParser.hpp"
 #include "ConfigFile.hpp"
+#include "ConfigParser.hpp"
+#include "Server.hpp"
 #include <iostream>
 #include <unistd.h>
 
@@ -15,11 +15,11 @@ int main(int argc, char const* argv[]) {
         return 1;
     }
     ConfigParser parser;
-    Config cfg = parser.parseFile(path);
+    Config       cfg = parser.parseFile(path);
     applyDefaults(cfg);
     validateCompatibility(cfg);
 
     Server serv(cfg);
-    //serv.run();
+    // serv.run();
     return 0;
 }
