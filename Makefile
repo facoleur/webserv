@@ -1,4 +1,4 @@
-.PHONY: all clean fclean re leaks debug test conftest
+.PHONY: all clean fclean re leaks debug conftest
 
 NAME = webserv
 CC = c++
@@ -10,9 +10,9 @@ MKDIR = mkdir -p
 NAME = webserv
 
 
-SRCS = main.cpp Server.cpp Request.cpp RequestParser.cpp RequestUtils.cpp utils.cpp Utils.cpp ConfigParser.cpp Response.cpp RequestRouter.cpp
+SRCS = main.cpp Config.cpp ConfigParser.cpp Request.cpp RequestParser.cpp RequestRouter.cpp RequestUtils.cpp Response.cpp Server.cpp Utils.cpp
 
-HEADERS = Config.hpp ConfigParser.hpp Request.hpp RequestParser.hpp Server.hpp Webserv.hpp Utils.hpp Response.hpp RequestRouter.hpp
+HEADERS = Config.hpp ConfigParser.hpp Request.hpp RequestParser.hpp RequestRouter.hpp Response.hpp Server.hpp Utils.hpp Webserv.hpp
 
 SRC_DIR = src/
 INC_DIR = inc/

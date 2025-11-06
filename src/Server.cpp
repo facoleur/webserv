@@ -4,7 +4,7 @@
 #include "RequestParser.hpp"
 #include "RequestRouter.hpp"
 #include "Response.hpp"
-#include "utils.hpp"
+#include "Utils.hpp"
 #include <arpa/inet.h>
 
 std::ostream& operator<<(std::ostream& os, struct pollfd pfd) {
@@ -31,10 +31,6 @@ Server::Server() : _cfg(NULL) {
 
 Server::Server(const Config& cfg) : _cfg(&cfg) {
 }
-
-/* Server(const Config& cfg) {
-
-}*/
 
 Server::~Server() {
 }
@@ -157,8 +153,8 @@ void Server::run() {
 
                 nfds++;
 
-                std::cout << "new client connected on server index " << context[new_client_fd].server_index
-                          << std::endl;
+                DEBUG_LOG("new client connected on server index ");
+                DEBUG_LOG(context[new_client_fd].server_index); // add to previous debug log with "+ to_string()"
                 // std::cout << pfds[i] << std::endl;
 
                 continue;

@@ -18,6 +18,7 @@
 #include "Request.hpp"
 #include "RequestParser.hpp"
 #include "Response.hpp"
+#include "Utils.hpp"
 #include "Webserv.hpp"
 #include "utils.hpp"
 
