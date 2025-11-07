@@ -2,8 +2,53 @@
 
 #include "Utils.hpp"
 
-std::string to_string(int n) {
+std::string toString(int n) {
     std::stringstream ss;
     ss << n;
     return ss.str();
+}
+
+void replace(std::string& str, const std::string& from, const std::string& to) {
+    if (from.empty())
+        return;
+    std::string::size_type start = 0;
+    while ((start = str.find(from, start)) != std::string::npos) {
+        str.replace(start, from.length(), to);
+        start += to.length();
+    }
+}
+
+std::vector<std::string> split(const std::string& s, char delimiter) {
+    std::vector<std::string> tokens;
+    std::stringstream        ss(s);
+    std::string              item;
+
+    while (std::getline(ss, item, delimiter)) {
+        tokens.push_back(item);
+    }
+
+    return tokens;
+}
+
+bool startsWith(const std::string& str, const std::string& prefix) {
+    if (prefix.size() > str.size())
+        return false;
+    return std::equal(prefix.begin(), prefix.end(), str.begin());
+}
+
+std::string join(const std::vector<std::string>& parts, char delim) {
+    std::string out;
+    for (std::vector<std::string>::size_type i = 0; i < parts.size(); ++i) {
+        if (i)
+            out += delim;
+        out += parts[i];
+    }
+    return out;
+}
+
+bool isDirectory(const std::string& path) {
+    struct stat info;
+    if (stat(path.c_str(), &info) != 0)
+        return false;
+    return S_ISDIR(info.st_mode);
 }

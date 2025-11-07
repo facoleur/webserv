@@ -10,6 +10,18 @@ Request::Request(void)
 Request::~Request(void) {
 }
 
+void Request::printRequest(void) const {
+    std::cout << "path: " << _path << std::endl;
+    std::cout << "method: " << _method << std::endl;
+    std::cout << "body: " << _body << std::endl;
+
+    for (std::map<enum requestHeaders, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); ++it) {
+        std::cout << "header: " << (*it).first << ": " << (*it).second << std::endl;
+    }
+
+    std::cout << _body << std::endl;
+}
+
 enum requestMethod Request::getMethod(void) const {
     return _method;
 }

@@ -29,7 +29,7 @@ class Request {
     // Other functions
     bool hasHeader(std::string const&); // whether a specific header is present
     bool hasBody(void);
-    void printRequest(void);
+    void printRequest(void) const;
 
     // getters
     requestMethod                          getMethod(void) const;

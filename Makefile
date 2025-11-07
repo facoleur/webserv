@@ -10,9 +10,9 @@ MKDIR = mkdir -p
 NAME = webserv
 
 
-SRCS = main.cpp Config.cpp ConfigParser.cpp Request.cpp RequestParser.cpp RequestRouter.cpp RequestUtils.cpp Response.cpp Server.cpp Utils.cpp
+SRCS = main.cpp ConfigFile.cpp Config.cpp ConfigParser.cpp Request.cpp RequestParser.cpp RequestRouter.cpp RequestUtils.cpp Response.cpp Server.cpp Utils.cpp
 
-HEADERS = Config.hpp ConfigParser.hpp Request.hpp RequestParser.hpp RequestRouter.hpp Response.hpp Server.hpp Utils.hpp Webserv.hpp
+HEADERS = ConfigFile.hpp Config.hpp ConfigParser.hpp Request.hpp RequestParser.hpp RequestRouter.hpp Response.hpp Server.hpp Utils.hpp Webserv.hpp
 
 SRC_DIR = src/
 INC_DIR = inc/

@@ -26,10 +26,10 @@ void Server::disconnect_client(int& index, int& client_fd, struct pollfd* pfds, 
     std::cout << "client disconnected" << std::endl; // moved to after close() in case close fails
 }
 
-Server::Server() : _cfg(NULL) {
+Server::Server() {
 }
 
-Server::Server(const Config& cfg) : _cfg(&cfg) {
+Server::Server(const Config& cfg) : _cfg(cfg) {
 }
 
 Server::~Server() {
@@ -54,7 +54,7 @@ void Server::run() {
     // Create one listening socket per server:port
     std::vector<int> listen_fds;
     if (_cfg) {
-        const std::vector<ServerConfig>& servers = _cfg->getServers();
+        const std::vector<ServerConfig>& servers = _cfg.getServers();
         for (size_t si = 0; si < servers.size(); ++si) {
             const ServerConfig& srv = servers[si];
             for (size_t pi = 0; pi < srv.listen_ports.size(); ++pi) {
@@ -208,7 +208,7 @@ void Server::run() {
                 std::string& buf = context[cfd].write_buffer;
                 while (!buf.empty()) {
                     ssize_t sent = write(cfd, buf.data(), buf.size());
-                    DEBUG_LOG("written bytes: " + to_string(sent));
+                    DEBUG_LOG("written bytes: " + toString(sent));
                     if (sent > 0) {
                         buf.erase(0, sent);
                         continue;
@@ -245,7 +245,7 @@ requestValidity Server::handle_requests(ClientContext& context, struct pollfd& p
 
     // (void)pfd;
 
-    DEBUG_LOG("handle_requests queue size: " + to_string(context.requests.size()));
+    DEBUG_LOG("handle_requests queue size: " + toString(context.requests.size()));
     while (!context.requests.empty()) {
         Request& req = context.requests.front();
 
@@ -260,7 +260,10 @@ requestValidity Server::handle_requests(ClientContext& context, struct pollfd& p
         //     context.requests.pop();
         //     return INVALID_REQUEST;
         // }
-        Response res = router.route(req);
+
+        const ServerConfig& config = _cfg.getServers()[context.server_index];
+
+        Response res = router.route(req, config);
         context.write_buffer.append(res.serialize());
         context.requests.pop();
     }

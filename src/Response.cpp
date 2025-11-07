@@ -20,7 +20,7 @@ std::string& Response::serialize() {
     _serializedResponse.clear();
 
     _serializedResponse.append("HTTP/1.1 ");
-    _serializedResponse.append(to_string(_statusCode) + " ");
+    _serializedResponse.append(toString(_statusCode) + " ");
     _serializedResponse.append(ReasonPhrase::getReasonPhrase(_statusCode) + "\r\n");
 
     for (std::map<enum requestHeaders, std::string>::iterator it = _headers.begin(); it != _headers.end(); it++) {
