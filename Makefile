@@ -1,5 +1,7 @@
 .PHONY: all clean fclean re leaks debug conftest
 
+MAKEFLAGS += --no-builtin-rules
+
 NAME = webserv
 CC = c++
 CCFLAGS = -Wall -Werror -Wextra -std=c++98
@@ -86,3 +88,19 @@ conftest:
 # make conftest CONF_NEGFILTER='invalid_*.conf'
 # Combine with a positive filter:
 # make conftest CONF_FILTER='*.conf' CONF_NEGFILTER='missing_*.conf'
+
+# === Unit test ===
+UNIT_TEST_DIR := tests/unitTests
+UNIT_TEST_BIN := $(UNIT_TEST_DIR)/testRouter
+UNIT_TEST_SRC := $(UNIT_TEST_DIR)/testRouter.cpp
+SRC_DIR := src
+INC_DIR := inc
+
+# Get all .cpp files except main.cpp
+SRC_FILES := $(filter-out $(SRC_DIR)/main.cpp, $(wildcard $(SRC_DIR)/*.cpp))
+
+test_route:
+	@echo "$(YELLOW)Building route tester...$(DEF_COLOR)"
+	$(CC) $(CCFLAGS) -I$(INC_DIR) $(SRC_FILES) $(UNIT_TEST_SRC) -o $(UNIT_TEST_BIN)
+	@echo "$(GREEN)Running route tester...$(DEF_COLOR)"
+	@$(UNIT_TEST_BIN)
