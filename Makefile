@@ -1,63 +1,54 @@
-.PHONY: all clean fclean re leaks debug conftest
+.PHONY: all clean fclean re leaks debug conftest tests
 
 MAKEFLAGS += --no-builtin-rules
 
-NAME = webserv
-CC = c++
-CCFLAGS = -Wall -Werror -Wextra -std=c++98
+NAME := webserv
+CC := c++
+CCFLAGS := -Wall -Werror -Wextra -std=c++98
 
-RM = rm -rf
-MKDIR = mkdir -p
+RM := rm -rf
+MKDIR := mkdir -p
 
-NAME = webserv
+SRC_DIR := src
+INC_DIR := inc
+OBJ_DIR := bin
 
+SRCS := main.cpp ConfigFile.cpp Config.cpp ConfigParser.cpp Request.cpp RequestParser.cpp \
+        RequestRouter.cpp RequestUtils.cpp Response.cpp Server.cpp Utils.cpp
+HEADERS := ConfigFile.hpp Config.hpp ConfigParser.hpp Request.hpp RequestParser.hpp \
+           RequestRouter.hpp Response.hpp Server.hpp Utils.hpp Webserv.hpp
 
-SRCS = main.cpp ConfigFile.cpp Config.cpp ConfigParser.cpp Request.cpp RequestParser.cpp RequestRouter.cpp RequestUtils.cpp Response.cpp Server.cpp Utils.cpp
+OBJS := $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(notdir $(SRCS)))
 
-HEADERS = ConfigFile.hpp Config.hpp ConfigParser.hpp Request.hpp RequestParser.hpp RequestRouter.hpp Response.hpp Server.hpp Utils.hpp Webserv.hpp
-
-SRC_DIR = src/
-INC_DIR = inc/
-OBJS = $(patsubst %.cpp, $(OBJ_DIR)/%.o, $(notdir $(SRCS)))
-
-OBJ_DIR = bin
-BIN_DIR = bin
-
+# Colors
 DEF_COLOR = \033[0;39m
 GRAY = \033[0;90m
 RED = \033[0;91m
 GREEN = \033[0;92m
 YELLOW = \033[0;93m
 BLUE = \033[0;94m
-MAGENTA = \033[0;95m
-CYAN = \033[0;96m
-WHITE = \033[0;97m
-
 
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	@echo "Creating $@"
+	@echo "$(YELLOW)Linking $(NAME)...$(DEF_COLOR)"
 	@$(CC) $(CCFLAGS) $(OBJS) -o $(NAME)
-	@echo "$(GREEN)The Makefile of $(NAME) has been compied!$(DEF_COLOR)"
-	@echo "$(YELLOW)Use this command in the folder root: ./$(NAME) to start\n$(DEF_COLOR)"
+	@echo "$(GREEN)Build complete. Run ./$(NAME)$(DEF_COLOR)"
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(addprefix $(INC_DIR)/, $(HEADERS))
-	@echo "Creating ./$@"
-	@$(MKDIR) $(BIN_DIR)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(addprefix $(INC_DIR)/,$(HEADERS))
+	@$(MKDIR) $(OBJ_DIR)
+	@echo "$(GRAY)Compiling $<$(DEF_COLOR)"
 	@$(CC) $(CCFLAGS) -I$(INC_DIR) -c $< -o $@
 
 clean:
-	@echo "Cleaning up $(NAME)"
+	@echo "$(BLUE)Cleaning object files...$(DEF_COLOR)"
 	@$(RM) $(OBJ_DIR)
-	@echo "$(BLUE)$(NAME) Object files cleaned!$(DEF_COLOR)"
 
 fclean: clean
+	@echo "$(BLUE)Cleaning binary...$(DEF_COLOR)"
 	@$(RM) $(NAME)
-	@echo "$(BLUE)$(NAME) Executable files cleaned!$(DEF_COLOR)\n"
 
 re: fclean all
-	@echo "$(BLUE)$(NAME) Cleaned and re-compiled everything!$(DEF_COLOR)"
 
 leaks:
 	@leaks -atExit -- ./$(NAME)
@@ -65,42 +56,19 @@ leaks:
 debug: CCFLAGS += -DDEBUG_MODE
 debug: re
 
+# Config parser tests
 CONF_DIR := ./config
 CONF_FILES ?=
 CONF_FILTER ?= *.conf
-#CONF_NEGFILTER ?= negative_*.conf
 PARSER_BIN := ./webserv
-VERBOSE = 1
+VERBOSE := 1
 TEST_DIR := ./tests
 TEST_CONF_FILE := run_config_parser_tests.sh
 
 conftest:
 	@CONF_DIR="$(CONF_DIR)" CONF_FILES="$(CONF_FILES)" PARSER_BIN="$(PARSER_BIN)" VERBOSE="$(VERBOSE)" \
-		CONF_FILTER="$(CONF_FILTER)" CONF_NEGFILTER="$(CONF_NEGFILTER)" \
-		$(TEST_DIR)/$(TEST_CONF_FILE)
+	CONF_FILTER="$(CONF_FILTER)" CONF_NEGFILTER="$(CONF_NEGFILTER)" \
+	$(TEST_DIR)/$(TEST_CONF_FILE)
 
-# Usage:
-#   make test CONF_FILTER=default.conf
-#   make test CONF_FILES="./conf/default.conf ./conf/basic.conf"
-# Run all positives + built-in negative checks:
-# make conftest
-# Only test specific negative files (skip positives):
-# make conftest CONF_NEGFILTER='invalid_*.conf'
-# Combine with a positive filter:
-# make conftest CONF_FILTER='*.conf' CONF_NEGFILTER='missing_*.conf'
-
-# === Unit test ===
-UNIT_TEST_DIR := tests/unitTests
-UNIT_TEST_BIN := $(UNIT_TEST_DIR)/testRouter
-UNIT_TEST_SRC := $(UNIT_TEST_DIR)/testRouter.cpp
-SRC_DIR := src
-INC_DIR := inc
-
-# Get all .cpp files except main.cpp
-SRC_FILES := $(filter-out $(SRC_DIR)/main.cpp, $(wildcard $(SRC_DIR)/*.cpp))
-
-test_route:
-	@echo "$(YELLOW)Building route tester...$(DEF_COLOR)"
-	$(CC) $(CCFLAGS) -I$(INC_DIR) $(SRC_FILES) $(UNIT_TEST_SRC) -o $(UNIT_TEST_BIN)
-	@echo "$(GREEN)Running route tester...$(DEF_COLOR)"
-	@$(UNIT_TEST_BIN)
+# Include unit test rules
+include tests.mk
