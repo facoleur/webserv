@@ -7,45 +7,31 @@ RequestRouter::RequestRouter() {
 RequestRouter::~RequestRouter() {
 }
 
-bool get_matching_server(ServerConfig& srv, std::string& host) {
-    return srv.host == host;
-}
-
 #include <string>
 
-// ServerConfig& RequestRouter::match_server(const Request& req) {
-//     std::string host = req.getHeader(HOST);
+bool RequestRouter::resourceExist(const std::string& path) {
 
-//     if (host == "")
-//         return _all_configs.servers[0];
-
-//     DEBUG_LOG("host: " + host);
-
-//     std::vector<ServerConfig>::iterator it = _all_configs.servers.end();
-//     for (std::vector<ServerConfig>::iterator it_srv = _all_configs.servers.begin();
-//          it_srv != _all_configs.servers.end(); ++it_srv) {
-//         if (it_srv->host == host) {
-//             it = it_srv;
-//             break;
-//         }
-//     }
-
-//     return *it;
-// }
-
-bool RequestRouter::resource_exist(const std::string& path) {
-    (void)path;
-    return true;
+    struct stat info;
+    return (stat(path.c_str(), &info) == 0);
 }
 
-bool RequestRouter::is_method_allowed(const Request& req) {
-    (void)req;
-    return true;
+bool RequestRouter::isMethodAllowed(const Request& req, const LocationConfig& config) {
+
+    for (std::set<enum requestMethod>::const_iterator it = config.methods.begin(); it != config.methods.end(); ++it) {
+    }
+
+    return (config.methods.find(req.getMethod()) != config.methods.end());
 }
 
-bool RequestRouter::is_cgi_request(const std::string& path) {
-    (void)path;
-    return true;
+bool RequestRouter::isCgiRequest(const std::string& path, const LocationConfig& config) {
+
+    const std::map<std::string, std::string>& cgi_ext = config.cgi_map;
+
+    for (std::map<std::string, std::string>::const_iterator it = cgi_ext.begin(); it != cgi_ext.end(); ++it) {
+        if (endsWith(path, "." + (*it).first))
+            return true;
+    }
+    return false;
 }
 
 void RequestRouter::resolveAbsolutePath(std::string& path) {
@@ -58,13 +44,12 @@ void RequestRouter::resolveAbsolutePath(std::string& path) {
 
 std::string RequestRouter::resolvePath(const Request& req, const std::string& root) {
     (void)req;
-    // std::string path = req.getPath();
-    std::string path = "/";
+    std::string path = req.getPath();
 
     if (startsWith(path, "http://"))
         resolveAbsolutePath(path);
     else if (!startsWith(path, "/")) {
-        throw std::runtime_error("Relative path oesn't start with /");
+        throw std::runtime_error("Relative path doesn't start with /");
     }
 
     if (path.empty())
@@ -85,83 +70,179 @@ std::string RequestRouter::resolvePath(const Request& req, const std::string& ro
         replace(fullPath, "//", "/");
     }
 
-    // std::cout << fullPath << std::endl;
+    if (fullPath[0] == '/')
+        fullPath.erase(fullPath.begin());
 
     return fullPath;
 }
 
-Response RequestRouter::handle_get(const Request& req, const std::string& path) {
+std::string RequestRouter::readFile(const std::ifstream& file) {
+    std::ostringstream content;
+    content << file.rdbuf();
+    return content.str();
+}
+
+std::string RequestRouter::getMimeType(const std::string& path) {
+    (void)path;
+    return std::string();
+}
+
+Response RequestRouter::handleGet(const Request& req, std::string& path, const ServerConfig& config) {
+    (void)req;
+    Response res;
+
+    if (isDirectory(path)) {
+
+        if (!path.empty() && path[path.size() - 1] != '/') {
+            res.setStatusCode(REDIRECT);
+            res.setHeader(LOCATION, path + "/");
+            return res;
+        }
+
+        for (size_t i = 0; i < config.index_files.size(); ++i) {
+            std::string indexPath = path + config.index_files[i];
+            if (resourceExist(indexPath)) {
+                std::ifstream file(indexPath.c_str());
+                if (!file.is_open())
+                    return makeErrorResponse(NOT_FOUND);
+
+                res.setBody(readFile(file));
+                res.setHeader(CONTENT_TYPE, getMimeType(indexPath));
+                return res;
+            }
+        }
+
+        if (config.autoindex)
+            return makeAutoindexResponse(path);
+        else
+            return makeErrorResponse(FORBIDDEN);
+    }
+
+    if (!resourceExist(path))
+        return makeErrorResponse(NOT_FOUND);
+
+    std::ifstream file(path.c_str());
+    if (!file.is_open())
+        return makeErrorResponse(NOT_FOUND);
+
+    res.setBody(readFile(file));
+    res.setHeader(CONTENT_TYPE, getMimeType(path));
+    return res;
+}
+
+Response RequestRouter::handlePost(const Request& req, const std::string& path) {
     (void)req;
     (void)path;
     Response res;
     return res;
 }
-Response RequestRouter::handle_post(const Request& req, const std::string& path) {
+Response RequestRouter::handleDelete(const Request& req, const std::string& path) {
     (void)req;
     (void)path;
     Response res;
     return res;
 }
-Response RequestRouter::handle_delete(const Request& req, const std::string& path) {
-    (void)req;
-    (void)path;
-    Response res;
-    return res;
-}
-Response RequestRouter::handle_cgi(const Request& req, const std::string& path) {
+Response RequestRouter::handleCgi(const Request& req, const std::string& path) {
     (void)req;
     (void)path;
     Response res;
     return res;
 }
 
-Response RequestRouter::make_error_response(int status_code) {
-    (void)status_code;
+Response RequestRouter::makeErrorResponse(enum statusCode statusCode) {
     Response res;
+
+    res.setStatusCode(statusCode);
+
     return res;
 }
 
-bool is_same_server(const ServerConfig& server, std::string& host) {
-    return server.host == host;
+Response RequestRouter::makeAutoindexResponse(const std::string& path) {
+    (void)path;
+    Response res;
+
+    res.setStatusCode(OK);
+
+    return res;
+}
+
+const LocationConfig* findLocationConfig(const std::string& path, const ServerConfig& config) {
+    const LocationConfig* best    = NULL;
+    size_t                bestLen = 0;
+    for (std::vector<LocationConfig>::const_iterator it = config.locations.begin(); it != config.locations.end();
+         ++it) {
+        if (path.compare(0, it->path.size(), it->path) == 0 && it->path.size() > bestLen) {
+            best    = &(*it);
+            bestLen = it->path.size();
+        }
+    }
+    return best;
+}
+
+const LocationConfig resolveConfig(const ServerConfig& server, const LocationConfig* location) {
+
+    LocationConfig resolved;
+
+    if (location)
+        resolved = *location;
+
+    if (resolved.methods.empty()) {
+        resolved.methods = server.methods;
+    }
+    if (resolved.root.empty()) {
+        resolved.root = server.root;
+    }
+    if (resolved.index_files.empty()) {
+        resolved.index_files = server.index_files;
+    }
+    if (resolved.cgi_map.empty()) {
+        resolved.cgi_map = server.cgi_map;
+    }
+
+    return resolved;
+}
+
+Response RequestRouter::makeRedirectResponse(const std::string& location) {
+    Response res;
+    res.setStatusCode(REDIRECT);
+    res.setHeader(LOCATION, location);
+    res.setBody("");
+    return res;
 }
 
 Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     Response response;
 
-    req.printRequest();
+    const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
+    const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig);
 
-    std::string root = config.root;
+    std::cout << "redirect: " << resolvedConfig.redirect.status << std::endl;
 
-    std::string fullPath = resolvePath(req, root);
-
-    std::ifstream file(fullPath.c_str());
-
-    if (!file.is_open()) {
-        std::cerr << "Failed to open: " << fullPath << std::endl;
-        return 1;
-    } else if (isDirectory(fullPath)) {
-        std::cout << "is directory" << std::endl;
-    } else {
-        std::cout << "succes open file" << std::endl;
+    if (resolvedConfig.redirect.status) {
+        return makeRedirectResponse(resolvedConfig.redirect.target);
     }
 
-    if (!resource_exist(fullPath))
-        return make_error_response(404);
+    std::string fullPath = resolvePath(req, resolvedConfig.root);
 
-    if (!is_method_allowed(req))
-        return make_error_response(405);
+    if (!resourceExist(fullPath)) {
+        return makeErrorResponse(NOT_FOUND);
+    }
 
-    if (is_cgi_request(fullPath))
-        return handle_cgi(req, fullPath);
+    if (!isMethodAllowed(req, resolvedConfig)) {
+        return makeErrorResponse(NOT_ALLOWED);
+    }
+
+    if (isCgiRequest(fullPath, resolvedConfig))
+        return handleCgi(req, fullPath);
 
     switch (req.getMethod()) {
         case GET:
-            return handle_get(req, fullPath);
+            return handleGet(req, fullPath, config);
         case POST:
-            return handle_post(req, fullPath);
+            return handlePost(req, fullPath);
         case DELETE:
-            return handle_delete(req, fullPath);
+            return handleDelete(req, fullPath);
         default:
-            return make_error_response(400);
+            return makeErrorResponse(BAD_REQUEST);
     }
 }
