@@ -7,7 +7,7 @@
 #include <vector>
 
 enum requestMethod { GET, POST, DELETE, UNKNOWN };
-enum requestHeaders { HOST, CONTENT_LENGTH, TRANSFER_ENCODING, CONTENT_TYPE, CONNECTION, ACCEPT };
+enum requestHeaders { HOST, CONTENT_LENGTH, LOCATION, TRANSFER_ENCODING, CONTENT_TYPE, CONNECTION, ACCEPT };
 enum requestValidity { INVALID_REQUEST, VALID_REQUEST };
 
 // stores and validates (semantically) an HTTP request
@@ -42,7 +42,7 @@ class Request {
     requestValidity                        getValidity(void);
 
     // setters
-    void setMethod(std::string&);
+    void setMethod(const std::string&);
     void setPath(std::string const&);
     void setQueryString(std::string const&);
     void setProtocolVersion(std::string&);

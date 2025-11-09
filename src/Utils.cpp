@@ -36,6 +36,12 @@ bool startsWith(const std::string& str, const std::string& prefix) {
     return std::equal(prefix.begin(), prefix.end(), str.begin());
 }
 
+bool endsWith(const std::string& str, const std::string& prefix) {
+    if (prefix.size() > str.size())
+        return false;
+    return std::equal(prefix.rbegin(), prefix.rend(), str.rbegin());
+}
+
 std::string join(const std::vector<std::string>& parts, char delim) {
     std::string out;
     for (std::vector<std::string>::size_type i = 0; i < parts.size(); ++i) {

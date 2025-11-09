@@ -15,6 +15,7 @@ enum statusCode {
     NO_CONTENT = 204,
 
     // Redirections (3xx)
+    REDIRECT = 301,
 
     // Errors
     BAD_REQUEST                = 400,

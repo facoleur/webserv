@@ -60,7 +60,7 @@ enum requestValidity Request::getValidity(void) {
     return _validity;
 }
 
-void Request::setMethod(std::string& method) {
+void Request::setMethod(const std::string& method) {
     if (method == "GET")
         _method = GET;
     else if (method == "POST")
