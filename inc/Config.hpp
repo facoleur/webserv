@@ -1,5 +1,4 @@
-#ifndef CONFIG_HPP
-#define CONFIG_HPP
+#pragma once
 
 #include <map>
 #include <set>
@@ -90,5 +89,3 @@ class Config {
 
 void applyDefaults(Config& cfg);
 void validateCompatibility(const Config& cfg);
-
-#endif

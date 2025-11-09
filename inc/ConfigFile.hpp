@@ -1,5 +1,4 @@
-#ifndef CONFIGFILE_HPP
-#define CONFIGFILE_HPP
+#pragma once
 
 #include <string>
 
@@ -21,5 +20,3 @@ class ConfigFile {
     std::string path_;
     int         size_;
 };
-
-#endif
