@@ -23,7 +23,8 @@ WEBSERV TESTER
 Sends requests to webserv and compares the response with NGINX
 
 Usage:
-- Toggle values to obtain the desired tests ()
+- Run the test: `bash tests.sh`
+- Toggle values to obtain the desired tests (valid requests, invalid, all)
 
 Notes:
 - Make sure that your NGINX config listens on a different port than your web server
@@ -85,15 +86,16 @@ else
 fi
 # printf '************************************************************************************************\n'
 
-## Test a simple GET request with invalid ending
-# printf 'Test: %s%s\n' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALID[0]}"
-# printf 'Test: %s%s' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALID[0]}" | nc localhost ${WEBSERV_PORT}
-
+## Test a simple GET request with valid ending
 printf 'Test: {%s%s}\n' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_VALID[0]}"
-printf "%s%s" "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_VALID[0]}" | nc localhost ${WEBSERV_PORT}
+printf "%s%s" "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_VALID[0]}" | nc -q 1 localhost ${WEBSERV_PORT}
+
+## Test a simple GET request with invalid ending
+printf 'Test: %s%s\n' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALID[0]}"
+printf 'Test: %s%s' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALID[0]}" | nc -q 1 localhost ${WEBSERV_PORT}
 
 
-## Test all possible requests (selected from VALID, INVALID, ALL)
+# Test all possible requests (selected from VALID, INVALID, ALL)
 # for method in "${METHODS[@]}"; do
 # 	for paths in "${PATHS[@]}"; do
 # 		for protocol in "${PROTOCOLS[@]}"; do
@@ -101,7 +103,7 @@ printf "%s%s" "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_VALID[0]}" |
 # 				if [[ $PRINT_EACH_TEST == TRUE ]]; then
 # 					printf 'Test: %s%s\n' "$method $paths $protocol" "$ending"
 # 				fi
-# 				printf '%s%s' "$method $paths $protocol" "$ending" | nc localhost ${WEBSERV_PORT}
+# 				printf '%s%s' "$method $paths $protocol" "$ending" | nc -q 0 localhost ${WEBSERV_PORT}
 # 			done
 # 		done
 # 	done

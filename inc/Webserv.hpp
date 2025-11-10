@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <string>
+#include <errno.h>
 
 enum statusCode {
     NO_STATUS = 0,

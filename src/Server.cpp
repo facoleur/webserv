@@ -124,6 +124,11 @@ void Server::run() {
     std::map<int, struct ClientContext> context;
 
     while (1) {
+        DEBUG_LOG("nfds: " + to_string(nfds) + "; pfds[1].events: " + to_string(pfds[1].events));
+        if (context[1].write_buffer.empty())
+            DEBUG_LOG("context[1].write_buffer.empty()): TRUE");
+        else
+            DEBUG_LOG("context[1].write_buffer.empty()): FALSE");
         int n = poll(pfds, nfds, TIMEOUT);
         DEBUG_LOG("\n***** poll *****");
         if (n < 0) {
@@ -266,7 +271,7 @@ requestValidity Server::handle_requests(ClientContext& context, struct pollfd& p
         context.write_buffer.append(res.serialize());
         context.requests.pop();
     }
-    pfd.events &= POLLOUT; // works with both = and &=, but not with |=
+    pfd.events |= POLLOUT; // add POLLOUT to watched events for the next poll()
     DEBUG_LOG("handle_requests() exiting");
     return VALID_REQUEST;
 }
