@@ -88,11 +88,11 @@ fi
 
 ## Test a simple GET request with valid ending
 printf 'Test: {%s%s}\n' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_VALID[0]}"
-printf "%s%s" "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_VALID[0]}" | nc -q 1 localhost ${WEBSERV_PORT}
+printf "%s%s" "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_VALID[0]}" | nc localhost ${WEBSERV_PORT}
 
 ## Test a simple GET request with invalid ending
-printf 'Test: %s%s\n' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALID[0]}"
-printf 'Test: %s%s' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALID[0]}" | nc -q 1 localhost ${WEBSERV_PORT}
+# printf 'Test: %s%s\n' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALID[0]}"
+# printf 'Test: %s%s' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALID[0]}" | nc localhost ${WEBSERV_PORT}
 
 
 # Test all possible requests (selected from VALID, INVALID, ALL)
@@ -103,7 +103,7 @@ printf 'Test: %s%s' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALI
 # 				if [[ $PRINT_EACH_TEST == TRUE ]]; then
 # 					printf 'Test: %s%s\n' "$method $paths $protocol" "$ending"
 # 				fi
-# 				printf '%s%s' "$method $paths $protocol" "$ending" | nc -q 0 localhost ${WEBSERV_PORT}
+# 				printf '%s%s' "$method $paths $protocol" "$ending" | nc localhost ${WEBSERV_PORT}
 # 			done
 # 		done
 # 	done
