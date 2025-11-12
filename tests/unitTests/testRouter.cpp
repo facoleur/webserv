@@ -60,6 +60,7 @@ static ServerConfig makeTestConfig() {
 }
 
 int main() {
+
     RequestRouter router;
     ServerConfig  config = makeTestConfig();
 
