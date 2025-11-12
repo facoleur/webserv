@@ -70,12 +70,5 @@ conftest:
 	CONF_FILTER="$(CONF_FILTER)" CONF_NEGFILTER="$(CONF_NEGFILTER)" \
 	$(TEST_DIR)/$(TEST_CONF_FILE)
 
-# Usage:
-#   make test CONF_FILTER=default.conf
-#   make test CONF_FILES="./conf/default.conf ./conf/basic.conf"
-# Run all positives + built-in negative checks:
-# make conftest
-# Only test specific negative files (skip positives):
-# make conftest CONF_NEGFILTER='invalid_*.conf'
-# Combine with a positive filter:
-# make conftest CONF_FILTER='*.conf' CONF_NEGFILTER='missing_*.conf'
+# Include unit test rules
+include tests.mk

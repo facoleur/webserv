@@ -35,9 +35,6 @@ Server::Server(const Config& cfg) : _cfg(cfg) {
 Server::~Server() {
 }
 
-Server::~Server() {
-}
-
 void Server::new_connection() {
 }
 
@@ -125,10 +122,11 @@ void Server::run() {
     while (1) {
         DEBUG_LOG("\n***** while loop start *****\n\t- nfds: " + to_string(nfds) +
                   "\n\t- pfds[1].events: " + to_string(pfds[1].events));
-        if (context[1].write_buffer.empty())
+        if (context[1].write_buffer.empty()) {
             DEBUG_LOG("\t- write buffer: empty");
-        else
+        } else {
             DEBUG_LOG("\t- write buffer: not empty");
+        }
         int n = poll(pfds, nfds, TIMEOUT);
         DEBUG_LOG("\n(((((POLL)))))");
         if (n < 0) {
@@ -199,10 +197,11 @@ void Server::run() {
                 }
                 handle_requests(ctx, pfds[i]);
                 if (!ctx.write_buffer.empty()) { // if we have something to write back to the client,
-                    pfds[i].events |= POLLOUT;  // add POLLOUT to watched events for the next poll()
+                    pfds[i].events |= POLLOUT;   // add POLLOUT to watched events for the next poll()
                     DEBUG_LOG("events set to |= POLLOUT");
-                } else
+                } else {
                     DEBUG_LOG("POLLOUT not added to events");
+                }
                 DEBUG_LOG("\"if (pfds[i].revents & POLLIN)\": continuing");
                 continue;
             }
