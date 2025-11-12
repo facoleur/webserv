@@ -16,7 +16,6 @@ bool RequestRouter::resourceExist(const std::string& path) {
 }
 
 bool RequestRouter::isMethodAllowed(const Request& req, const LocationConfig& config) {
-
     for (std::set<enum requestMethod>::const_iterator it = config.methods.begin(); it != config.methods.end(); ++it) {
     }
 
@@ -157,11 +156,58 @@ Response RequestRouter::makeErrorResponse(enum statusCode statusCode) {
     return res;
 }
 
-Response RequestRouter::makeAutoindexResponse(const std::string& path) {
-    (void)path;
-    Response res;
+std::string getParentDir(const std::string& path) {
+    if (path.empty())
+        return "";
 
+    std::string trimmed = path;
+    while (!trimmed.empty() && trimmed[trimmed.size() - 1] == '/')
+        trimmed.erase(trimmed.size() - 1);
+
+    std::string::size_type pos = trimmed.rfind('/');
+    if (pos == std::string::npos)
+        return "";
+
+    if (pos == 0)
+        return "/";
+
+    return trimmed.substr(0, pos);
+}
+
+Response RequestRouter::makeAutoindexResponse(const std::string& path) {
+    DIR* dirstream = opendir(path.c_str());
+
+    std::vector<std::string> files;
+    while (dirent* dir = readdir(dirstream)) {
+        if (std::string(dir->d_name) == "." || std::string(dir->d_name) == "..")
+            continue;
+        files.push_back(dir->d_name);
+    }
+
+    std::string aStart = "<a href=\"";
+    std::string aMid   = "\"/>";
+    std::string aEnd   = "</a><br/>";
+
+    std::string title = "<h1>Index of " + path + "</h1>";
+
+    std::string html = "<!DOCTYPE html><html><body>";
+
+    html += title;
+
+    html += aStart + getParentDir(path) + aMid + "../" + aEnd;
+
+    for (uint i = 0; i < files.size(); ++i) {
+        std::string fullpath = "/" + path + "/" + files[i];
+        html += aStart + fullpath + aMid + files[i] + aEnd;
+    }
+    html += "</body></html>";
+
+    Response res;
     res.setStatusCode(OK);
+    res.setHeader(CONTENT_LENGTH, toString(html.size()));
+    res.setBody(html);
+
+    std::cout << html << std::endl;
 
     return res;
 }
@@ -210,13 +256,16 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
     return res;
 }
 
-Response RequestRouter::route(const Request& req, const ServerConfig& config) {
+Response RequestRouter::route(const Request& req_, const ServerConfig& config) {
     Response response;
+
+    (void)req_;
+    Request req;
+    req.setMethod("GET");
+    req.setPath("/dir/");
 
     const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
     const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig);
-
-    std::cout << "redirect: " << resolvedConfig.redirect.status << std::endl;
 
     if (resolvedConfig.redirect.status) {
         return makeRedirectResponse(resolvedConfig.redirect.target);

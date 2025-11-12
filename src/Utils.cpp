@@ -2,7 +2,7 @@
 
 #include "Utils.hpp"
 
-std::string toString(int n) {
+std::string toString(long long n) {
 
     std::stringstream ss;
     ss << n;

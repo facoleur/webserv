@@ -5,6 +5,7 @@
 #include "Response.hpp"
 #include "Utils.hpp"
 #include <algorithm>
+#include <dirent.h>
 #include <fstream>
 
 class RequestRouter {
@@ -18,12 +19,12 @@ class RequestRouter {
     Response    handleDelete(const Request&, const std::string&);
     Response    handleCgi(const Request&, const std::string&);
     Response    makeErrorResponse(enum statusCode);
-    Response    makeAutoindexResponse(const std::string&);
     Response    makeRedirectResponse(const std::string&);
     void        resolveAbsolutePath(std::string&);
     std::string getMimeType(const std::string&);
 
   public:
+    Response makeAutoindexResponse(const std::string&);
     RequestRouter();
     ~RequestRouter();
 
