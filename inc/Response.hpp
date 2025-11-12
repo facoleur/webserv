@@ -7,29 +7,7 @@
 #include <utility>
 
 #include "Request.hpp"
-
-class ReasonPhrase {
-  private:
-    static std::map<int, std::string> _reasonPhrase;
-
-    static void init() {
-        _reasonPhrase[200] = "OK";
-        _reasonPhrase[202] = "Accepted";
-        _reasonPhrase[301] = "Redirect";
-        _reasonPhrase[400] = "Bad Request";
-        _reasonPhrase[404] = "Not Found";
-        _reasonPhrase[500] = "Server Error";
-    }
-
-  public:
-    ReasonPhrase();
-    ~ReasonPhrase();
-
-    static std::string getReasonPhrase(int statusCode) {
-        init();
-        return _reasonPhrase[statusCode];
-    }
-};
+#include "Utils.hpp"
 
 class Headers {
   private:
@@ -38,6 +16,7 @@ class Headers {
     static void init() {
         _headersString[HOST]              = "Host";
         _headersString[CONTENT_LENGTH]    = "Content-Length";
+        _headersString[LOCATION]          = "Location";
         _headersString[TRANSFER_ENCODING] = "Transfer-Encoding";
         _headersString[CONTENT_TYPE]      = "Content-Type";
         _headersString[CONNECTION]        = "Connection";
@@ -53,10 +32,41 @@ class Headers {
         return _headersString[header];
     }
 };
+class ReasonPhrase {
+  public:
+    static const char* get(enum statusCode code) {
+        switch (code) {
+            case 200:
+                return "OK";
+            case 202:
+                return "Accepted";
+            case 204:
+                return "Accepted";
+            case 301:
+                return "Redirect";
+            case 400:
+                return "Bad Request";
+            case 403:
+                return "Forbidden";
+            case 404:
+                return "Not Found";
+            case 405:
+                return "Method Not Allowed";
+            case 500:
+                return "Server Error";
+            case 501:
+                return "Not Implemented";
+            case 505:
+                return "Http Version Not Supported";
+            default:
+                return "Unknown";
+        }
+    }
+};
 
 class Response {
   private:
-    int                                        _statusCode;
+    enum statusCode                            _statusCode;
     std::map<enum requestHeaders, std::string> _headers;
     std::string                                _body;
 
@@ -64,8 +74,18 @@ class Response {
 
   public:
     Response();
-    Response(int statusCode);
+    Response(enum statusCode statusCode);
     ~Response();
+
+    void setStatusCode(enum statusCode);
+    void setHeader(enum requestHeaders, const std::string&);
+    void setHeaders(const std::map<enum requestHeaders, std::string>&);
+    void setBody(const std::string&);
+
+    enum statusCode                                   getStatusCode() const;
+    const std::string&                                getHeader(enum requestHeaders) const;
+    const std::map<enum requestHeaders, std::string>& getHeaders() const;
+    const std::string&                                getBody() const;
 
     std::string& serialize();
 };

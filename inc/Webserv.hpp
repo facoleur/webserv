@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <string>
+#include <errno.h>
 
 enum statusCode {
     NO_STATUS = 0,
@@ -15,6 +16,7 @@ enum statusCode {
     NO_CONTENT = 204,
 
     // Redirections (3xx)
+    REDIRECT = 301,
 
     // Errors
     BAD_REQUEST                = 400,

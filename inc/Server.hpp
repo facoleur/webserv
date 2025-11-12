@@ -6,7 +6,6 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <poll.h>
-// #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -38,7 +37,7 @@ struct ClientContext {
 
 class Server {
   private:
-    const Config*         _cfg; // not owning pointer
+    const Config          _cfg; // not owning pointer
     struct ClientContext  _state;
     std::map<int, size_t> _listenerToServerIdx; // listen fd -> server index
 

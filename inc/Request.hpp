@@ -3,10 +3,11 @@
 #pragma once
 
 #include "Webserv.hpp"
+#include <map>
 #include <vector>
 
 enum requestMethod { GET, POST, DELETE, UNKNOWN };
-enum requestHeaders { HOST, CONTENT_LENGTH, TRANSFER_ENCODING, CONTENT_TYPE, CONNECTION, ACCEPT };
+enum requestHeaders { HOST, CONTENT_LENGTH, LOCATION, TRANSFER_ENCODING, CONTENT_TYPE, CONNECTION, ACCEPT };
 enum requestValidity { INVALID_REQUEST, VALID_REQUEST };
 
 // stores and validates (semantically) an HTTP request
@@ -28,19 +29,20 @@ class Request {
     // Other functions
     bool hasHeader(std::string const&); // whether a specific header is present
     bool hasBody(void);
-    void printRequest(void);
+    void printRequest(void) const;
 
     // getters
     requestMethod                          getMethod(void) const;
-    std::string&                           getPath(void);
+    std::string                            getPath(void) const;
     std::string&                           getQueryString(void);
     std::string&                           getProtocolVersion(void);
     std::vector<std::string, std::string>& getHeaders(void);
+    std::string                            getHeader(enum requestHeaders) const;
     std::string&                           getBody(void);
     requestValidity                        getValidity(void);
 
     // setters
-    void setMethod(std::string&);
+    void setMethod(const std::string&);
     void setPath(std::string const&);
     void setQueryString(std::string const&);
     void setProtocolVersion(std::string&);
@@ -62,11 +64,10 @@ class Request {
     std::string   _queryString;
     std::string   _protocolVersion;
 
-    std::vector<std::pair<std::string, std::string> >
-                    _headers; // lferro: use map, more useable for the next user; and append during parsing if duplicate
-    std::string     _body;
-    statusCode      _statusCode;
-    requestValidity _validity;
+    std::map<enum requestHeaders, std::string> _headers;
+    std::string                                _body;
+    statusCode                                 _statusCode;
+    requestValidity                            _validity;
 };
 
 std::ostream& operator<<(std::ostream& os, Request& req);

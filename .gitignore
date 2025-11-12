@@ -8,8 +8,10 @@
 .vscode/settings.json
 wiki/**
 wiki
-bin/
+**/bin/
 webserv
 *.o
 **/RequestLineParser.cpp
 **/prompt-check-code.md
+
+build/**

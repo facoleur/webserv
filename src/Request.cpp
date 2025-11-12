@@ -3,18 +3,30 @@
 #include "Request.hpp"
 
 Request::Request(void)
-    : _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _headers(), _body(), _statusCode(NO_STATUS),
+    : _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _body(), _statusCode(NO_STATUS),
       _validity(INVALID_REQUEST) {
 }
 
 Request::~Request(void) {
 }
 
+void Request::printRequest(void) const {
+    std::cout << "path: " << _path << std::endl;
+    std::cout << "method: " << _method << std::endl;
+    std::cout << "body: " << _body << std::endl;
+
+    for (std::map<enum requestHeaders, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); ++it) {
+        std::cout << "header: " << (*it).first << ": " << (*it).second << std::endl;
+    }
+
+    std::cout << _body << std::endl;
+}
+
 enum requestMethod Request::getMethod(void) const {
     return _method;
 }
 
-std::string& Request::getPath(void) {
+std::string Request::getPath(void) const {
     return _path;
 }
 
@@ -30,6 +42,16 @@ std::string& Request::getProtocolVersion(void) {
 //     return _headers;
 // }
 
+std::string Request::getHeader(enum requestHeaders headers) const {
+    for (std::map<enum requestHeaders, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); ++it) {
+        if (headers == (*it).first) {
+            std::string res = (*it).second;
+            return res;
+        }
+    }
+    return "";
+}
+
 std::string& Request::getBody(void) {
     return _body;
 }
@@ -38,7 +60,7 @@ enum requestValidity Request::getValidity(void) {
     return _validity;
 }
 
-void Request::setMethod(std::string& method) {
+void Request::setMethod(const std::string& method) {
     if (method == "GET")
         _method = GET;
     else if (method == "POST")
