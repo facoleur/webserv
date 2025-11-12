@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "Request.hpp"
+#include "Utils.hpp"
 
 class Headers {
   private:
