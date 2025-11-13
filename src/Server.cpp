@@ -200,6 +200,7 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
 }
 
 int Server::handleResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
+    DEBUG_LOG("--- POLLOUT ---");
     std::string& buf = context[listener].write_buffer;
     while (!buf.empty()) {
         ssize_t sent = write(listener, buf.data(), buf.size());

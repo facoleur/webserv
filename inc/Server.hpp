@@ -24,7 +24,7 @@
 class Response;
 
 #define MAX_EVENTS 64
-#define TIMEOUT 0 //2500
+#define TIMEOUT 2000
 #define READ_SIZE 8000
 
 
