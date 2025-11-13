@@ -54,7 +54,7 @@ class Server {
     void              print_request();
     void              disconnect_client(int&, int&, struct pollfd*, int&, std::map<int, ClientContext>&);
     void              setPollFd(struct pollfd&, int, short, short);
-    std::vector<int>& initListenerSockets(struct pollfd* [MAX_EVENTS], int&);
-    int               handleNewConnection(int listener, struct pollfd* pfds[], int& nfds,
+    std::vector<int>  initListenerSockets(struct pollfd(&pfds)[MAX_EVENTS], int&);
+    int               handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
                                           std::map<int, struct ClientContext>& context);
 };

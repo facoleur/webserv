@@ -58,7 +58,7 @@ void Server::setPollFd(struct pollfd& pfd, int socketFd, short events, short rev
 }
 
 // Create one listening socket per server:port
-std::vector<int>& Server::initListenerSockets(struct pollfd pfds[MAX_EVENTS], int& nfds) {
+std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
     std::vector<int>                 listen_fds;
     int                              listener;
     int                              port;
@@ -96,7 +96,7 @@ std::vector<int>& Server::initListenerSockets(struct pollfd pfds[MAX_EVENTS], in
                 close(listener);
                 continue;
             }
-            setPollFd((*pfds)[nfds], listener, POLLIN, 0);
+            setPollFd(pfds[nfds], listener, POLLIN, 0);
             _listenerToServerIdx[listener] = si;
             listen_fds.push_back(listener);
             ++nfds;
@@ -110,7 +110,7 @@ std::vector<int>& Server::initListenerSockets(struct pollfd pfds[MAX_EVENTS], in
 }
 
 // Handle incoming connections
-int Server::handleNewConnection(int listener, struct pollfd* pfds[], int& nfds,
+int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
                                 std::map<int, struct ClientContext>& context) {
     int new_client_fd = accept(listener, NULL, NULL);
     if (new_client_fd < 0) {
@@ -118,7 +118,7 @@ int Server::handleNewConnection(int listener, struct pollfd* pfds[], int& nfds,
         return -1;
     }
     fcntl(new_client_fd, F_SETFL, O_NONBLOCK);
-    setPollFd((*pfds)[nfds], new_client_fd, POLLIN, 0);
+    setPollFd(pfds[nfds], new_client_fd, POLLIN, 0);
     context[new_client_fd]              = ClientContext();
     context[new_client_fd].server_index = _listenerToServerIdx[listener];
     nfds++;
@@ -135,7 +135,7 @@ void Server::run() {
     listen_fds = initListenerSockets(pfds, nfds);
     if (listen_fds.empty()) {
         std::cerr << "error getting listening server sockets" << std::endl;
-        exit(1); // yes ?
+        // exit(1); // ?
     }
 
     while (1) {
@@ -168,7 +168,7 @@ void Server::run() {
             // Accept on any listening socket
             if (pfds[i].revents & POLLIN) {
                 if (_listenerToServerIdx.count(listener)) {
-                    handleNewConnection(listener, &pfds, nfds, context);
+                    handleNewConnection(listener, pfds, nfds, context);
                     continue;
                 }
             }
