@@ -27,13 +27,16 @@ class Response;
 #define TIMEOUT 2500
 #define READ_SIZE 8000
 
+
 struct ClientContext {
-    RequestParser       req_parser;
-    std::queue<Request> requests;
-    struct pollfd       pfd;
-    std::string         write_buffer;
-    size_t              server_index; // which server accepted the client
+  RequestParser       req_parser;
+  std::queue<Request> requests;
+  struct pollfd       pfd;
+  std::string         write_buffer;
+  size_t              server_index; // which server accepted the client
 };
+
+typedef std::map<int, struct ClientContext> ContextMap;
 
 class Server {
   private:
@@ -52,9 +55,12 @@ class Server {
     void              run();
     requestValidity   handle_requests(ClientContext&, struct pollfd&);
     void              print_request();
-    void              disconnect_client(int&, int&, struct pollfd*, int&, std::map<int, ClientContext>&);
+    void              disconnect_client(int&, int&, struct pollfd (&pfds)[MAX_EVENTS], int&, std::map<int, ClientContext>&);
     void              setPollFd(struct pollfd&, int, short, short);
-    std::vector<int>  initListenerSockets(struct pollfd(&pfds)[MAX_EVENTS], int&);
-    int               handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
-                                          std::map<int, struct ClientContext>& context);
+    std::vector<int>  initListenerSockets(struct pollfd (&)[MAX_EVENTS], int&);
+    int               handleNewConnection(int, struct pollfd (&)[MAX_EVENTS], int&,
+                                          std::map<int, struct ClientContext>&);
+    void              handleRead(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
+    int               handleResponses(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
+    void              handleClientHangup(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context);
 };

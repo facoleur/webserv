@@ -14,8 +14,8 @@ std::ostream& operator<<(std::ostream& os, struct pollfd pfd) {
     return os;
 }
 
-void Server::disconnect_client(int& index, int& client_fd, struct pollfd* pfds, int& nfds,
-                               std::map<int, ClientContext>& context) {
+void Server::disconnect_client(int& index, int& client_fd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
+                               ContextMap& context) {
 
     // handle_requests(context[client_fd], client_fd);
     context.erase(client_fd);
@@ -43,6 +43,35 @@ void Server::new_connection() {
 }
 
 void Server::existing_connection() {
+}
+
+requestValidity Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
+    std::string   responseString;
+    RequestRouter router;
+
+    (void)pfd;
+
+    DEBUG_LOG("handle_requests queue size: " + to_string(context.requests.size()));
+    while (!context.requests.empty()) {
+        Request& req = context.requests.front();
+
+        // requestValidity reqValidity = req.getValidity();
+
+        // if (reqValidity == INVALID_REQUEST) {
+        //     DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
+        //     DEBUG_LOG(req);
+        //     Response res(400);
+        //     context.write_buffer.append(res.serialize());
+        //     context.requests.pop();
+        //     return INVALID_REQUEST;
+        // }
+        Response res = router.route(req);
+        context.write_buffer.append(res.serialize());
+        context.requests.pop();
+    }
+    pfd.events = POLLOUT;
+    DEBUG_LOG("handle_requests() exiting");
+    return VALID_REQUEST;
 }
 
 void add_bad_request_to_queue(ClientContext& context) {
@@ -111,7 +140,7 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
 
 // Handle incoming connections
 int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
-                                std::map<int, struct ClientContext>& context) {
+                                ContextMap& context) {
     int new_client_fd = accept(listener, NULL, NULL);
     if (new_client_fd < 0) {
         DEBUG_LOG("accept error");
@@ -126,10 +155,86 @@ int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS],
     return 0;
 }
 
+void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context)
+{                
+    char           tmp[READ_SIZE + 1];
+    int            len;
+    ClientContext& ctx = context[listener];
+
+    len = read(listener, tmp, READ_SIZE);
+    if (len == 0) { // client closed their send side
+        if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
+            add_bad_request_to_queue(ctx); // the request was partial and not in the queue
+            DEBUG_LOG("handle_requests: len == 0, partial request. added bad request to queue");
+        }
+        handle_requests(context[listener], pfds[i]);
+        DEBUG_LOG("disconnect 2: read returned 0");
+        disconnect_client(i, listener, pfds, nfds, context);
+        return;
+    }
+    if (len < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) { // EAGAIN: No data is available to read,
+            DEBUG_LOG("EAGAIN - no more data");        //  or a write would block
+            return;
+        }
+        DEBUG_LOG("disconnect 3: read error"); // Real error
+        disconnect_client(i, listener, pfds, nfds, context);
+        return;
+    }
+    /* Parsing */
+    tmp[len] = '\0';
+    ctx.req_parser.feed(tmp, ctx.requests);
+    if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) { /* Need to parse more */
+        DEBUG_LOG("Req partial");
+        return;
+    }
+    handle_requests(ctx, pfds[i]);
+    if (!ctx.write_buffer.empty()) { // if we have something to write back to the client,
+        pfds[i].events |= POLLOUT;   // add POLLOUT to watched events for the next poll()
+                                        // reset revents to 0 ?
+        DEBUG_LOG("events set to |= POLLOUT");
+    } else
+        DEBUG_LOG("POLLOUT not added to events");
+}
+
+int Server::handleResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
+    std::string& buf = context[listener].write_buffer;
+    while (!buf.empty()) {
+        ssize_t sent = write(listener, buf.data(), buf.size());
+        DEBUG_LOG("written bytes: " + to_string(sent));
+        if (sent > 0) {
+            buf.erase(0, sent);
+            return 0;
+        }
+        if (sent == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            return -1; // socket buffer full, wait for next POLLOUT
+        }
+        // error or connection closed
+        DEBUG_LOG("disconnect 4: error or connection closed while sending back response");
+        disconnect_client(i, listener, pfds, nfds, context);
+        return -1;
+    }
+    if (buf.empty()) {              // why this condition ?
+        pfds[i].events &= ~POLLOUT; // Stop watching for POLLOUT. ~ : bitwise NOT
+        // ??? pfds[i].events = POLLIN; ??? // reset POLLIN ?
+    }
+    return 0;
+}
+
+void Server::handleClientHangup(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
+ // POLLHUP – The device or socket has been disconnected.  This flag is
+                                             // output only, and ignored if present in the input events bitmask
+                                             // Note that POLLHUP and POLLOUT are mutually exclusive and should never
+                                             // be present in the revents bitmask at the same time.
+                DEBUG_LOG("disconnect 5 : POLLHUP");
+                disconnect_client(i, listener, pfds, nfds, context);
+}
+
+
 void Server::run() {
     struct pollfd                       pfds[MAX_EVENTS];
     int                                 nfds = 0;
-    std::map<int, struct ClientContext> context;
+    ContextMap context;
     std::vector<int>                    listen_fds;
 
     listen_fds = initListenerSockets(pfds, nfds);
@@ -139,13 +244,13 @@ void Server::run() {
     }
 
     while (1) {
-        DEBUG_LOG("\n***** while loop start *****\n\t- nfds: " + to_string(nfds) +
+        DEBUG_LOG("\n** while loop start **\n\t- nfds: " + to_string(nfds) +
                   "\n\t- pfds[nfds].events: " + to_string(pfds[nfds].events));
         if (context[nfds].write_buffer.empty())
             DEBUG_LOG("\t- write buffer: empty");
         else
             DEBUG_LOG("\t- write buffer: not empty");
-        DEBUG_LOG("\n(((((POLL)))))");
+        DEBUG_LOG("\n((((( POLL )))))");
         if (poll(pfds, nfds, TIMEOUT) < 0) {
             DEBUG_LOG("poll error");
             continue;
@@ -157,134 +262,49 @@ void Server::run() {
             int listener = pfds[i].fd;
 
             if (pfds[i].revents & (POLLERR | POLLNVAL)) {
-                DEBUG_LOG("disconnect 1: poll() returned POLLERR or POLLNVAL");
+                DEBUG_LOG("POLLERR | POLLNVAL");
+                DEBUG_LOG("disconnect 1");
                 disconnect_client(i, listener, pfds, nfds, context);
                 continue;
             }
+            DEBUG_LOG("passed POLLERR | POLLNVAL");
 
             if (pfds[i].revents & (POLLIN | POLLHUP))
-                DEBUG_LOG("POLLIN & POLLHUP detected");
+                DEBUG_LOG("POLLIN | POLLHUP");
 
-            // Accept on any listening socket
             if (pfds[i].revents & POLLIN) {
-                if (_listenerToServerIdx.count(listener)) {
+                DEBUG_LOG("POLLIN");
+                if (_listenerToServerIdx.count(listener)) { // Accept on any listening socket
+                    DEBUG_LOG("(_listenerToServerIdx.count(listener) != 0");
                     handleNewConnection(listener, pfds, nfds, context);
                     continue;
                 }
+                else {
+                    DEBUG_LOG("_listenerToServerIdx.count(listener) == 0");
+                    handleRead(listener, i, pfds, nfds, context); // Read client data
+                    continue;
+                }
             }
-            DEBUG_LOG("passed: if (_listenerToServerIdx.count(listener) && (pfds[i].revents & POLLIN))");
+            DEBUG_LOG("passed POLLIN");
 
-            if (pfds[i].revents & POLLIN) { /* Reading */
-                DEBUG_LOG("POLLIN revents");
-                char           tmp[READ_SIZE + 1];
-                int            len = read(listener, tmp, READ_SIZE);
-                ClientContext& ctx = context[listener];
-                if (len == 0) { // client closed their send side
-                    if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
-                        add_bad_request_to_queue(ctx); // the request was partial and not in the queue
-                        DEBUG_LOG("handle_requests: len == 0, partial request. added bad request to queue");
-                    }
-                    handle_requests(context[listener], pfds[i]);
-                    DEBUG_LOG("disconnect 2: read returned 0");
-                    disconnect_client(i, listener, pfds, nfds, context);
-                    continue;
-                }
-                if (len < 0) {
-                    if (errno == EAGAIN || errno == EWOULDBLOCK) { // EAGAIN: No data is available to read,
-                        DEBUG_LOG("EAGAIN - no more data");        //  or a write would block
-                        continue;
-                    }
-                    DEBUG_LOG("disconnect 3: read error"); // Real error
-                    disconnect_client(i, listener, pfds, nfds, context);
-                    continue;
-                }
-                /* Parsing */
-                tmp[len] = '\0';
-                ctx.req_parser.feed(tmp, ctx.requests);
-                if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) { /* Need to parse more */
-                    DEBUG_LOG("Req partial");
-                    continue;
-                }
-                handle_requests(ctx, pfds[i]);
-                if (!ctx.write_buffer.empty()) { // if we have something to write back to the client,
-                    pfds[i].events |= POLLOUT;   // add POLLOUT to watched events for the next poll()
-                                                 // reset revents to 0 ?
-                    DEBUG_LOG("events set to |= POLLOUT");
-                } else
-                    DEBUG_LOG("POLLOUT not added to events");
-                DEBUG_LOG("\"if (pfds[i].revents & POLLIN)\": continuing");
-                continue;
-            }
-            DEBUG_LOG("passed: if revents & POLLIN");
-
-            /* Response handling */
+            // Response handling
             if (pfds[i].revents & POLLOUT) {
-                DEBUG_LOG("POLLOUT revents");
-                std::string& buf = context[listener].write_buffer;
-                while (!buf.empty()) {
-                    ssize_t sent = write(listener, buf.data(), buf.size());
-                    DEBUG_LOG("written bytes: " + to_string(sent));
-                    if (sent > 0) {
-                        buf.erase(0, sent);
-                        continue;
-                    }
-                    if (sent == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-                        break; // socket buffer full, wait for next POLLOUT
-                    }
-                    // error or connection closed
-                    DEBUG_LOG("disconnect 4: error or connection closed while sending back response");
-                    disconnect_client(i, listener, pfds, nfds, context);
+                if (handleResponses(listener, i, pfds, nfds, context) == -1)
                     break;
-                }
-                if (buf.empty()) {              // why this condition ?
-                    pfds[i].events &= ~POLLOUT; // Stop watching for POLLOUT. ~ : bitwise NOT
-                    // ??? pfds[i].events = POLLIN; ??? // reset POLLIN ?
-                }
+                else
+                    continue;
+            }
+            DEBUG_LOG("passed POLLOUT");
+
+            if (pfds[i].revents & POLLHUP) {
+                DEBUG_LOG("POLLHUP");
+                handleClientHangup(listener, i, pfds, nfds, context);
                 continue;
             }
 
-            if (pfds[i].revents & POLLHUP) { // POLLHUP – The device or socket has been disconnected.  This flag is
-                                             // output only, and ignored if present in the input events bitmask
-                                             // Note that POLLHUP and POLLOUT are mutually exclusive and should never
-                                             // be present in the revents bitmask at the same time.
-                DEBUG_LOG("disconnect 5 : POLLHUP");
-                disconnect_client(i, listener, pfds, nfds, context);
-                continue;
-            }
-            DEBUG_LOG("passed: if revents & POLLOUT");
-
-            DEBUG_LOG("passed: if revents & POLLHUP");
-            DEBUG_LOG("*** end of for loop ***");
+            DEBUG_LOG("passed POLLHUP");
+            DEBUG_LOG("* end for loop *\n");
         }
-        DEBUG_LOG("\n***** end of while loop *****");
+        DEBUG_LOG("** end while loop **");
     }
-}
-
-requestValidity Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
-    std::string   responseString;
-    RequestRouter router;
-
-    (void)pfd;
-
-    DEBUG_LOG("handle_requests queue size: " + to_string(context.requests.size()));
-    while (!context.requests.empty()) {
-        Request& req = context.requests.front();
-
-        // requestValidity reqValidity = req.getValidity();
-
-        // if (reqValidity == INVALID_REQUEST) {
-        //     DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
-        //     DEBUG_LOG(req);
-        //     Response res(400);
-        //     context.write_buffer.append(res.serialize());
-        //     context.requests.pop();
-        //     return INVALID_REQUEST;
-        // }
-        Response res = router.route(req);
-        context.write_buffer.append(res.serialize());
-        context.requests.pop();
-    }
-    pfd.events = POLLOUT;
-    DEBUG_LOG("handle_requests() exiting");
-    return VALID_REQUEST;
 }
