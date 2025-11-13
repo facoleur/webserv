@@ -141,6 +141,7 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
 // Handle incoming connections
 int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
                                 ContextMap& context) {
+    DEBUG_LOG("(_listenerToServerIdx.count(listener) != 0");
     int new_client_fd = accept(listener, NULL, NULL);
     if (new_client_fd < 0) {
         DEBUG_LOG("accept error");
@@ -161,6 +162,7 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
     int            len;
     ClientContext& ctx = context[listener];
 
+    DEBUG_LOG("--- _listenerToServerIdx.count(listener) == 0 ---");
     len = read(listener, tmp, READ_SIZE);
     if (len == 0) { // client closed their send side
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
@@ -221,35 +223,43 @@ int Server::handleResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENT
     return 0;
 }
 
-void Server::handleClientHangup(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
- // POLLHUP – The device or socket has been disconnected.  This flag is
-                                             // output only, and ignored if present in the input events bitmask
-                                             // Note that POLLHUP and POLLOUT are mutually exclusive and should never
-                                             // be present in the revents bitmask at the same time.
-                DEBUG_LOG("disconnect 5 : POLLHUP");
-                disconnect_client(i, listener, pfds, nfds, context);
+// handles partial request i.e. unfinished request but no more POLLIN revents (see Server::run() loop)
+// this is a case of bad request
+void Server::handlePartialRequest(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
+    add_bad_request_to_queue(context[listener]); // the request was partial and not in the queue
+    DEBUG_LOG("handle_requests: len == 0, partial request. added bad request to queue");
+    handle_requests(context[listener], pfds[i]);
+    DEBUG_LOG("disconnect 6: partial request");
+    disconnect_client(i, listener, pfds, nfds, context);
 }
 
+// POLLHUP – The device or socket has been disconnected. This flag is
+// output only, and ignored if present in the input events bitmask
+// Note that POLLHUP and POLLOUT are mutually exclusive and should never
+// be present in the revents bitmask at the same time.
+void Server::handleClientHangup(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
+    DEBUG_LOG("--- POLLHUP ---");
+    DEBUG_LOG("disconnect 5: POLLHUP");
+    disconnect_client(i, listener, pfds, nfds, context);
+}
 
 void Server::run() {
-    struct pollfd                       pfds[MAX_EVENTS];
-    int                                 nfds = 0;
-    ContextMap context;
-    std::vector<int>                    listen_fds;
+    struct pollfd       pfds[MAX_EVENTS];
+    int                 nfds = 0;
+    std::vector<int>    listen_fds;
+    ContextMap          context;
 
     listen_fds = initListenerSockets(pfds, nfds);
     if (listen_fds.empty()) {
         std::cerr << "error getting listening server sockets" << std::endl;
-        // exit(1); // ?
+        return; // ?
     }
 
     while (1) {
-        DEBUG_LOG("\n** while loop start **\n\t- nfds: " + to_string(nfds) +
-                  "\n\t- pfds[nfds].events: " + to_string(pfds[nfds].events));
         if (context[nfds].write_buffer.empty())
-            DEBUG_LOG("\t- write buffer: empty");
+            DEBUG_LOG("** while loop start **\n{nfds}: " + to_string(nfds) + " - {pfds[nfds].events}: " + to_string(pfds[nfds].events) + " - {write buffer}: empty");
         else
-            DEBUG_LOG("\t- write buffer: not empty");
+            DEBUG_LOG("** while loop start **\n{nfds}: " + to_string(nfds) + " - {pfds[nfds].events}: " + to_string(pfds[nfds].events) + " - {write buffer}: not empty");
         DEBUG_LOG("\n((((( POLL )))))");
         if (poll(pfds, nfds, TIMEOUT) < 0) {
             DEBUG_LOG("poll error");
@@ -262,7 +272,7 @@ void Server::run() {
             int listener = pfds[i].fd;
 
             if (pfds[i].revents & (POLLERR | POLLNVAL)) {
-                DEBUG_LOG("POLLERR | POLLNVAL");
+                DEBUG_LOG("--- POLLERR | POLLNVAL ---");
                 DEBUG_LOG("disconnect 1");
                 disconnect_client(i, listener, pfds, nfds, context);
                 continue;
@@ -270,20 +280,15 @@ void Server::run() {
             DEBUG_LOG("passed POLLERR | POLLNVAL");
 
             if (pfds[i].revents & (POLLIN | POLLHUP))
-                DEBUG_LOG("POLLIN | POLLHUP");
+                DEBUG_LOG("--- POLLIN | POLLHUP ---");
 
             if (pfds[i].revents & POLLIN) {
-                DEBUG_LOG("POLLIN");
-                if (_listenerToServerIdx.count(listener)) { // Accept on any listening socket
-                    DEBUG_LOG("(_listenerToServerIdx.count(listener) != 0");
+                DEBUG_LOG("--- POLLIN ---");
+                if (_listenerToServerIdx.count(listener)) // Accept on any listening socket
                     handleNewConnection(listener, pfds, nfds, context);
-                    continue;
-                }
-                else {
-                    DEBUG_LOG("_listenerToServerIdx.count(listener) == 0");
+                else
                     handleRead(listener, i, pfds, nfds, context); // Read client data
-                    continue;
-                }
+                continue;
             }
             DEBUG_LOG("passed POLLIN");
 
@@ -297,12 +302,16 @@ void Server::run() {
             DEBUG_LOG("passed POLLOUT");
 
             if (pfds[i].revents & POLLHUP) {
-                DEBUG_LOG("POLLHUP");
                 handleClientHangup(listener, i, pfds, nfds, context);
                 continue;
             }
-
             DEBUG_LOG("passed POLLHUP");
+
+            if (context[listener].req_parser.getState() == REQ_PARSE_PARTIAL) {
+                handlePartialRequest(listener, i, pfds, nfds, context);
+                continue;
+            }
+            DEBUG_LOG("passed REQ_PARSE_PARTIAL");
             DEBUG_LOG("* end for loop *\n");
         }
         DEBUG_LOG("** end while loop **");

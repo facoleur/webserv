@@ -24,7 +24,7 @@
 class Response;
 
 #define MAX_EVENTS 64
-#define TIMEOUT 2500
+#define TIMEOUT 0 //2500
 #define READ_SIZE 8000
 
 
@@ -63,4 +63,5 @@ class Server {
     void              handleRead(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
     int               handleResponses(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
     void              handleClientHangup(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context);
+    void              handlePartialRequest(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context);
 };
