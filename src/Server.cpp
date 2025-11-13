@@ -83,8 +83,8 @@ void Server::run() {
             }
             if (nfds >= MAX_EVENTS) break;
         }
-    } else {
-        // Fallback: single listener on 8080 for development
+    }/*  else {
+        // Fallback: single listener on 8080 for development, should be removed
         int lfd = socket(AF_INET, SOCK_STREAM, 0);
         fcntl(lfd, F_SETFL, O_NONBLOCK);
         fcntl(lfd, F_SETFD, FD_CLOEXEC);
@@ -93,7 +93,7 @@ void Server::run() {
         bind(lfd, (struct sockaddr*)&addr, sizeof(addr));
         listen(lfd, SOMAXCONN);
         pfds[nfds].fd = lfd; pfds[nfds].events = POLLIN; pfds[nfds].revents = 0; ++nfds;
-    }
+    } */
 
     std::map<int, struct ClientContext> context;
 

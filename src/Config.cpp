@@ -4,6 +4,10 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
+#include <unistd.h>
+
+#include "ConfigFile.hpp"
 
 void applyDefaults(Config &cfg) {
   std::vector<ServerConfig> &servers = cfg.getServers();
@@ -45,6 +49,83 @@ void applyDefaults(Config &cfg) {
   }
 }
 
+static std::string joinPaths(const std::string &root, const std::string &child) {
+  if (child.empty())
+    return root;
+  if (!child.empty() && child[0] == '/')
+    return child;
+  if (root.empty())
+    return child;
+  if (root[root.size() - 1] == '/')
+    return root + child;
+  return root + "/" + child;
+}
+
+static void ensureDirectory(const std::string &path,
+                            const std::string &context) {
+  int type = ConfigFile::getTypePath(path);
+  if (type != 2)
+    throw std::runtime_error("Invalid directory for " + context + ": " + path);
+  if (ConfigFile::checkFile(path, R_OK | X_OK) != 0)
+    throw std::runtime_error("Directory not accessible for " + context + ": " +
+                             path);
+}
+
+static void ensureIndexFiles(const std::string &root,
+                             const std::vector<std::string> &indexes) {
+  for (size_t i = 0; i < indexes.size(); ++i) {
+    std::string full = joinPaths(root, indexes[i]);
+    if (ConfigFile::getTypePath(full) != 1 ||
+        ConfigFile::checkFile(full, R_OK) != 0) {
+      throw std::runtime_error("Index file not accessible: " + full);
+    }
+  }
+}
+
+static void ensureCgiMap(const std::map<std::string, std::string> &cgi_map) {
+  for (std::map<std::string, std::string>::const_iterator it = cgi_map.begin();
+       it != cgi_map.end(); ++it) {
+    const std::string &interp = it->second;
+    if (ConfigFile::getTypePath(interp) != 1 ||
+        ConfigFile::checkFile(interp, X_OK) != 0) {
+      throw std::runtime_error("CGI interpreter not executable: " + interp);
+    }
+  }
+}
+
+static std::string parentDir(const std::string &path) {
+  std::string::size_type pos = path.find_last_of('/');
+  if (pos == std::string::npos)
+    return ".";
+  if (pos == 0)
+    return "/";
+  return path.substr(0, pos);
+}
+
+static void ensureUploadStore(const LocationConfig &loc) {
+  if (!loc.upload_enable)
+    return;
+  if (loc.upload_store.empty())
+    throw std::runtime_error("upload_store required when upload_enable is on");
+  int type = ConfigFile::getTypePath(loc.upload_store);
+  if (type == 2) {
+    if (ConfigFile::checkFile(loc.upload_store, W_OK | X_OK) != 0)
+      throw std::runtime_error("Upload directory not writable: " +
+                               loc.upload_store);
+    return;
+  }
+  if (type == -1) {
+    std::string parent = parentDir(loc.upload_store);
+    if (ConfigFile::checkFile(parent, W_OK | X_OK) != 0)
+      throw std::runtime_error("Cannot create upload directory (permission "
+                               "denied): " +
+                               loc.upload_store);
+    return;
+  }
+  throw std::runtime_error("Upload store must be a directory: " +
+                           loc.upload_store);
+}
+
 void validateCompatibility(const Config &cfg) {
   const std::vector<ServerConfig> &servers = cfg.getServers();
   for (size_t i = 0; i < servers.size(); ++i) {
@@ -68,12 +149,11 @@ void validateCompatibility(const Config &cfg) {
       if (code < 100 || code > 599)
         throw std::runtime_error("invalid error_page code (must be 100..599)");
     }
+    ensureDirectory(srv.root, "server root");
+    ensureIndexFiles(srv.root, srv.index_files);
+    ensureCgiMap(srv.cgi_map);
     for (size_t j = 0; j < srv.locations.size(); ++j) {
       const LocationConfig &loc = srv.locations[j];
-
-      // Example: POST on a location that doesn't look like an upload endpoint.
-      // (No CGI feature in our minimal structs yet; add a check later if/when
-      // CGI exists.)
       if (loc.methods.count(POST) && loc.redirect.status == 0 &&
           loc.root.find("upload") == std::string::npos) {
         std::cerr
@@ -82,8 +162,6 @@ void validateCompatibility(const Config &cfg) {
                "in root and no redirect). "
                "Consider restricting methods or implementing POST handling.\n";
       }
-
-      // Example: DELETE on static root
       if (loc.methods.count(DELETE) && loc.redirect.status != 0) {
         std::cerr << "Warning: Location " << loc.path
                   << " defines DELETE but has a redirect\n";
@@ -94,6 +172,10 @@ void validateCompatibility(const Config &cfg) {
       if (loc.upload_enable && loc.upload_store.empty())
         throw std::runtime_error(
             "upload enabled but upload_store not set in location");
+      ensureDirectory(loc.root, "location root");
+      ensureIndexFiles(loc.root, loc.index_files);
+      ensureCgiMap(loc.cgi_map);
+      ensureUploadStore(loc);
     }
   }
 }
