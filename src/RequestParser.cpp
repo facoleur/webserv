@@ -44,11 +44,7 @@ void RequestParser::parseRequestLine(Request& req) {
     req.setMethod(split[0]);
 
     /* set request-target path and query-string */
-    if (split[1].empty())
-        throw RequestParsingError();
-    if (split[1][0] != '/')
-        throw RequestParsingError();
-    if (split[1].find_first_of(" \t\n\r\f\v") != std::string::npos)
+    if (split[1].empty() || split[1].find_first_of(" \t\n\r\f\v") != std::string::npos)
         throw RequestParsingError();
     queryPos = split[1].find("?");
     if (queryPos != std::string::npos) {
