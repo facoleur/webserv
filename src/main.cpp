@@ -20,6 +20,6 @@ int main(int argc, char const* argv[]) {
     validateCompatibility(cfg);
 
     Server serv(cfg);
-    //serv.run();
+    serv.run();
     return 0;
 }
