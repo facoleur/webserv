@@ -1,6 +1,7 @@
 // RequestParser.cpp
 
-#include "../inc/RequestParser.hpp"
+#include "RequestParser.hpp"
+#include "Server.hpp"
 
 RequestParser::RequestParser(void)
     : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_REQUEST_LINE), _statusCode(NO_STATUS), _contentLength(0),
@@ -11,10 +12,10 @@ RequestParser::~RequestParser(void) {
 }
 
 enum ParserState RequestParser::getState(void) {
-	return _parserState;
+    return _parserState;
 }
 
-// splits the line in three. Throws if only two spaces found
+// splits the line in three. Throws if less than two spaces found
 void RequestParser::splitRequestLine(std::vector<std::string>& split, std::string& line) {
     size_t pos;
 
@@ -30,8 +31,8 @@ void RequestParser::splitRequestLine(std::vector<std::string>& split, std::strin
 }
 
 void RequestParser::parseRequestLine(Request& req) {
-    size_t                   queryPos;
     std::vector<std::string> split;
+    size_t                   queryPos;
 
     /* split line */
     splitRequestLine(split, _requestLine);
@@ -39,10 +40,10 @@ void RequestParser::parseRequestLine(Request& req) {
     /* set method */
     if (split[0].empty())
         throw RequestParsingError();
-    else
-        req.setMethod(split[0]);
 
-    /* set request target path and query-string */
+    req.setMethod(split[0]);
+
+    /* set request-target path and query-string */
     if (split[1].empty())
         throw RequestParsingError();
     if (split[1][0] != '/')
@@ -57,13 +58,14 @@ void RequestParser::parseRequestLine(Request& req) {
     req.setPath(split[1]);
 
     /* set HTTP version */
-    if (split[2] == "HTTP/1.0" || split[2] == "HTTP/1.1")
-        req.setProtocolVersion(split[2]);
-    else
+    if (split[2] != "HTTP/1.0" && split[2] != "HTTP/1.1")
         throw RequestParsingError();
+    req.setProtocolVersion(split[2]);
 }
 
 void RequestParser::handleParseError(Request& req, std::queue<Request>& reqQueue) {
+    DEBUG_LOG("Parse error");
+    req.setStatusCode(BAD_REQUEST);
     req.setValidity(INVALID_REQUEST);
     reqQueue.push(req);
     _parserState = REQ_PARSE_ERROR;
@@ -74,26 +76,25 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
     Request req;
 
     _accumulator += buf;
-
     while (!_accumulator.empty()) {
+        /* 1. extract the content */
         switch (_parsingPhase) {
             case PARSING_REQUEST_LINE:
             case PARSING_HEADERS:
                 pos = _accumulator.find(CRLF + CRLF);
-                if (pos == std::string::npos && _accumulator.size() >= READ_BUF_SIZE)
-                    return handleParseError(req, reqQueue);
-                else if (pos == std::string::npos) {
-                    _firstSection += _accumulator;
+                if (pos == std::string::npos) {
+                    _firstSection += _accumulator; // .substr(0, pos)
                     if (_firstSection.size() >= READ_BUF_SIZE)
                         return handleParseError(req, reqQueue);
                     _accumulator.clear();
                     _parserState = REQ_PARSE_PARTIAL;
                     return;
+                } else {
+                    _firstSection += _accumulator.substr(0, pos);
+                    if (_firstSection.size() >= READ_BUF_SIZE)
+                        return handleParseError(req, reqQueue);
+                    _accumulator = _accumulator.substr(pos + 4);
                 }
-                _firstSection += _accumulator.substr(0, pos);
-                if (_firstSection.size() >= READ_BUF_SIZE)
-                    return handleParseError(req, reqQueue);
-                _accumulator = _accumulator.substr(pos);
                 break;
             case PARSING_BODY:
                 // ...
@@ -105,39 +106,40 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
                 break;
         }
 
-        /* Parse the line */
+        /* 2. parse the extracted content */
         try {
-            switch (_parsingPhase) // internal
+            if (_parsingPhase == PARSING_REQUEST_LINE) // internal
             {
-                case PARSING_REQUEST_LINE:
-                    pos = _firstSection.find(CRLF);
-                    if (pos != std::string::npos) { // request-line + headers
-                        _requestLine  = _firstSection.substr(0, pos);
-                        _firstSection = _firstSection.substr(pos);
-                        parseRequestLine(req);
-                        _parsingPhase = PARSING_HEADERS;
-                    } else { // pure request-line, no headers
-                        _requestLine = _firstSection;
-                        _firstSection.clear();
-                        parseRequestLine(req);
-                        _parsingPhase = PARSING_COMPLETE;
-                    }
-                    break;
-                    // case PARSING_HEADERS:
-                    // 	parseHeaders();
-                    // 	break;
-                    // case PARSING_BODY:
-                    // 	parseBody();
-                    // 	break;
-                case PARSING_COMPLETE: // n.b.: this part cannot throw
-                    req.validateRequest();
-                    req.printRequest();
-                    reqQueue.push(req);
-                    if (req.getValidity() == INVALID_REQUEST)
-                        return;
-                    break;
-                default:
-                    break;
+                pos = _firstSection.find(CRLF);
+                if (pos != std::string::npos) { // request-line + headers
+                    _requestLine  = _firstSection.substr(0, pos);
+                    _firstSection = _firstSection.substr(pos + 2);
+                    parseRequestLine(req);
+                    _parsingPhase = PARSING_HEADERS;
+                } else { // pure request-line, no headers
+                    _requestLine = _firstSection;
+                    _firstSection.clear();
+                    parseRequestLine(req);
+                    _parsingPhase = PARSING_COMPLETE;
+                }
+            }
+            if (_parsingPhase == PARSING_HEADERS) {
+                // 	parseHeaders();
+                if (true) // has header content-length
+                    _parsingPhase = PARSING_BODY;
+                else
+                    _parsingPhase = PARSING_COMPLETE;
+            }
+            if (_parsingPhase == PARSING_BODY) {
+                // 	parseBody();
+                _parsingPhase = PARSING_COMPLETE;
+            }
+            if (_parsingPhase == PARSING_COMPLETE) {
+                reqQueue.push(req);
+                DEBUG_LOG("RequestParser::feed() parsed a request:");
+                DEBUG_LOG(req);
+                req           = Request();
+                _parsingPhase = PARSING_REQUEST_LINE;
             }
         } catch (RequestParsingError& e) {
             return handleParseError(req, reqQueue);
@@ -178,8 +180,14 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
                 if (ps == REQ_PARSE_PARTIAL)
                         continue;
                 handle_requests(req_queue);
-                if (ps == REQ_PARSE_ERROR)
-                        close(sockFd);
+                if (REQ_PARSE_ERROR) // problem => if Request parse ok but Request is semantically invalid, then ... ?
+solution below: close(sockFd);
+
+                                // SOLUTION:
+                // bool allRequestsValid = handle_requests(req_queue);
+                // if (!allRequestsValid) // => this means REQ_PARSE_ERROR isn't actually that necessary. Only
+REQ_PARSE_PARTIAL
+                //        close(sockFd);
         }
 
 handle_requests(queue requests)

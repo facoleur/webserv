@@ -9,44 +9,43 @@
 
 #include "ConfigFile.hpp"
 
-void applyDefaults(Config &cfg) {
-  std::vector<ServerConfig> &servers = cfg.getServers();
-  for (size_t i = 0; i < servers.size(); ++i) {
-    ServerConfig &srv = servers[i];
+void applyDefaults(Config& cfg) {
+    std::vector<ServerConfig>& servers = cfg.getServers();
+    for (size_t i = 0; i < servers.size(); ++i) {
+        ServerConfig& srv = servers[i];
 
-    // Server defaults
-    if (srv.root.empty())
-      srv.root = "./www";
-    if (srv.index_files.empty())
-      srv.index_files.push_back("index.html");
-    if (srv.methods.empty())
-      srv.methods.insert(GET);
-    if (srv.client_max_body_size == 0)
-      srv.client_max_body_size = 1048576; // 1 MiB
-    // srv.autoindex defaults to false (constructor)
+        // Server defaults
+        if (srv.root.empty())
+            srv.root = "./www";
+        if (srv.index_files.empty())
+            srv.index_files.push_back("index.html");
+        if (srv.methods.empty())
+            srv.methods.insert(GET);
+        if (srv.client_max_body_size == 0)
+            srv.client_max_body_size = 1048576; // 1 MiB
+        // srv.autoindex defaults to false (constructor)
 
-    for (size_t j = 0; j < srv.locations.size(); ++j) {
-      LocationConfig &loc = srv.locations[j];
+        for (size_t j = 0; j < srv.locations.size(); ++j) {
+            LocationConfig& loc = srv.locations[j];
 
-      if (loc.root.empty())
-        loc.root = srv.root; // inherit from server
-      if (loc.index_files.empty())
-        loc.index_files = srv.index_files;
-      if (loc.methods.empty())
-        loc.methods = srv.methods;
-      if (!loc.autoindex_set)
-        loc.autoindex = srv.autoindex;
-      if (loc.client_max_body_size == 0)
-        loc.client_max_body_size = srv.client_max_body_size;
-      // Merge CGI maps (server entries fill missing keys)
-      for (std::map<std::string, std::string>::const_iterator it =
-               srv.cgi_map.begin();
-           it != srv.cgi_map.end(); ++it) {
-        if (loc.cgi_map.find(it->first) == loc.cgi_map.end())
-          loc.cgi_map[it->first] = it->second;
-      }
+            if (loc.root.empty())
+                loc.root = srv.root; // inherit from server
+            if (loc.index_files.empty())
+                loc.index_files = srv.index_files;
+            if (loc.methods.empty())
+                loc.methods = srv.methods;
+            if (!loc.autoindex_set)
+                loc.autoindex = srv.autoindex;
+            if (loc.client_max_body_size == 0)
+                loc.client_max_body_size = srv.client_max_body_size;
+            // Merge CGI maps (server entries fill missing keys)
+            for (std::map<std::string, std::string>::const_iterator it = srv.cgi_map.begin(); it != srv.cgi_map.end();
+                 ++it) {
+                if (loc.cgi_map.find(it->first) == loc.cgi_map.end())
+                    loc.cgi_map[it->first] = it->second;
+            }
+        }
     }
-  }
 }
 
 static std::string joinPaths(const std::string &root, const std::string &child) {

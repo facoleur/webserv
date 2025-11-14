@@ -3,26 +3,30 @@
 #include "Request.hpp"
 
 Request::Request(void)
-    : _method(), _path(), _queryString(), _protocolVersion(), _headers(), _body(), _statusCode(NO_STATUS),
+    : _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _body(), _statusCode(NO_STATUS),
       _validity(INVALID_REQUEST) {
 }
 
 Request::~Request(void) {
 }
 
-void Request::printRequest(void) {
-    std::cout << "Request: " << std::endl;
-    std::cout << "- method: " << _method << std::endl;
-    std::cout << "- path: " << _path << std::endl;
-    std::cout << "- queryString: " << _queryString << std::endl;
-    std::cout << "- protocolVersion: " << _protocolVersion << std::endl;
-    // std::cout << "- headers: " << _headers << std::endl;
-    // std::cout << "- body: " << _body << std::endl;
-    std::cout << "- statusCode: " << _statusCode << std::endl;
-    std::cout << "- validity: " << _validity << std::endl;
+void Request::printRequest(void) const {
+    std::cout << "path: " << _path << std::endl;
+    std::cout << "method: " << _method << std::endl;
+    std::cout << "body: " << _body << std::endl;
+
+    for (std::map<enum requestHeaders, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); ++it) {
+        std::cout << "header: " << (*it).first << ": " << (*it).second << std::endl;
+    }
+
+    std::cout << _body << std::endl;
 }
 
-std::string& Request::getPath(void) {
+enum requestMethod Request::getMethod(void) const {
+    return _method;
+}
+
+std::string Request::getPath(void) const {
     return _path;
 }
 
@@ -38,6 +42,16 @@ std::string& Request::getProtocolVersion(void) {
 //     return _headers;
 // }
 
+std::string Request::getHeader(enum requestHeaders headers) const {
+    for (std::map<enum requestHeaders, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); ++it) {
+        if (headers == (*it).first) {
+            std::string res = (*it).second;
+            return res;
+        }
+    }
+    return "";
+}
+
 std::string& Request::getBody(void) {
     return _body;
 }
@@ -46,8 +60,15 @@ enum requestValidity Request::getValidity(void) {
     return _validity;
 }
 
-void Request::setMethod(std::string& method) {
-    _method = method;
+void Request::setMethod(const std::string& method) {
+    if (method == "GET")
+        _method = GET;
+    else if (method == "POST")
+        _method = POST;
+    else if (method == "DELETE")
+        _method = DELETE;
+    else
+        _method = UNKNOWN;
 }
 
 void Request::setPath(std::string const& path) {
@@ -66,7 +87,7 @@ void Request::setValidity(enum requestValidity val) {
     _validity = val;
 }
 
-void Request::setStatusCode(enum StatusCode val) {
+void Request::setStatusCode(enum statusCode val) {
     _statusCode = val;
 }
 
@@ -75,14 +96,18 @@ void Request::setStatusCode(enum StatusCode val) {
 
 void Request::validateRequest(void) // performs all the necessary checks to set the _validity
 {
-    if (!validateMethod())
+    if (!validateMethod()) {
+        std::cout << "Request: couldn't validate method" << std::endl;
         return (setStatusCode(NOT_IMPLEMENTED));
+    }
     // if (!validateTarget())
     //     return; // n.b.: various possible error codes, set by validateTarget()
     // if (!validateQueryString())
     //     return; // ?
-    if (!validateProtocolVersion())
+    if (!validateProtocolVersion()) {
+        std::cout << "Request: couldn't validate protocol version" << std::endl;
         return (setStatusCode(HTTP_VERSION_NOT_SUPPORTED));
+    }
     // if (!validateHeaders())
     //     return; // ?
     // if (!validateBody())
@@ -92,7 +117,7 @@ void Request::validateRequest(void) // performs all the necessary checks to set 
 
 // validity checks => semantic validation
 bool Request::validateMethod(void) {
-    if (_method == "GET" || _method == "POST" || _method == "DELETE")
+    if (_method == GET || _method == POST || _method == DELETE)
         return true;
     return false;
 }
@@ -107,7 +132,7 @@ bool Request::validateMethod(void) {
 // }
 
 bool Request::validateProtocolVersion(void) {
-    if (_protocolVersion == "HTTP/1.0")
+    if (_protocolVersion == "HTTP/1.0" || _protocolVersion == "HTTP/1.1")
         return true;
     else
         return false;
