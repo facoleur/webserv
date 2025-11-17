@@ -8,6 +8,7 @@
 
 #include "Request.hpp"
 #include "Utils.hpp"
+#include "Webserv.hpp"
 
 class ReasonPhrase {
   private:
@@ -57,7 +58,7 @@ class Headers {
 
 class Response {
   private:
-    int                                        _statusCode;
+    enum statusCode                            _statusCode;
     std::map<enum requestHeaders, std::string> _headers;
     std::string                                _body;
 
@@ -65,7 +66,7 @@ class Response {
 
   public:
     Response();
-    Response(int statusCode);
+    Response(enum statusCode statusCode);
     ~Response();
 
     std::string& serialize();

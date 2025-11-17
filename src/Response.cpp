@@ -7,10 +7,10 @@
 std::map<int, std::string>                 ReasonPhrase::_reasonPhrase;
 std::map<enum requestHeaders, std::string> Headers::_headersString;
 
-Response::Response() : _statusCode(200) {
+Response::Response() : _statusCode(OK) {
 }
 
-Response::Response(int statusCode) : _statusCode(statusCode) {
+Response::Response(enum statusCode statusCode) : _statusCode(statusCode) {
 }
 
 Response::~Response() {

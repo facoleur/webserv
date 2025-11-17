@@ -14,27 +14,31 @@ enum requestMethod Request::getMethod(void) const {
     return _method;
 }
 
-std::string& Request::getPath(void) {
+std::string Request::getPath(void) const {
     return _path;
 }
 
-std::string& Request::getQueryString(void) {
+std::string Request::getQueryString(void) const {
     return _queryString;
 }
 
-std::string& Request::getProtocolVersion(void) {
+std::string Request::getProtocolVersion(void) const {
     return _protocolVersion;
 }
 
-// std::vector<std::string, std::string>& Request::getHeaders(void) {
+enum statusCode Request::getStatusCode(void) const {
+    return _statusCode;
+}
+
+// std::vector<std::string, std::string> Request::getHeaders(void) const {
 //     return _headers;
 // }
 
-std::string& Request::getBody(void) {
+std::string Request::getBody(void) const {
     return _body;
 }
 
-enum requestValidity Request::getValidity(void) {
+enum requestValidity Request::getValidity(void) const {
     return _validity;
 }
 
@@ -90,6 +94,7 @@ void Request::validateRequest(void) // performs all the necessary checks to set 
     //     return; // ?
     // if (!validateBody())
     //     return; // ?
+    DEBUG_LOG("VALID!");
     _validity = VALID_REQUEST;
 }
 

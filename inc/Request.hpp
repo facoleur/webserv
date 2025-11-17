@@ -31,13 +31,14 @@ class Request {
     void printRequest(void);
 
     // getters
-    requestMethod                          getMethod(void) const;
-    std::string&                           getPath(void);
-    std::string&                           getQueryString(void);
-    std::string&                           getProtocolVersion(void);
-    std::vector<std::string, std::string>& getHeaders(void);
-    std::string&                           getBody(void);
-    requestValidity                        getValidity(void);
+    requestMethod                         getMethod(void) const;
+    std::string                           getPath(void) const;
+    std::string                           getQueryString(void) const;
+    std::string                           getProtocolVersion(void) const;
+    std::vector<std::string, std::string> getHeaders(void) const;
+    std::string                           getBody(void) const;
+    requestValidity                       getValidity(void) const;
+    enum statusCode                       getStatusCode(void) const;
 
     // setters
     void setMethod(std::string&);
@@ -47,12 +48,12 @@ class Request {
     void setHeaders(std::vector<std::string, std::string>);
     void setBody(std::string const&);
     void setValidity(requestValidity);
+    void setStatusCode(statusCode);
 
     friend std::ostream& operator<<(std::ostream&, requestMethod);
     friend std::ostream& operator<<(std::ostream&, requestValidity);
     friend std::ostream& operator<<(std::ostream&, statusCode);
     friend std::ostream& operator<<(std::ostream&, Request&);
-    void                 setStatusCode(statusCode);
     void                 printHeaders(std::ostream&);
 
   private:
