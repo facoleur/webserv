@@ -141,7 +141,7 @@ Response RequestRouter::handleDelete(const Request& req, const std::string& path
     Response res;
     return res;
 }
-Response RequestRouter::handleCgi(const Request& req, const std::string& path) {
+Response RequestRouter::handleCgi(const Request& req, const std::string& path, const LocationConfig &config) {
     (void)req;
     (void)path;
     Response res;
