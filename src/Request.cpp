@@ -30,17 +30,17 @@ std::string Request::getPath(void) const {
     return _path;
 }
 
-std::string& Request::getQueryString(void) {
+const std::string& Request::getQueryString(void) const {
     return _queryString;
 }
 
-std::string& Request::getProtocolVersion(void) {
+const std::string& Request::getProtocolVersion(void) const {
     return _protocolVersion;
 }
 
-// std::vector<std::string, std::string>& Request::getHeaders(void) {
-//     return _headers;
-// }
+const std::map<enum requestHeaders, std::string>& Request::getHeaders(void) const {
+    return _headers;
+}
 
 std::string Request::getHeader(enum requestHeaders headers) const {
     for (std::map<enum requestHeaders, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); ++it) {
@@ -52,7 +52,7 @@ std::string Request::getHeader(enum requestHeaders headers) const {
     return "";
 }
 
-std::string& Request::getBody(void) {
+const std::string& Request::getBody(void) const {
     return _body;
 }
 

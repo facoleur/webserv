@@ -30,3 +30,6 @@ class RequestRouter {
     std::string resolvePath(const Request&, const std::string&);
     Response    route(const Request&, const ServerConfig&);
 };
+
+const LocationConfig* findLocationConfig(const std::string& path, const ServerConfig& config);
+const LocationConfig  resolveConfig(const ServerConfig& server, const LocationConfig* location);

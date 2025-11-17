@@ -25,6 +25,7 @@ enum statusCode {
     NOT_ALLOWED                = 405, // checked if relevant => yes (also in Kaydoo's)
     INTERNAL_SERVER_ERROR      = 500,
     NOT_IMPLEMENTED            = 501,
+    BAD_GATEWAY                = 502,
     HTTP_VERSION_NOT_SUPPORTED = 505
 };
 

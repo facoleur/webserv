@@ -40,6 +40,11 @@ class Server {
     const Config          _cfg; // not owning pointer
     struct ClientContext  _state;
     std::map<int, size_t> _listenerToServerIdx; // listen fd -> server index
+    int                   executeCgi(const ServerConfig& serverConfig, const LocationConfig* locationConfig,
+                                     const Request& request, const std::string& scriptPath,
+                                     const std::string& interpreter, std::string& responseBody,
+                                     std::map<std::string, std::string>& responseHeaders, int& statusCode,
+                                     std::string& statusMessage);
 
   public:
     Server();
