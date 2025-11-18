@@ -58,7 +58,8 @@ void RequestParser::parseRequestLine(Request& req) {
     req.setPath(split[1]);
 
     /* set HTTP version */
-    if (split[2] != "HTTP/1.0" && split[2] != "HTTP/1.1")
+    if (split[2] != "HTTP/1.0" && split[2] != "HTTP/1.1" && split[2] != "HTTP/0.9" && split[2] != "HTTP/2" &&
+        split[2] != "HTTP/3")
         throw RequestParsingError();
     req.setProtocolVersion(split[2]);
 }

@@ -123,10 +123,9 @@ void Server::add_bad_request_to_queue(ClientContext& context) {
 }
 
 void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
-    std::string   responseString;
     RequestRouter router;
 
-    DEBUG_LOG("handle_requests queue size: " + to_string(context.requests.size()));
+    DEBUG_LOG("handle_requests: " + to_string(context.requests.size()) + " requests in queue");
     while (!context.requests.empty()) {
         Request& req = context.requests.front();
 
@@ -147,7 +146,6 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
         context.requests.pop();
     }
     pfd.events = POLLOUT;
-    DEBUG_LOG("handle_requests() exiting with: VALID_REQUEST");
 }
 
 void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
@@ -203,7 +201,7 @@ void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS
         }
     }
     if (context[listener].close_after_responses) {
-        DEBUG_LOG("disconnect 6: sendResponses (client's close_after_responses flag is true)");
+        DEBUG_LOG("disconnect 6: sendResponses (client.close_after_responses: true)");
         disconnect_client(i, listener, pfds, nfds, context);
         return;
     }
@@ -232,10 +230,10 @@ void Server::run() {
         std::cerr << "error getting listening server sockets" << std::endl;
         return; // ?
     }
-
+ 
     while (1) {
-        DEBUG_LOG("** while loop start **\n{nfds}: " + to_string(nfds) +
-                  " - {pfds[nfds].events}: " + to_string(pfds[nfds].events));
+        DEBUG_LOG("** while loop start **");
+        DEBUG_LOG("{nfds}: " to_string(nfds) + " - {pfds[nfds].events}: " + to_string(pfds[nfds].events));
         DEBUG_LOG("\n((((( POLL )))))");
         if (poll(pfds, nfds, TIMEOUT) < 0) {
             DEBUG_LOG("poll error");
@@ -273,6 +271,6 @@ void Server::run() {
 
             DEBUG_LOG("* end for loop *\n");
         }
-        DEBUG_LOG("** end while loop **");
+        DEBUG_LOG("** end while loop **\n");
     }
 }

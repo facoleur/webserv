@@ -94,7 +94,7 @@ void Request::validateRequest(void) // performs all the necessary checks to set 
     //     return; // ?
     // if (!validateBody())
     //     return; // ?
-    DEBUG_LOG("VALID!");
+    DEBUG_LOG("validateRequest: VALID");
     _validity = VALID_REQUEST;
 }
 
