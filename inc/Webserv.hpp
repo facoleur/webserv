@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include <errno.h>
 #include <iostream>
 #include <string>
-#include <errno.h>
 
 enum statusCode {
     NO_STATUS = 0,
@@ -20,7 +20,7 @@ enum statusCode {
 
     // Errors
     BAD_REQUEST                = 400,
-    FORBIDDEN                  = 403,
+    FORBIDDEN                  = 403, // probably not used; discussed on 12/11 call
     NOT_FOUND                  = 404,
     NOT_ALLOWED                = 405, // checked if relevant => yes (also in Kaydoo's)
     INTERNAL_SERVER_ERROR      = 500,
