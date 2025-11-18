@@ -23,6 +23,8 @@ enum statusCode {
     FORBIDDEN                  = 403, // probably not used; discussed on 12/11 call
     NOT_FOUND                  = 404,
     NOT_ALLOWED                = 405, // checked if relevant => yes (also in Kaydoo's)
+    LENGTH_REQUIRED            = 411,
+    CONTENT_TOO_LARGE          = 413,
     INTERNAL_SERVER_ERROR      = 500,
     NOT_IMPLEMENTED            = 501,
     HTTP_VERSION_NOT_SUPPORTED = 505

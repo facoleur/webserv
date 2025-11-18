@@ -14,9 +14,9 @@ INC_DIR := inc
 OBJ_DIR := bin
 
 SRCS := main.cpp ConfigFile.cpp Config.cpp ConfigParser.cpp Request.cpp RequestParser.cpp \
-        RequestRouter.cpp RequestUtils.cpp Response.cpp Server.cpp Utils.cpp
+        RequestRouter.cpp RequestUtils.cpp Response.cpp Server.cpp Utils.cpp AutoIndex.cpp
 HEADERS := ConfigFile.hpp Config.hpp ConfigParser.hpp Request.hpp RequestParser.hpp \
-           RequestRouter.hpp Response.hpp Server.hpp Utils.hpp Webserv.hpp
+           RequestRouter.hpp Response.hpp Server.hpp Utils.hpp Webserv.hpp AutoIndex.hpp
 
 OBJS := $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(notdir $(SRCS)))
 

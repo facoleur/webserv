@@ -51,7 +51,7 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
     in_addr_t                        ip;
     in_addr                          a;
     int                              opt;
-    const std::vector<ServerConfig>& servers = _cfg->getServers();
+    const std::vector<ServerConfig>& servers = _cfg.getServers();
 
     for (size_t si = 0; si < servers.size(); ++si) {
         const ServerConfig& srv = servers[si];
@@ -126,19 +126,32 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
     while (!context.requests.empty()) {
         Request& req = context.requests.front();
 
-        if (req.getStatusCode() != BAD_REQUEST)
-            req.validateRequest();
-        requestValidity reqValidity = req.getValidity();
-        if (reqValidity == INVALID_REQUEST) {
+        const ServerConfig& config = _cfg.getServers()[context.server_index];
+        Response            res    = router.route(req, config);
+
+        if (res.isError()) {
             DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
-            Response res(BAD_REQUEST);
             context.write_buffer.append(res.serialize());
             std::queue<Request> empty;
             std::swap(context.requests, empty);
             context.close_after_responses = true;
             break;
         }
-        Response res = router.route(req);
+
+        // requestValidity reqValidity = req.getValidity();
+        // if (reqValidity == INVALID_REQUEST) {
+        //     DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
+        //     Response res(BAD_REQUEST);
+        //     context.write_buffer.append(res.serialize());
+        //     std::queue<Request> empty;
+        //     std::swap(context.requests, empty);
+        //     context.close_after_responses = true;
+        //     break;
+        // }
+
+        // const ServerConfig& config = _cfg.getServers()[context.server_index];
+        // Response            res    = router.route(req, config);
+
         context.write_buffer.append(res.serialize());
         context.requests.pop();
     }
