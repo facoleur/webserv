@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Response.hpp"
 #include "Webserv.hpp"
 #include <map>
 #include <vector>
@@ -18,13 +19,15 @@ class Request {
     ~Request(void);
 
     // Semantic validation
-    void validateRequest(void); // performs all the necessary checks to set the _validity
-    bool validateMethod(void);
-    bool validateTarget(void);
-    bool validateQueryString(void);
-    bool validateProtocolVersion(void);
-    bool validateHeaders(void);
-    bool validateBody(void);
+    enum requestValidity validateRequest(Response& res) const;
+    // performs all the static (not config based) checks to set the _validity
+
+    bool validateMethod(void) const;
+    bool validateTarget(void) const;
+    bool validateQueryString(void) const;
+    bool validateProtocolVersion(void) const;
+    bool validateHeaders(void) const;
+    bool validateBody(void) const;
 
     // Other functions
     bool hasHeader(std::string const&); // whether a specific header is present

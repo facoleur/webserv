@@ -108,30 +108,45 @@ void Request::setStatusCode(enum statusCode val) {
     _statusCode = val;
 }
 
-void Request::validateRequest(void) // performs all the necessary checks to set the _validity
-{
+// performs all the static (not config based) checks to set the _validity
+enum requestValidity Request::validateRequest(Response& res) const {
     if (!validateMethod()) {
         std::cout << "Request: couldn't validate method" << std::endl;
-        return (setStatusCode(NOT_IMPLEMENTED));
+        res.setStatusCode(NOT_IMPLEMENTED);
+        return INVALID_REQUEST;
     }
-    // if (!validateTarget())
-    //     return; // n.b.: various possible error codes, set by validateTarget()
-    // if (!validateQueryString())
-    //     return; // ?
+    if (!validateTarget() || !validateQueryString()) {
+        res.setStatusCode(BAD_REQUEST);
+        return INVALID_REQUEST; // n.b.: various possible error codes, set by validateTarget()
+    }
+    
     if (!validateProtocolVersion()) {
-        std::cout << "Request: couldn't validate protocol version" << std::endl;
-        return (setStatusCode(HTTP_VERSION_NOT_SUPPORTED));
+        // must be HTTP/1.1
+        res.setStatusCode(HTTP_VERSION_NOT_SUPPORTED);
+        return INVALID_REQUEST;
     }
-    // if (!validateHeaders())
-    //     return; // ?
-    // if (!validateBody())
-    //     return; // ?
+
+    if (!validateHeaders()) {
+        // must have exactly one [host] header
+        // more than 1 header contentlength: has coma => bad request (non neg, integer) 
+        // transfer-encoding => must be "chunked", must not contain content-length. If wrong: 501
+        res.setStatusCode(BAD_REQUEST);
+        // res.setStatusCode(NOT_IMPLEMENTED);
+        return INVALID_REQUEST;
+    }
+    if (!validateBody()) {
+        // has no body if POST => invalid
+        // has body if GET => invalid
+        // move validation of content length == body.size
+        res.setStatusCode(BAD_REQUEST);
+        return INVALID_REQUEST;
+    }
     DEBUG_LOG("VALID!");
-    _validity = VALID_REQUEST;
+    return VALID_REQUEST;
 }
 
 // validity checks => semantic validation
-bool Request::validateMethod(void) {
+bool Request::validateMethod(void) const {
     if (_method == GET || _method == POST || _method == DELETE)
         return true;
     return false;

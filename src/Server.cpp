@@ -126,12 +126,11 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
     while (!context.requests.empty()) {
         Request& req = context.requests.front();
 
-        if (req.getStatusCode() != BAD_REQUEST)
-            req.validateRequest();
-        requestValidity reqValidity = req.getValidity();
-        if (reqValidity == INVALID_REQUEST) {
+        const ServerConfig& config = _cfg.getServers()[context.server_index];
+        Response            res    = router.route(req, config);
+
+        if (res.isError()) {
             DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
-            Response res(BAD_REQUEST);
             context.write_buffer.append(res.serialize());
             std::queue<Request> empty;
             std::swap(context.requests, empty);
@@ -139,8 +138,20 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
             break;
         }
 
-        const ServerConfig& config = _cfg.getServers()[context.server_index];
-        Response            res    = router.route(req, config);
+        // requestValidity reqValidity = req.getValidity();
+        // if (reqValidity == INVALID_REQUEST) {
+        //     DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
+        //     Response res(BAD_REQUEST);
+        //     context.write_buffer.append(res.serialize());
+        //     std::queue<Request> empty;
+        //     std::swap(context.requests, empty);
+        //     context.close_after_responses = true;
+        //     break;
+        // }
+
+        // const ServerConfig& config = _cfg.getServers()[context.server_index];
+        // Response            res    = router.route(req, config);
+
         context.write_buffer.append(res.serialize());
         context.requests.pop();
     }

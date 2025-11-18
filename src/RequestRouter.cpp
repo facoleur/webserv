@@ -158,12 +158,11 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
 }
 
 Response RequestRouter::handlePost(const Request& req, const std::string& path, const LocationConfig& config) {
-
     if (req.getBody().size() != toSizet(req.getHeader(CONTENT_LENGTH)))
         return makeErrorResponse(BAD_REQUEST);
 
     if (toSizet(req.getHeader(CONTENT_LENGTH)) > config.client_max_body_size) {
-        return makeErrorResponse(PAYLOAD_TOO_LARGE);
+        return makeErrorResponse(CONTENT_TOO_LARGE);
     }
 
     if (config.upload_enable == false)
@@ -325,14 +324,23 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
 }
 
 Response RequestRouter::route(const Request& req_, const ServerConfig& config) {
+
+    if (req_.getStatusCode() == BAD_REQUEST) { // if parse error
+        makeErrorResponse(BAD_REQUEST);
+    }
+
     Response response;
+    req_.validateRequest(response);
+
+    if (req_.getValidity() == INVALID_REQUEST) {
+        makeErrorResponse(BAD_REQUEST);
+    }
 
     (void)req_;
     Request req;
     req.setMethod("POST");
     req.setPath("/dir/file.txt");
     req.setHeader(CONTENT_LENGTH, toString(10));
-
     req.setBody("helloWorld");
 
     const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
