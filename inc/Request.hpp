@@ -39,7 +39,8 @@ class Request {
     const std::vector<std::string, std::string>& getHeaders(void) const;
     const std::string                            getHeader(enum requestHeaders) const;
     const std::string&                           getBody(void) const;
-    requestValidity                              getValidity(void);
+    requestValidity                              getValidity(void) const;
+    statusCode                                   getStatusCode(void) const;
 
     // setters
     void setMethod(const std::string&);
@@ -50,12 +51,12 @@ class Request {
     void setHeader(enum requestHeaders, const std::string&);
     void setBody(std::string const&);
     void setValidity(requestValidity);
+    void setStatusCode(statusCode);
 
     friend std::ostream& operator<<(std::ostream&, requestMethod);
     friend std::ostream& operator<<(std::ostream&, requestValidity);
     friend std::ostream& operator<<(std::ostream&, statusCode);
     friend std::ostream& operator<<(std::ostream&, Request&);
-    void                 setStatusCode(statusCode);
     void                 printHeaders(std::ostream&);
 
   private:

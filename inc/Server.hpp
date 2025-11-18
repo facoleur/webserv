@@ -24,16 +24,18 @@
 class Response;
 
 #define MAX_EVENTS 64
-#define TIMEOUT 2000
+#define TIMEOUT 4000
 #define READ_SIZE 8000
 
-
 struct ClientContext {
-  RequestParser       req_parser;
-  std::queue<Request> requests;
-  struct pollfd       pfd;
-  std::string         write_buffer;
-  size_t              server_index; // which server accepted the client
+    ClientContext(void);
+
+    RequestParser       req_parser;
+    std::queue<Request> requests;
+    struct pollfd       pfd;
+    std::string         write_buffer;
+    bool                close_after_responses; // if bad request in the queue, set this to true
+    size_t              server_index;          // which server accepted the client
 };
 
 typedef std::map<int, struct ClientContext> ContextMap;
@@ -49,19 +51,16 @@ class Server {
     Server(const Config& cfg);
     ~Server();
 
-    Response          process_request(Request&);
-    void              new_connection();
-    void              existing_connection();
-    void              run();
-    requestValidity   handle_requests(ClientContext&, struct pollfd&);
-    void              print_request();
-    void              disconnect_client(int&, int&, struct pollfd (&pfds)[MAX_EVENTS], int&, std::map<int, ClientContext>&);
-    void              setPollFd(struct pollfd&, int, short, short);
-    std::vector<int>  initListenerSockets(struct pollfd (&)[MAX_EVENTS], int&);
-    int               handleNewConnection(int, struct pollfd (&)[MAX_EVENTS], int&,
-                                          std::map<int, struct ClientContext>&);
-    void              handleRead(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
-    int               handleResponses(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
-    void              handleClientHangup(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context);
-    void              handlePartialRequest(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context);
+    void new_connection();
+    void existing_connection();
+    void run();
+    void add_bad_request_to_queue(ClientContext& context);
+    void handle_requests(ClientContext&, struct pollfd&);
+    void disconnect_client(int&, int&, struct pollfd (&pfds)[MAX_EVENTS], int&, std::map<int, ClientContext>&);
+    void setPollFd(struct pollfd&, int, short, short);
+    std::vector<int> initListenerSockets(struct pollfd (&)[MAX_EVENTS], int&);
+    int  handleNewConnection(int, struct pollfd (&)[MAX_EVENTS], int&, std::map<int, struct ClientContext>&);
+    void handleRead(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
+    void sendResponses(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
+    void handlePartialRequest(ClientContext&, struct pollfd&);
 };

@@ -38,7 +38,11 @@ const std::string& Request::getProtocolVersion(void) const {
     return _protocolVersion;
 }
 
-// std::vector<std::string, std::string>& Request::getHeaders(void) {
+statusCode Request::getStatusCode(void) const {
+    return _statusCode;
+}
+
+// std::vector<std::string, std::string> Request::getHeaders(void) const {
 //     return _headers;
 // }
 
@@ -55,7 +59,7 @@ const std::string& Request::getBody(void) const {
     return _body;
 }
 
-enum requestValidity Request::getValidity(void) {
+enum requestValidity Request::getValidity(void) const {
     return _validity;
 }
 
@@ -122,6 +126,7 @@ void Request::validateRequest(void) // performs all the necessary checks to set 
     //     return; // ?
     // if (!validateBody())
     //     return; // ?
+    DEBUG_LOG("VALID!");
     _validity = VALID_REQUEST;
 }
 
