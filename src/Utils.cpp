@@ -1,12 +1,23 @@
 // Utils.cpp
 
 #include "Utils.hpp"
+#include <dirent.h>
+#include <fstream>
+#include <string>
+#include <sys/stat.h>
 
 std::string toString(long long n) {
 
     std::stringstream ss;
     ss << n;
     return ss.str();
+}
+
+std::string tolower(const std::string& s) {
+    std::string out = s;
+    for (size_t i = 0; i < out.size(); i++)
+        out[i] = std::tolower(static_cast<unsigned char>(out[i]));
+    return out;
 }
 
 void replace(std::string& str, const std::string& from, const std::string& to) {
@@ -58,4 +69,10 @@ bool isDirectory(const std::string& path) {
     if (stat(path.c_str(), &info) != 0)
         return false;
     return S_ISDIR(info.st_mode);
+}
+
+std::string readFile(const std::ifstream& file) {
+    std::ostringstream content;
+    content << file.rdbuf();
+    return content.str();
 }

@@ -1,5 +1,6 @@
 // RequestRouter.hpp
 
+#include "AutoIndex.hpp"
 #include "Config.hpp"
 #include "Request.hpp"
 #include "Response.hpp"
@@ -9,13 +10,12 @@
 #include <fstream>
 
 class RequestRouter {
-  private:
+  protected:
     bool        resourceExist(const std::string&);
     bool        isMethodAllowed(const Request&, const LocationConfig&);
     bool        isCgiRequest(const std::string&, const LocationConfig&);
-    std::string readFile(const std::ifstream&);
-    Response    handleGet(const Request&, std::string&, const ServerConfig&);
-    Response    handlePost(const Request&, const std::string&);
+    Response    handleGet(const Request&, std::string&, const LocationConfig&);
+    Response    handlePost(const Request&, const std::string&, const LocationConfig&);
     Response    handleDelete(const Request&, const std::string&);
     Response    handleCgi(const Request&, const std::string&, const LocationConfig&);
     Response    makeErrorResponse(enum statusCode);

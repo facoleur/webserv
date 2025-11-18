@@ -26,15 +26,15 @@ enum requestMethod Request::getMethod(void) const {
     return _method;
 }
 
-std::string Request::getPath(void) const {
+const std::string& Request::getPath(void) const {
     return _path;
 }
 
-std::string& Request::getQueryString(void) {
+const std::string& Request::getQueryString(void) const {
     return _queryString;
 }
 
-std::string& Request::getProtocolVersion(void) {
+const std::string& Request::getProtocolVersion(void) const {
     return _protocolVersion;
 }
 
@@ -42,17 +42,16 @@ std::string& Request::getProtocolVersion(void) {
 //     return _headers;
 // }
 
-std::string Request::getHeader(enum requestHeaders headers) const {
+const std::string Request::getHeader(enum requestHeaders headers) const {
     for (std::map<enum requestHeaders, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); ++it) {
         if (headers == (*it).first) {
-            std::string res = (*it).second;
-            return res;
+            return (*it).second;
         }
     }
     return "";
 }
 
-std::string& Request::getBody(void) {
+const std::string& Request::getBody(void) const {
     return _body;
 }
 
@@ -75,6 +74,20 @@ void Request::setPath(std::string const& path) {
     _path = path;
 }
 
+void Request::setHeader(enum requestHeaders key, const std::string& value) {
+    _headers[key] = value;
+}
+
+void Request::setHeaders(const std::map<enum requestHeaders, std::string>& headers) {
+    for (std::map<enum requestHeaders, std::string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
+        setHeader(it->first, it->second);
+    }
+}
+
+void Request::setBody(std::string const& body) {
+    _body = body;
+}
+
 void Request::setQueryString(std::string const& queryString) {
     _queryString = queryString;
 }
@@ -90,9 +103,6 @@ void Request::setValidity(enum requestValidity val) {
 void Request::setStatusCode(enum statusCode val) {
     _statusCode = val;
 }
-
-// void setHeaders(std::vector<std::string, std::string>);
-// void setBody(std::string &);
 
 void Request::validateRequest(void) // performs all the necessary checks to set the _validity
 {

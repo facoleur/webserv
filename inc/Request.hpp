@@ -32,21 +32,22 @@ class Request {
     void printRequest(void) const;
 
     // getters
-    requestMethod                          getMethod(void) const;
-    std::string                            getPath(void) const;
-    std::string&                           getQueryString(void);
-    std::string&                           getProtocolVersion(void);
-    std::vector<std::string, std::string>& getHeaders(void);
-    std::string                            getHeader(enum requestHeaders) const;
-    std::string&                           getBody(void);
-    requestValidity                        getValidity(void);
+    requestMethod                                getMethod(void) const;
+    const std::string&                           getPath(void) const;
+    const std::string&                           getQueryString(void) const;
+    const std::string&                           getProtocolVersion(void) const;
+    const std::vector<std::string, std::string>& getHeaders(void) const;
+    const std::string                            getHeader(enum requestHeaders) const;
+    const std::string&                           getBody(void) const;
+    requestValidity                              getValidity(void);
 
     // setters
     void setMethod(const std::string&);
     void setPath(std::string const&);
     void setQueryString(std::string const&);
     void setProtocolVersion(std::string&);
-    void setHeaders(std::vector<std::string, std::string>);
+    void setHeaders(const std::map<enum requestHeaders, std::string>&);
+    void setHeader(enum requestHeaders, const std::string&);
     void setBody(std::string const&);
     void setValidity(requestValidity);
 
