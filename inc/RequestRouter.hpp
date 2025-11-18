@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <dirent.h>
 #include <fstream>
+#include <sys/types.h>
+#include <unistd.h>
 
 class RequestRouter {
   protected:
@@ -16,8 +18,9 @@ class RequestRouter {
     bool        isCgiRequest(const std::string&, const LocationConfig&);
     Response    handleGet(const Request&, std::string&, const LocationConfig&);
     Response    handlePost(const Request&, const std::string&, const LocationConfig&);
-    Response    handleDelete(const Request&, const std::string&);
+    Response    handleDelete(const Request&, const std::string&, const LocationConfig&);
     Response    handleCgi(const Request&, const std::string&, const LocationConfig&);
+    Response    makeResponse(enum statusCode statusCode);
     Response    makeErrorResponse(enum statusCode);
     Response    makeRedirectResponse(const std::string&);
     void        resolveAbsolutePath(std::string&);

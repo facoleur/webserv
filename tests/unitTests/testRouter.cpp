@@ -22,9 +22,9 @@ struct TestCase {
 void printResult(int i, const TestCase& t, const Response& res, bool ok, const std::string& msg = "") {
     (void)res;
     if (ok)
-        std::cout << "✅";
+        std::cout << "OK";
     else
-        std::cout << "❌" << msg;
+        std::cout << "PAS OK" << msg;
     std::cout << "TEST " << (i + 1) << ": " << t.method << " " << t.path << std::endl;
 }
 

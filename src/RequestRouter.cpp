@@ -121,22 +121,23 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
                 std::ifstream file(indexPath.c_str());
                 if (!file.is_open())
                     // this is wrong, must check if other indexfile can be opened
+                    // TODO: check file until one can be opened @facoleur
                     return makeErrorResponse(NOT_FOUND);
 
-                res.setBody(readFile(file));
+                std::string body = readFile(file);
+                res.setBody(body);
                 res.setHeader(CONTENT_TYPE, getMimeType(indexPath));
+                res.setHeader(CONTENT_LENGTH, toString(body.size()));
                 return res;
             }
         }
 
-        std::cout << config.root << std::endl;
-        std::cout << config.path << std::endl;
-
         if (config.autoindex) {
             return makeAutoindexResponse(path);
+        } else {
+            std::cout << "h!ere" << std::endl;
+            return makeErrorResponse(FORBIDDEN);
         }
-
-        return makeErrorResponse(FORBIDDEN);
     }
 
     if (!resourceExist(path))
@@ -173,11 +174,24 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
     return res;
 }
 
-Response RequestRouter::handleDelete(const Request& req, const std::string& path) {
+Response RequestRouter::handleDelete(const Request& req, const std::string& path, const LocationConfig& config) {
+    // if dir -> 403 (design choice, otherwise we must delete recursively dir entries)
     (void)req;
-    (void)path;
-    Response res;
-    return res;
+    (void)config;
+
+    if (isDirectory(path)) {
+        return makeErrorResponse(FORBIDDEN);
+    }
+
+    if (access(path.c_str(), W_OK)) {
+        return makeErrorResponse(FORBIDDEN);
+    }
+
+    if (std::remove(path.c_str()) != 0) {
+        return makeResponse(INTERNAL_SERVER_ERROR);
+    }
+
+    return makeResponse(NO_CONTENT);
 }
 
 Response RequestRouter::handleCgi(const Request& req, const std::string& path, const LocationConfig& config) {
@@ -185,6 +199,13 @@ Response RequestRouter::handleCgi(const Request& req, const std::string& path, c
     (void)path;
     (void)config;
     Response res;
+    return res;
+}
+
+Response RequestRouter::makeResponse(enum statusCode statusCode) {
+    Response res;
+    res.setStatusCode(statusCode);
+
     return res;
 }
 
@@ -303,8 +324,8 @@ Response RequestRouter::route(const Request& req_, const ServerConfig& config) {
 
     (void)req_;
     Request req;
-    req.setMethod("GET");
-    req.setPath("/dir/");
+    req.setMethod("DELETE");
+    req.setPath("/dir/img.png");
 
     const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
     const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig);
@@ -313,7 +334,16 @@ Response RequestRouter::route(const Request& req_, const ServerConfig& config) {
         return makeRedirectResponse(resolvedConfig.redirect.target);
     }
 
-    std::string fullPath = resolvePath(req, resolvedConfig.root);
+    std::string fullPath;
+    try {
+        fullPath = resolvePath(req, resolvedConfig.root);
+
+        std::cout << "fullPath: " << fullPath << std::endl;
+        std::cout << "resolvedConfig.root: " << resolvedConfig.root << std::endl;
+        std::cout << "req.path: " << req.getPath() << std::endl;
+    } catch (std::exception&) {
+        return makeErrorResponse(BAD_REQUEST);
+    }
 
     if (!resourceExist(fullPath)) {
         return makeErrorResponse(NOT_FOUND);
@@ -332,7 +362,7 @@ Response RequestRouter::route(const Request& req_, const ServerConfig& config) {
         case POST:
             return handlePost(req, fullPath, resolvedConfig);
         case DELETE:
-            return handleDelete(req, fullPath);
+            return handleDelete(req, fullPath, resolvedConfig);
         default:
             return makeErrorResponse(BAD_REQUEST);
     }
