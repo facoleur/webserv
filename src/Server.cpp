@@ -269,6 +269,7 @@ requestValidity Server::handle_requests(ClientContext& context, struct pollfd& p
         const ServerConfig& config = _cfg.getServers()[context.server_index];
 
         Response res = router.route(req, config);
+        
         context.write_buffer.append(res.serialize());
         context.requests.pop();
     }

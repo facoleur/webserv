@@ -12,7 +12,12 @@ std::string toString(long long n) {
     ss << n;
     return ss.str();
 }
-
+size_t toSizet(const std::string& s) {
+    size_t n = 0;
+    for (size_t i = 0; i < s.size(); i++)
+        n = n * 10 + (s[i] - '0');
+    return n;
+}
 std::string tolower(const std::string& s) {
     std::string out = s;
     for (size_t i = 0; i < out.size(); i++)
@@ -75,4 +80,22 @@ std::string readFile(const std::ifstream& file) {
     std::ostringstream content;
     content << file.rdbuf();
     return content.str();
+}
+
+std::string getParentDir(const std::string& path) {
+    if (path.empty())
+        return "";
+
+    std::string trimmed = path;
+    while (!trimmed.empty() && trimmed[trimmed.size() - 1] == '/')
+        trimmed.erase(trimmed.size() - 1);
+
+    std::string::size_type pos = trimmed.rfind('/');
+    if (pos == std::string::npos)
+        return "";
+
+    if (pos == 0)
+        return "/";
+
+    return trimmed.substr(0, pos);
 }

@@ -13,7 +13,7 @@
 
 class RequestRouter {
   protected:
-    bool        resourceExist(const std::string&);
+    bool        resourceExist(const std::string&, const Request&);
     bool        isMethodAllowed(const Request&, const LocationConfig&);
     bool        isCgiRequest(const std::string&, const LocationConfig&);
     Response    handleGet(const Request&, std::string&, const LocationConfig&);

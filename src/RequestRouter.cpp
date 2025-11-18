@@ -9,10 +9,15 @@ RequestRouter::~RequestRouter() {
 
 #include <string>
 
-bool RequestRouter::resourceExist(const std::string& path) {
+bool RequestRouter::resourceExist(const std::string& path, const Request& req) {
+
+    std::string adaptedPath = path;
+    if (req.getMethod() == POST) {
+        adaptedPath = getParentDir(path);
+    }
 
     struct stat info;
-    return (stat(path.c_str(), &info) == 0);
+    return (stat(adaptedPath.c_str(), &info) == 0);
 }
 
 bool RequestRouter::isMethodAllowed(const Request& req, const LocationConfig& config) {
@@ -117,7 +122,7 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
 
         for (size_t i = 0; i < config.index_files.size(); ++i) {
             std::string indexPath = path + config.index_files[i];
-            if (resourceExist(indexPath)) {
+            if (resourceExist(indexPath, req)) {
                 std::ifstream file(indexPath.c_str());
                 if (!file.is_open())
                     // this is wrong, must check if other indexfile can be opened
@@ -140,7 +145,7 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
         }
     }
 
-    if (!resourceExist(path))
+    if (!resourceExist(path, req))
         return makeErrorResponse(NOT_FOUND);
 
     std::ifstream file(path.c_str());
@@ -154,6 +159,13 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
 
 Response RequestRouter::handlePost(const Request& req, const std::string& path, const LocationConfig& config) {
 
+    if (req.getBody().size() != toSizet(req.getHeader(CONTENT_LENGTH)))
+        return makeErrorResponse(BAD_REQUEST);
+
+    if (toSizet(req.getHeader(CONTENT_LENGTH)) > config.client_max_body_size) {
+        return makeErrorResponse(PAYLOAD_TOO_LARGE);
+    }
+
     if (config.upload_enable == false)
         return makeErrorResponse(FORBIDDEN);
 
@@ -164,13 +176,24 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
 
     std::string uploadPath = basename;
     if (!config.upload_store.empty())
-        uploadPath = config.upload_store + "/" + basename;
+        uploadPath = config.root + config.path + config.upload_store + "/" + basename;
+
+    while (uploadPath.find("//") != std::string::npos) {
+        replace(uploadPath, "//", "/");
+    }
 
     std::ofstream out(uploadPath.c_str(), std::ios::binary);
+    if (!out.is_open()) {
+        return makeErrorResponse(INTERNAL_SERVER_ERROR);
+    }
 
     out.write(req.getBody().c_str(), req.getBody().size());
 
+    std::cout << "uploadPath: " << uploadPath << std::endl;
+
     Response res;
+    res.setHeader(LOCATION, uploadPath);
+    res.setStatusCode(OK);
     return res;
 }
 
@@ -215,24 +238,6 @@ Response RequestRouter::makeErrorResponse(enum statusCode statusCode) {
     res.setStatusCode(statusCode);
 
     return res;
-}
-
-std::string getParentDir(const std::string& path) {
-    if (path.empty())
-        return "";
-
-    std::string trimmed = path;
-    while (!trimmed.empty() && trimmed[trimmed.size() - 1] == '/')
-        trimmed.erase(trimmed.size() - 1);
-
-    std::string::size_type pos = trimmed.rfind('/');
-    if (pos == std::string::npos)
-        return "";
-
-    if (pos == 0)
-        return "/";
-
-    return trimmed.substr(0, pos);
 }
 
 Response RequestRouter::makeAutoindexResponse(const std::string& path) {
@@ -324,8 +329,11 @@ Response RequestRouter::route(const Request& req_, const ServerConfig& config) {
 
     (void)req_;
     Request req;
-    req.setMethod("DELETE");
-    req.setPath("/dir/img.png");
+    req.setMethod("POST");
+    req.setPath("/dir/file.txt");
+    req.setHeader(CONTENT_LENGTH, toString(10));
+
+    req.setBody("helloWorld");
 
     const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
     const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig);
@@ -337,15 +345,11 @@ Response RequestRouter::route(const Request& req_, const ServerConfig& config) {
     std::string fullPath;
     try {
         fullPath = resolvePath(req, resolvedConfig.root);
-
-        std::cout << "fullPath: " << fullPath << std::endl;
-        std::cout << "resolvedConfig.root: " << resolvedConfig.root << std::endl;
-        std::cout << "req.path: " << req.getPath() << std::endl;
     } catch (std::exception&) {
         return makeErrorResponse(BAD_REQUEST);
     }
 
-    if (!resourceExist(fullPath)) {
+    if (!resourceExist(fullPath, req)) {
         return makeErrorResponse(NOT_FOUND);
     }
 

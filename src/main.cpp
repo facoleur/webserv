@@ -21,6 +21,7 @@ int main(int argc, char const* argv[]) {
 
     Server serv(cfg);
     serv.run();
+
     return 0;
 }
 
