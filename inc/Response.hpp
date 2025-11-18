@@ -10,6 +10,9 @@
 #include "Utils.hpp"
 #include "Webserv.hpp"
 
+enum requestHeaders;
+enum statusCode;
+
 class Headers {
   private:
     static std::map<enum requestHeaders, std::string> _headersString;
@@ -39,10 +42,12 @@ class ReasonPhrase {
         switch (code) {
             case 200:
                 return "OK";
+            case 201:
+                return "Created";
             case 202:
                 return "Accepted";
             case 204:
-                return "Accepted";
+                return "No Content";
             case 301:
                 return "Redirect";
             case 400:
@@ -53,6 +58,10 @@ class ReasonPhrase {
                 return "Not Found";
             case 405:
                 return "Method Not Allowed";
+            case 411:
+                return "Length Required";
+            case 413:
+                return "Payload Too Large";
             case 500:
                 return "Server Error";
             case 501:
@@ -78,15 +87,15 @@ class Response {
     Response(enum statusCode statusCode);
     ~Response();
 
-    void setStatusCode(enum statusCode);
-    void setHeader(enum requestHeaders, const std::string&);
-    void setHeaders(const std::map<enum requestHeaders, std::string>&);
-    void setBody(const std::string&);
-
+    void                                              setStatusCode(enum statusCode);
+    void                                              setHeader(enum requestHeaders, const std::string&);
+    void                                              setHeaders(const std::map<enum requestHeaders, std::string>&);
+    void                                              setBody(const std::string&);
     enum statusCode                                   getStatusCode() const;
     const std::string&                                getHeader(enum requestHeaders) const;
     const std::map<enum requestHeaders, std::string>& getHeaders() const;
     const std::string&                                getBody() const;
+    bool                                              isError();
 
     std::string& serialize();
 };

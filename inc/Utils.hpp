@@ -1,10 +1,9 @@
-#include "Server.hpp"
 #include <iostream>
 #include <sstream>
 #include <sys/stat.h>
 #include <vector>
 
-std::ostream& operator<<(std::ostream& os, struct pollfd pfd);
+std::ostream&            operator<<(std::ostream& os, struct pollfd pfd);
 std::string              toString(long long n);
 size_t                   toSizet(const std::string& s);
 std::string              tolower(const std::string& s);

@@ -5,6 +5,7 @@
 #include "Request.hpp"
 #include "Response.hpp"
 #include "Utils.hpp"
+#include "Webserv.hpp"
 #include <algorithm>
 #include <dirent.h>
 #include <fstream>
@@ -31,6 +32,6 @@ class RequestRouter {
     RequestRouter();
     ~RequestRouter();
 
-    std::string resolvePath(const Request&, const std::string&);
+    std::string resolvePath(const Request&, const std::string&, const std::string&);
     Response    route(const Request&, const ServerConfig&);
 };

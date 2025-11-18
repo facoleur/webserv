@@ -2,18 +2,6 @@
 
 #pragma once
 
-#include <cstring>
-#include <fcntl.h>
-#include <netinet/in.h>
-#include <poll.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
-#include <iostream>
-#include <map>
-#include <queue>
-#include <vector>
-
 #include "Config.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
@@ -42,7 +30,7 @@ typedef std::map<int, struct ClientContext> ContextMap;
 
 class Server {
   private:
-    const Config          _cfg; // not owning pointer
+    Config                _config;
     struct ClientContext  _state;
     std::map<int, size_t> _listenerToServerIdx; // listen fd -> server index
 

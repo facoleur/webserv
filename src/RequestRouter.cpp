@@ -1,23 +1,17 @@
 // RequestRouter.cpp
 
 #include "RequestRouter.hpp"
+#include <ctime>
 
 RequestRouter::RequestRouter() {
 }
 RequestRouter::~RequestRouter() {
 }
 
-#include <string>
-
 bool RequestRouter::resourceExist(const std::string& path, const Request& req) {
-
-    std::string adaptedPath = path;
-    if (req.getMethod() == POST) {
-        adaptedPath = getParentDir(path);
-    }
-
+    (void)req;
     struct stat info;
-    return (stat(adaptedPath.c_str(), &info) == 0);
+    return (stat(path.c_str(), &info) == 0);
 }
 
 bool RequestRouter::isMethodAllowed(const Request& req, const LocationConfig& config) {
@@ -46,15 +40,19 @@ void RequestRouter::resolveAbsolutePath(std::string& path) {
     path.erase(0, pos);
 }
 
-std::string RequestRouter::resolvePath(const Request& req, const std::string& root) {
+std::string RequestRouter::resolvePath(const Request& req, const std::string& root, const std::string& location) {
     (void)req;
     std::string path = req.getPath();
+    // std::cout << "path: " << path << std::endl;
+    // std::cout << "location: " << location << std::endl;
 
-    if (startsWith(path, "http://"))
-        resolveAbsolutePath(path);
-    else if (!startsWith(path, "/")) {
-        throw std::runtime_error("Relative path doesn't start with /");
-    }
+    path = "/" + path.substr(location.size());
+
+    // if (startsWith(path, "http://"))
+    //     resolveAbsolutePath(path);
+    // else if (!startsWith(path, "/")) {
+    //     throw std::runtime_error("Relative path doesn't start with /");
+    // }
 
     if (path.empty())
         path = "/";
@@ -140,7 +138,7 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
         if (config.autoindex) {
             return makeAutoindexResponse(path);
         } else {
-            std::cout << "h!ere" << std::endl;
+            // std::cout << "forbidden here!" << std::endl;
             return makeErrorResponse(FORBIDDEN);
         }
     }
@@ -157,42 +155,55 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
     return res;
 }
 
+std::string generateUploadName() {
+    std::ostringstream oss;
+    oss << "upload_" << std::time(0);
+    return oss.str();
+}
+
 Response RequestRouter::handlePost(const Request& req, const std::string& path, const LocationConfig& config) {
-    if (req.getBody().size() != toSizet(req.getHeader(CONTENT_LENGTH)))
-        return makeErrorResponse(BAD_REQUEST);
+    // std::cout << "body: " << req.getBody() << std::endl;
+    // std::cout << "body.size(): " << req.getBody().size() << std::endl;
+    // std::cout << "config.path: " << config.path << std::endl;
 
     if (toSizet(req.getHeader(CONTENT_LENGTH)) > config.client_max_body_size) {
         return makeErrorResponse(CONTENT_TOO_LARGE);
     }
 
-    if (config.upload_enable == false)
+    if (config.upload_enable == false) {
+
+        // std::cout << "ici" << std::endl;
         return makeErrorResponse(FORBIDDEN);
+    }
 
     std::string basename = path;
     size_t      pos      = path.find_last_of('/');
     if (pos != std::string::npos)
         basename = path.substr(pos + 1);
 
-    std::string uploadPath = basename;
+    std::string uploadPath;
+    std::string filename = generateUploadName();
     if (!config.upload_store.empty())
-        uploadPath = config.root + config.path + config.upload_store + "/" + basename;
+        uploadPath = config.root + config.upload_store + "/" + filename;
 
     while (uploadPath.find("//") != std::string::npos) {
         replace(uploadPath, "//", "/");
     }
 
+    // std::cout << "uploadPath: " << uploadPath << std::endl;
     std::ofstream out(uploadPath.c_str(), std::ios::binary);
     if (!out.is_open()) {
+        // std::cout << "500 ici" << std::endl;
         return makeErrorResponse(INTERNAL_SERVER_ERROR);
     }
 
     out.write(req.getBody().c_str(), req.getBody().size());
 
-    std::cout << "uploadPath: " << uploadPath << std::endl;
+    // std::cout << "uploadPath: " << uploadPath << std::endl;
 
     Response res;
     res.setHeader(LOCATION, uploadPath);
-    res.setStatusCode(OK);
+    res.setStatusCode(CREATED);
     return res;
 }
 
@@ -285,6 +296,7 @@ const LocationConfig* findLocationConfig(const std::string& path, const ServerCo
     for (std::vector<LocationConfig>::const_iterator it = config.locations.begin(); it != config.locations.end();
          ++it) {
         if (path.compare(0, it->path.size(), it->path) == 0 && it->path.size() > bestLen) {
+
             best    = &(*it);
             bestLen = it->path.size();
         }
@@ -292,12 +304,15 @@ const LocationConfig* findLocationConfig(const std::string& path, const ServerCo
     return best;
 }
 
-const LocationConfig resolveConfig(const ServerConfig& server, const LocationConfig* location) {
+const LocationConfig resolveConfig(const ServerConfig& server, const LocationConfig* location,
+                                   std::string& locationPath) {
 
     LocationConfig resolved;
 
-    if (location)
-        resolved = *location;
+    if (location) {
+        locationPath = location->path;
+        resolved     = *location;
+    }
 
     if (resolved.methods.empty()) {
         resolved.methods = server.methods;
@@ -330,34 +345,46 @@ Response RequestRouter::route(const Request& req_, const ServerConfig& config) {
     }
 
     Response response;
-    req_.validateRequest(response);
+
+    if (req_.validateRequest(response) == INVALID_REQUEST)
+        return response;
 
     if (req_.getValidity() == INVALID_REQUEST) {
         makeErrorResponse(BAD_REQUEST);
     }
 
     (void)req_;
-    Request req;
-    req.setMethod("POST");
-    req.setPath("/dir/file.txt");
-    req.setHeader(CONTENT_LENGTH, toString(10));
-    req.setBody("helloWorld");
+    Request req = req_;
+    // req.setMethod("POST");
+    // req.setPath("/dir/file.txt");
+    // req.setHeader(CONTENT_LENGTH, toString(10));
+    // req.setBody("helloWorld");
+
+    // std::cout << "actual path req: " << req.getPath() << std::endl;
 
     const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
-    const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig);
+
+    std::string           locationPath;
+    const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig, locationPath);
+
+    // std::cout << "resolved up store: " << resolvedConfig.upload_store << std::endl;
 
     if (resolvedConfig.redirect.status) {
         return makeRedirectResponse(resolvedConfig.redirect.target);
     }
 
-    std::string fullPath;
+    std::string resolvedPath;
+
     try {
-        fullPath = resolvePath(req, resolvedConfig.root);
+        resolvedPath = resolvePath(req, resolvedConfig.root, locationPath);
     } catch (std::exception&) {
         return makeErrorResponse(BAD_REQUEST);
     }
 
-    if (!resourceExist(fullPath, req)) {
+    // std::cout << "resolvedPath: " << resolvedPath << std::endl;
+
+    if (!resourceExist(resolvedPath, req)) {
+        // std::cout << "404 here" << std::endl;
         return makeErrorResponse(NOT_FOUND);
     }
 
@@ -365,16 +392,16 @@ Response RequestRouter::route(const Request& req_, const ServerConfig& config) {
         return makeErrorResponse(NOT_ALLOWED);
     }
 
-    if (isCgiRequest(fullPath, resolvedConfig))
-        return handleCgi(req, fullPath, resolvedConfig);
+    if (isCgiRequest(resolvedPath, resolvedConfig))
+        return handleCgi(req, resolvedPath, resolvedConfig);
 
     switch (req.getMethod()) {
         case GET:
-            return handleGet(req, fullPath, resolvedConfig);
+            return handleGet(req, resolvedPath, resolvedConfig);
         case POST:
-            return handlePost(req, fullPath, resolvedConfig);
+            return handlePost(req, resolvedPath, resolvedConfig);
         case DELETE:
-            return handleDelete(req, fullPath, resolvedConfig);
+            return handleDelete(req, resolvedPath, resolvedConfig);
         default:
             return makeErrorResponse(BAD_REQUEST);
     }

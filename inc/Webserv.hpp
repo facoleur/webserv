@@ -3,15 +3,28 @@
 
 #pragma once
 
+#include <cstring>
 #include <errno.h>
+#include <fcntl.h>
 #include <iostream>
+#include <map>
+#include <netinet/in.h>
+#include <poll.h>
+#include <queue>
 #include <string>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <vector>
+
+enum requestMethod { GET, POST, DELETE, UNKNOWN };
+enum requestHeaders { HOST, CONTENT_LENGTH, LOCATION, TRANSFER_ENCODING, CONTENT_TYPE, CONNECTION, ACCEPT };
 
 enum statusCode {
     NO_STATUS = 0,
 
     // Success
     OK         = 200,
+    CREATED    = 201,
     ACCEPTED   = 202,
     NO_CONTENT = 204,
 

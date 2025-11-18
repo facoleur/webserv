@@ -68,3 +68,7 @@ const std::string& Response::getHeader(enum requestHeaders header) const {
 const std::string& Response::getBody() const {
     return _body;
 }
+
+bool Response::isError() {
+    return _statusCode >= 400;
+}
