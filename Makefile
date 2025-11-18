@@ -1,65 +1,54 @@
-.PHONY: all clean fclean re leaks debug conftest
-.PHONY: all clean fclean re leaks debug conftest
+.PHONY: all clean fclean re leaks debug conftest tests
 
-NAME = webserv
-CC = c++
-CCFLAGS = -Wall -Werror -Wextra -std=c++98 -MMD -MP
+MAKEFLAGS += --no-builtin-rules
 
-RM = rm -rf
-MKDIR = mkdir -p
+NAME := webserv
+CC := c++
+CCFLAGS := -Wall -Werror -Wextra -std=c++98
 
-NAME = webserv
+RM := rm -rf
+MKDIR := mkdir -p
 
+SRC_DIR := src
+INC_DIR := inc
+OBJ_DIR := bin
 
-SOURCE_FILES = main Server Request RequestParser RequestUtils Utils ConfigParser Response RequestRouter Config
+SRCS := main.cpp ConfigFile.cpp Config.cpp ConfigParser.cpp Request.cpp RequestParser.cpp \
+        RequestRouter.cpp RequestUtils.cpp Response.cpp Server.cpp Utils.cpp
+HEADERS := ConfigFile.hpp Config.hpp ConfigParser.hpp Request.hpp RequestParser.hpp \
+           RequestRouter.hpp Response.hpp Server.hpp Utils.hpp Webserv.hpp
 
-HEADERS = Config.hpp ConfigParser.hpp Request.hpp RequestParser.hpp Server.hpp Webserv.hpp utils.hpp Response.hpp RequestRouter.hpp
+OBJS := $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(notdir $(SRCS)))
 
-OBJ_DIR = build/
-SRC_DIR = src/
-INC_DIR = inc/
-
-SRCS = $(addprefix $(SRC_DIR), $(addsuffix .cpp, $(SOURCE_FILES)))
-OBJS = $(addprefix $(OBJ_DIR), $(addsuffix .o, $(SOURCE_FILES)))
-DEPS = $(OBJS:.o=.d)
-
+# Colors
 DEF_COLOR = \033[0;39m
 GRAY = \033[0;90m
 RED = \033[0;91m
 GREEN = \033[0;92m
 YELLOW = \033[0;93m
 BLUE = \033[0;94m
-MAGENTA = \033[0;95m
-CYAN = \033[0;96m
-WHITE = \033[0;97m
 
-all: $(OBJ_DIR) $(NAME)
+all: $(NAME)
 
 $(NAME): $(OBJS)
-	@echo "Creating $@"
-	@$(CC) $(CCFLAGS) -I$(INC_DIR) $(OBJS) -o $(NAME)
-	@echo "$(GREEN)The Makefile of $(NAME) has been compied!$(DEF_COLOR)"
-	@echo "$(YELLOW)Use this command in the folder root: ./$(NAME) to start\n$(DEF_COLOR)"
+	@echo "$(YELLOW)Linking $(NAME)...$(DEF_COLOR)"
+	@$(CC) $(CCFLAGS) $(OBJS) -o $(NAME)
+	@echo "$(GREEN)Build complete. Run ./$(NAME)$(DEF_COLOR)"
 
-$(OBJ_DIR):
-	@echo "Creating $(NAME) build directory"
-	mkdir -p $(OBJ_DIR)
-
-$(OBJ_DIR)%.o: $(SRC_DIR)%.cpp
-	@echo "Creating ./$@"
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(addprefix $(INC_DIR)/,$(HEADERS))
+	@$(MKDIR) $(OBJ_DIR)
+	@echo "$(GRAY)Compiling $<$(DEF_COLOR)"
 	@$(CC) $(CCFLAGS) -I$(INC_DIR) -c $< -o $@
 
 clean:
-	@echo "Cleaning up $(NAME)"
+	@echo "$(BLUE)Cleaning object files...$(DEF_COLOR)"
 	@$(RM) $(OBJ_DIR)
-	@echo "$(BLUE)$(NAME) Object files cleaned!$(DEF_COLOR)"
 
 fclean: clean
+	@echo "$(BLUE)Cleaning binary...$(DEF_COLOR)"
 	@$(RM) $(NAME)
-	@echo "$(BLUE)$(NAME) Executable files cleaned!$(DEF_COLOR)\n"
 
 re: fclean all
-	@echo "$(BLUE)$(NAME) Cleaned and re-compiled everything!$(DEF_COLOR)"
 
 leaks:
 	@leaks -atExit -- ./$(NAME)
@@ -67,29 +56,19 @@ leaks:
 debug: CCFLAGS += -DDEBUG_MODE
 debug: re
 
+# Config parser tests
 CONF_DIR := ./config
 CONF_FILES ?=
 CONF_FILTER ?= *.conf
-CONF_NEGFILTER ?= *.conf
 PARSER_BIN := ./webserv
-VERBOSE = 1
+VERBOSE := 1
 TEST_DIR := ./tests
 TEST_CONF_FILE := run_config_parser_tests.sh
 
 conftest:
 	@CONF_DIR="$(CONF_DIR)" CONF_FILES="$(CONF_FILES)" PARSER_BIN="$(PARSER_BIN)" VERBOSE="$(VERBOSE)" \
-		CONF_FILTER="$(CONF_FILTER)" CONF_NEGFILTER="$(CONF_NEGFILTER)" \
-		$(TEST_DIR)/$(TEST_CONF_FILE)
+	CONF_FILTER="$(CONF_FILTER)" CONF_NEGFILTER="$(CONF_NEGFILTER)" \
+	$(TEST_DIR)/$(TEST_CONF_FILE)
 
-
--include $(DEPS)
-
-# Usage:
-#   make test CONF_FILTER=default.conf
-#   make test CONF_FILES="./conf/default.conf ./conf/basic.conf"
-# Run all positives + built-in negative checks:
-# make conftest
-# Only test specific negative files (skip positives):
-# make conftest CONF_NEGFILTER='invalid_*.conf'
-# Combine with a positive filter:
-# make conftest CONF_FILTER='*.conf' CONF_NEGFILTER='missing_*.conf'
+# Include unit test rules
+include tests.mk

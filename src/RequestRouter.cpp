@@ -7,78 +7,291 @@ RequestRouter::RequestRouter() {
 RequestRouter::~RequestRouter() {
 }
 
-bool RequestRouter::resource_exist(const std::string& path) {
-    (void)path;
-    return true;
+#include <string>
+
+bool RequestRouter::resourceExist(const std::string& path) {
+
+    struct stat info;
+    return (stat(path.c_str(), &info) == 0);
 }
 
-bool RequestRouter::is_method_allowed(const Request& req) {
+bool RequestRouter::isMethodAllowed(const Request& req, const LocationConfig& config) {
+    for (std::set<enum requestMethod>::const_iterator it = config.methods.begin(); it != config.methods.end(); ++it) {
+    }
+
+    return (config.methods.find(req.getMethod()) != config.methods.end());
+}
+
+bool RequestRouter::isCgiRequest(const std::string& path, const LocationConfig& config) {
+
+    const std::map<std::string, std::string>& cgi_ext = config.cgi_map;
+
+    for (std::map<std::string, std::string>::const_iterator it = cgi_ext.begin(); it != cgi_ext.end(); ++it) {
+        if (endsWith(path, "." + (*it).first))
+            return true;
+    }
+    return false;
+}
+
+void RequestRouter::resolveAbsolutePath(std::string& path) {
+    std::string::size_type pos = path.find("http://");
+    path.erase(pos, 7);
+
+    pos = path.find("/");
+    path.erase(0, pos);
+}
+
+std::string RequestRouter::resolvePath(const Request& req, const std::string& root) {
     (void)req;
-    return true;
+    std::string path = req.getPath();
+
+    if (startsWith(path, "http://"))
+        resolveAbsolutePath(path);
+    else if (!startsWith(path, "/")) {
+        throw std::runtime_error("Relative path doesn't start with /");
+    }
+
+    if (path.empty())
+        path = "/";
+
+    if (path.find("%") != std::string::npos || path.find("=") != std::string::npos ||
+        path.find("../") != std::string::npos || path.find("./") != std::string::npos ||
+        path.find("=") != std::string::npos || path.find("&") != std::string::npos)
+        throw std::runtime_error("Not accepted in path");
+
+    replace(path, "//", "/");
+
+    std::string fullPath = root;
+
+    fullPath.append(path);
+
+    while (fullPath.find("//") != std::string::npos) {
+        replace(fullPath, "//", "/");
+    }
+
+    if (fullPath[0] == '/')
+        fullPath.erase(fullPath.begin());
+
+    return fullPath;
 }
 
-bool RequestRouter::is_cgi_request(const std::string& path) {
+std::string RequestRouter::readFile(const std::ifstream& file) {
+    std::ostringstream content;
+    content << file.rdbuf();
+    return content.str();
+}
+
+std::string RequestRouter::getMimeType(const std::string& path) {
     (void)path;
-    return true;
+    return std::string();
 }
 
-std::string RequestRouter::resolvePath(const Request& req) {
+Response RequestRouter::handleGet(const Request& req, std::string& path, const ServerConfig& config) {
     (void)req;
-    return "path";
+    Response res;
+
+    if (isDirectory(path)) {
+
+        if (!path.empty() && path[path.size() - 1] != '/') {
+            res.setStatusCode(REDIRECT);
+            res.setHeader(LOCATION, path + "/");
+            return res;
+        }
+
+        for (size_t i = 0; i < config.index_files.size(); ++i) {
+            std::string indexPath = path + config.index_files[i];
+            if (resourceExist(indexPath)) {
+                std::ifstream file(indexPath.c_str());
+                if (!file.is_open())
+                    return makeErrorResponse(NOT_FOUND);
+
+                res.setBody(readFile(file));
+                res.setHeader(CONTENT_TYPE, getMimeType(indexPath));
+                return res;
+            }
+        }
+
+        if (config.autoindex)
+            return makeAutoindexResponse(path);
+        else
+            return makeErrorResponse(FORBIDDEN);
+    }
+
+    if (!resourceExist(path))
+        return makeErrorResponse(NOT_FOUND);
+
+    std::ifstream file(path.c_str());
+    if (!file.is_open())
+        return makeErrorResponse(NOT_FOUND);
+
+    res.setBody(readFile(file));
+    res.setHeader(CONTENT_TYPE, getMimeType(path));
+    return res;
 }
 
-Response RequestRouter::handle_get(const Request& req, const std::string& path) {
+Response RequestRouter::handlePost(const Request& req, const std::string& path) {
     (void)req;
     (void)path;
     Response res;
     return res;
 }
-Response RequestRouter::handle_post(const Request& req, const std::string& path) {
+Response RequestRouter::handleDelete(const Request& req, const std::string& path) {
     (void)req;
     (void)path;
     Response res;
     return res;
 }
-Response RequestRouter::handle_delete(const Request& req, const std::string& path) {
-    (void)req;
-    (void)path;
-    Response res;
-    return res;
-}
-Response RequestRouter::handle_cgi(const Request& req, const std::string& path) {
+Response RequestRouter::handleCgi(const Request& req, const std::string& path, const LocationConfig &config) {
     (void)req;
     (void)path;
     Response res;
     return res;
 }
 
-Response RequestRouter::make_error_response(int status_code) {
-    (void)status_code;
+Response RequestRouter::makeErrorResponse(enum statusCode statusCode) {
     Response res;
+
+    res.setStatusCode(statusCode);
+
     return res;
 }
 
-Response RequestRouter::route(const Request& req) {
-    Response    response;
-    std::string fullPath = resolvePath(req);
+std::string getParentDir(const std::string& path) {
+    if (path.empty())
+        return "";
 
-    if (!resource_exist(fullPath))
-        return make_error_response(404);
+    std::string trimmed = path;
+    while (!trimmed.empty() && trimmed[trimmed.size() - 1] == '/')
+        trimmed.erase(trimmed.size() - 1);
 
-    if (!is_method_allowed(req))
-        return make_error_response(405);
+    std::string::size_type pos = trimmed.rfind('/');
+    if (pos == std::string::npos)
+        return "";
 
-    if (is_cgi_request(fullPath))
-        return handle_cgi(req, fullPath);
+    if (pos == 0)
+        return "/";
+
+    return trimmed.substr(0, pos);
+}
+
+Response RequestRouter::makeAutoindexResponse(const std::string& path) {
+    DIR* dirstream = opendir(path.c_str());
+
+    std::vector<std::string> files;
+    while (dirent* dir = readdir(dirstream)) {
+        if (std::string(dir->d_name) == "." || std::string(dir->d_name) == "..")
+            continue;
+        files.push_back(dir->d_name);
+    }
+
+    std::string aStart = "<a href=\"";
+    std::string aMid   = "\"/>";
+    std::string aEnd   = "</a><br/>";
+
+    std::string title = "<h1>Index of " + path + "</h1>";
+
+    std::string html = "<!DOCTYPE html><html><body>";
+
+    html += title;
+
+    html += aStart + getParentDir(path) + aMid + "../" + aEnd;
+
+    for (uint i = 0; i < files.size(); ++i) {
+        std::string fullpath = "/" + path + "/" + files[i];
+        html += aStart + fullpath + aMid + files[i] + aEnd;
+    }
+    html += "</body></html>";
+
+    Response res;
+    res.setStatusCode(OK);
+    res.setHeader(CONTENT_LENGTH, toString(html.size()));
+    res.setBody(html);
+
+    std::cout << html << std::endl;
+
+    return res;
+}
+
+const LocationConfig* findLocationConfig(const std::string& path, const ServerConfig& config) {
+    const LocationConfig* best    = NULL;
+    size_t                bestLen = 0;
+    for (std::vector<LocationConfig>::const_iterator it = config.locations.begin(); it != config.locations.end();
+         ++it) {
+        if (path.compare(0, it->path.size(), it->path) == 0 && it->path.size() > bestLen) {
+            best    = &(*it);
+            bestLen = it->path.size();
+        }
+    }
+    return best;
+}
+
+const LocationConfig resolveConfig(const ServerConfig& server, const LocationConfig* location) {
+
+    LocationConfig resolved;
+
+    if (location)
+        resolved = *location;
+
+    if (resolved.methods.empty()) {
+        resolved.methods = server.methods;
+    }
+    if (resolved.root.empty()) {
+        resolved.root = server.root;
+    }
+    if (resolved.index_files.empty()) {
+        resolved.index_files = server.index_files;
+    }
+    if (resolved.cgi_map.empty()) {
+        resolved.cgi_map = server.cgi_map;
+    }
+
+    return resolved;
+}
+
+Response RequestRouter::makeRedirectResponse(const std::string& location) {
+    Response res;
+    res.setStatusCode(REDIRECT);
+    res.setHeader(LOCATION, location);
+    res.setBody("");
+    return res;
+}
+
+Response RequestRouter::route(const Request& req_, const ServerConfig& config) {
+    Response response;
+
+    (void)req_;
+    Request req;
+    req.setMethod("GET");
+    req.setPath("/dir/");
+
+    const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
+    const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig);
+
+    if (resolvedConfig.redirect.status) {
+        return makeRedirectResponse(resolvedConfig.redirect.target);
+    }
+
+    std::string fullPath = resolvePath(req, resolvedConfig.root);
+
+    if (!resourceExist(fullPath)) {
+        return makeErrorResponse(NOT_FOUND);
+    }
+
+    if (!isMethodAllowed(req, resolvedConfig)) {
+        return makeErrorResponse(NOT_ALLOWED);
+    }
+
+    if (isCgiRequest(fullPath, resolvedConfig))
+        return handleCgi(req, fullPath);
 
     switch (req.getMethod()) {
         case GET:
-            return handle_get(req, fullPath);
+            return handleGet(req, fullPath, config);
         case POST:
-            return handle_post(req, fullPath);
+            return handlePost(req, fullPath);
         case DELETE:
-            return handle_delete(req, fullPath);
+            return handleDelete(req, fullPath);
         default:
-            return make_error_response(400);
+            return makeErrorResponse(BAD_REQUEST);
     }
 }

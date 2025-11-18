@@ -42,7 +42,7 @@ typedef std::map<int, struct ClientContext> ContextMap;
 
 class Server {
   private:
-    const Config*         _cfg; // not owning pointer
+    const Config          _cfg; // not owning pointer
     struct ClientContext  _state;
     std::map<int, size_t> _listenerToServerIdx; // listen fd -> server index
 
