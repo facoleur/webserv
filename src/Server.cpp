@@ -18,15 +18,11 @@ void Server::disconnect_client(int& index, int& client_fd, struct pollfd (&pfds)
     std::cout << "client disconnected" << std::endl;
 }
 
-Server::Server() : _cfg(NULL) {
+Server::Server() {
 }
 
-Server::Server(const Config& cfg) : _cfg(&cfg) {
+Server::Server(const Config& cfg) : _cfg(cfg) {
 }
-
-/* Server(const Config& cfg) {
-
-}*/
 
 Server::~Server() {
 }

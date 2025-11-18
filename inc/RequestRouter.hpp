@@ -1,26 +1,33 @@
 // RequestRouter.hpp
 
+#include "Config.hpp"
 #include "Request.hpp"
 #include "Response.hpp"
+#include "Utils.hpp"
+#include <algorithm>
+#include <dirent.h>
+#include <fstream>
 
 class RequestRouter {
   private:
-    bool resource_exist(const std::string& path);
-    bool is_method_allowed(const Request& req);
-    bool is_cgi_request(const std::string& path);
-
-    std::string resolvePath(const Request& req);
-
-    Response handle_get(const Request& req, const std::string& path);
-    Response handle_post(const Request& req, const std::string& path);
-    Response handle_delete(const Request& req, const std::string& path);
-    Response handle_cgi(const Request& req, const std::string& path);
-
-    Response make_error_response(int status_code);
+    bool        resourceExist(const std::string&);
+    bool        isMethodAllowed(const Request&, const LocationConfig&);
+    bool        isCgiRequest(const std::string&, const LocationConfig&);
+    std::string readFile(const std::ifstream&);
+    Response    handleGet(const Request&, std::string&, const ServerConfig&);
+    Response    handlePost(const Request&, const std::string&);
+    Response    handleDelete(const Request&, const std::string&);
+    Response    handleCgi(const Request&, const std::string&, const LocationConfig&);
+    Response    makeErrorResponse(enum statusCode);
+    Response    makeRedirectResponse(const std::string&);
+    void        resolveAbsolutePath(std::string&);
+    std::string getMimeType(const std::string&);
 
   public:
+    Response makeAutoindexResponse(const std::string&);
     RequestRouter();
     ~RequestRouter();
 
-    Response route(const Request& req);
+    std::string resolvePath(const Request&, const std::string&);
+    Response    route(const Request&, const ServerConfig&);
 };
