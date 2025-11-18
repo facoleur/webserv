@@ -3,7 +3,7 @@
 #include "ConfigFile.hpp"
 #include "ConfigParser.hpp"
 #include "Server.hpp"
-#include <iostream>
+#include "Webserv.hpp"
 #include <unistd.h>
 
 int main(int argc, char const* argv[]) {
@@ -17,7 +17,7 @@ int main(int argc, char const* argv[]) {
     ConfigParser parser;
     Config       cfg = parser.parseFile(path);
     applyDefaults(cfg);
-    validateCompatibility(cfg);
+    validateCompatibility(cfg); // try catch => if catch, return
 
     Server serv(cfg);
     serv.run();

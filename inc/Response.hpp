@@ -8,6 +8,7 @@
 
 #include "Request.hpp"
 #include "Utils.hpp"
+#include "Webserv.hpp"
 
 class Headers {
   private:
