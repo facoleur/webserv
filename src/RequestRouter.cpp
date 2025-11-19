@@ -8,7 +8,7 @@ RequestRouter::RequestRouter() {
 RequestRouter::~RequestRouter() {
 }
 
-bool RequestRouter::resourceExist(const std::string& path, const Request& req) {
+bool RequestRouter::resourceExists(const std::string& path, const Request& req) {
     (void)req;
     struct stat info;
     return (stat(path.c_str(), &info) == 0);
@@ -114,36 +114,31 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
             return res;
         }
 
-        // !/ => redirect path + "/"
-
-        // indexfiles dans config ? trouve le 1er qui existe dans le root
-
         for (size_t i = 0; i < config.index_files.size(); ++i) {
             std::string indexPath = path + config.index_files[i];
-            if (resourceExist(indexPath, req)) {
-                std::ifstream file(indexPath.c_str());
-                if (!file.is_open())
-                    // this is wrong, must check if other indexfile can be opened
-                    // TODO: check file until one can be opened @facoleur
-                    return makeErrorResponse(NOT_FOUND);
+            if (!resourceExists(indexPath, req))
+                continue;
 
-                std::string body = readFile(file);
-                res.setBody(body);
-                res.setHeader(CONTENT_TYPE, getMimeType(indexPath));
-                res.setHeader(CONTENT_LENGTH, toString(body.size()));
-                return res;
-            }
+            std::ifstream file(indexPath.c_str());
+            if (!file.is_open())
+                continue;
+
+            std::string body = readFile(file);
+            res.setHeader(CONTENT_TYPE, getMimeType(indexPath));
+            res.setHeader(CONTENT_LENGTH, toString(body.size()));
+            res.setBody(body);
+            return res;
         }
 
         if (config.autoindex) {
-            return makeAutoindexResponse(path);
+            return makeAutoindexResponse(path, config.path);
         } else {
             // std::cout << "forbidden here!" << std::endl;
             return makeErrorResponse(FORBIDDEN);
         }
     }
 
-    if (!resourceExist(path, req))
+    if (!resourceExists(path, req))
         return makeErrorResponse(NOT_FOUND);
 
     std::ifstream file(path.c_str());
@@ -250,8 +245,12 @@ Response RequestRouter::makeErrorResponse(enum statusCode statusCode) {
     return res;
 }
 
-Response RequestRouter::makeAutoindexResponse(const std::string& path) {
+Response RequestRouter::makeAutoindexResponse(const std::string& path, const std::string& location) {
     DIR* dirstream = opendir(path.c_str());
+
+    std::string loc = location;
+    if (loc[loc.size() - 1] != '/')
+        loc.push_back('/');
 
     std::vector<AutoIndexItem> files;
     files.push_back(AutoIndexItem(getParentDir(path), "../", 0, T_DIR, ""));
@@ -262,7 +261,7 @@ Response RequestRouter::makeAutoindexResponse(const std::string& path) {
             continue;
 
         std::string name(f->d_name);
-        std::string fullpath = path + f->d_name;
+        std::string fullpath = location + "/" + f->d_name;
 
         struct stat st;
         stat(fullpath.c_str(), &st);
@@ -280,7 +279,7 @@ Response RequestRouter::makeAutoindexResponse(const std::string& path) {
         files.push_back(AutoIndexItem(fullpath, name, st.st_size, type, lastModifedReadable));
     }
 
-    std::string html = AutoIndex::fillTemplate(path, files);
+    std::string html = AutoIndex::fillTemplate(loc, files);
 
     Response res;
     res.setStatusCode(OK);
@@ -340,34 +339,32 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
 
 Response RequestRouter::route(const Request& req_, const ServerConfig& config) {
 
-    if (req_.getStatusCode() == BAD_REQUEST) { // if parse error
+    if (req_.getStatusCode() == BAD_REQUEST) {
         makeErrorResponse(BAD_REQUEST);
     }
 
-    Response response;
-
-    if (req_.validateRequest(response) == INVALID_REQUEST)
-        return response;
-
-    if (req_.getValidity() == INVALID_REQUEST) {
-        makeErrorResponse(BAD_REQUEST);
-    }
-
-    (void)req_;
     Request req = req_;
-    // req.setMethod("POST");
-    // req.setPath("/dir/file.txt");
+    req.setMethod("GET");
+    req.setPath("/getonly/");
+    req.setProtocolVersion("HTTP/1.1");
     // req.setHeader(CONTENT_LENGTH, toString(10));
     // req.setBody("helloWorld");
 
-    // std::cout << "actual path req: " << req.getPath() << std::endl;
+    std::cout << req << std::endl;
+
+    Response response;
+
+    if (req.validateRequest(response) == INVALID_REQUEST)
+        return response;
+
+    if (req.getValidity() == INVALID_REQUEST) {
+        makeErrorResponse(BAD_REQUEST);
+    }
 
     const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
 
     std::string           locationPath;
     const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig, locationPath);
-
-    // std::cout << "resolved up store: " << resolvedConfig.upload_store << std::endl;
 
     if (resolvedConfig.redirect.status) {
         return makeRedirectResponse(resolvedConfig.redirect.target);
@@ -381,10 +378,7 @@ Response RequestRouter::route(const Request& req_, const ServerConfig& config) {
         return makeErrorResponse(BAD_REQUEST);
     }
 
-    // std::cout << "resolvedPath: " << resolvedPath << std::endl;
-
-    if (!resourceExist(resolvedPath, req)) {
-        // std::cout << "404 here" << std::endl;
+    if (!resourceExists(resolvedPath, req)) {
         return makeErrorResponse(NOT_FOUND);
     }
 

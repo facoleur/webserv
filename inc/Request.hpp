@@ -52,7 +52,7 @@ class Request {
     void setMethod(const std::string&);
     void setPath(std::string const&);
     void setQueryString(std::string const&);
-    void setProtocolVersion(std::string&);
+    void setProtocolVersion(const std::string&);
     void setHeaders(const std::map<enum requestHeaders, std::string>&);
     void setHeader(enum requestHeaders, const std::string&);
     void setBody(std::string const&);

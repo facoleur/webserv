@@ -14,7 +14,7 @@
 
 class RequestRouter {
   protected:
-    bool        resourceExist(const std::string&, const Request&);
+    bool        resourceExists(const std::string&, const Request&);
     bool        isMethodAllowed(const Request&, const LocationConfig&);
     bool        isCgiRequest(const std::string&, const LocationConfig&);
     Response    handleGet(const Request&, std::string&, const LocationConfig&);
@@ -28,7 +28,7 @@ class RequestRouter {
     std::string getMimeType(const std::string&);
 
   public:
-    Response makeAutoindexResponse(const std::string&);
+    Response makeAutoindexResponse(const std::string&, const std::string&);
     RequestRouter();
     ~RequestRouter();
 

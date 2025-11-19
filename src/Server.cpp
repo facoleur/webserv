@@ -107,7 +107,7 @@ int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS],
     context[new_client_fd]              = ClientContext();
     context[new_client_fd].server_index = _listenerToServerIdx[listener];
     nfds++;
-    DEBUG_LOG("new client connected on server index " + to_string(context[new_client_fd].server_index));
+    DEBUG_LOG("new client connected on server index " + toString(context[new_client_fd].server_index));
     return 0;
 }
 
@@ -122,7 +122,7 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
     std::string   responseString;
     RequestRouter router;
 
-    DEBUG_LOG("handle_requests queue size: " + to_string(context.requests.size()));
+    DEBUG_LOG("handle_requests queue size: " + toString(context.requests.size()));
     while (!context.requests.empty()) {
         Request& req = context.requests.front();
 
@@ -182,7 +182,7 @@ void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS
     std::string& buf = context[listener].write_buffer;
     while (!buf.empty()) {
         ssize_t sent = write(listener, buf.data(), buf.size());
-        DEBUG_LOG("written bytes: " + to_string(sent));
+        DEBUG_LOG("written bytes: " + toString(sent));
         if (sent > 0) {
             buf.erase(0, sent);
             break;
@@ -229,8 +229,8 @@ void Server::run() {
     }
 
     while (1) {
-        DEBUG_LOG("** while loop start **\n{nfds}: " + to_string(nfds) +
-                  " - {pfds[nfds].events}: " + to_string(pfds[nfds].events));
+        DEBUG_LOG("** while loop start **\n{nfds}: " + toString(nfds) +
+                  " - {pfds[nfds].events}: " + toString(pfds[nfds].events));
         DEBUG_LOG("\n((((( POLL )))))");
         if (poll(pfds, nfds, TIMEOUT) < 0) {
             DEBUG_LOG("poll error");
@@ -239,7 +239,7 @@ void Server::run() {
 
         // handle events of each pollfd
         for (int i = 0; i < nfds; i++) {
-            DEBUG_LOG("* for loop: i == " + to_string(i) + " *");
+            DEBUG_LOG("* for loop: i == " + toString(i) + " *");
             int listener = pfds[i].fd;
 
             if (pfds[i].revents & (POLLERR | POLLNVAL)) {

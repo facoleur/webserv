@@ -96,7 +96,7 @@ void Request::setQueryString(std::string const& queryString) {
     _queryString = queryString;
 }
 
-void Request::setProtocolVersion(std::string& protocolVersion) {
+void Request::setProtocolVersion(const std::string& protocolVersion) {
     _protocolVersion = protocolVersion;
 }
 
@@ -192,7 +192,7 @@ bool Request::isValidHeaders(Response& res) const {
     // transfer-encoding => must be "chunked", must not contain content-length. If wrong: 501
     bool isvalid = true;
 
-    if (_headers.at(CONTENT_LENGTH).find(",") != std::string::npos) {
+    if (_headers.find(CONTENT_LENGTH) != _headers.end() && _headers.at(CONTENT_LENGTH).find(",") != std::string::npos) {
         isvalid = false;
         res.setStatusCode(BAD_REQUEST);
     }
