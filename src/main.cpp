@@ -4,7 +4,6 @@
 #include "ConfigParser.hpp"
 #include "Server.hpp"
 #include "Webserv.hpp"
-#include <unistd.h>
 
 int main(int argc, char const* argv[]) {
     const char* path = (argc > 1) ? argv[1] : "config/default.conf";
@@ -21,5 +20,23 @@ int main(int argc, char const* argv[]) {
 
     Server serv(cfg);
     serv.run();
+
     return 0;
 }
+
+// #include "Config.hpp"
+// #include "Request.hpp"
+// #include "RequestRouter.hpp"
+// #include "Response.hpp"
+
+// int main() {
+//     RequestRouter router;
+
+//     std::vector<std::string> paths;
+
+//     paths.push_back("www/dir");
+
+//     router.makeAutoindexResponse(paths[0]);
+
+//     return 0;
+// }

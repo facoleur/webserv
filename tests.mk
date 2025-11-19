@@ -1,7 +1,9 @@
 # Unit tests
 UNIT_TEST_DIR := tests/unitTests
 UNIT_TEST_BIN_DIR := $(UNIT_TEST_DIR)/bin
-UNIT_TEST_SRCS := $(wildcard $(UNIT_TEST_DIR)/*.cpp)
+# UNIT_TEST_SRCS := $(wildcard $(UNIT_TEST_DIR)/*.cpp)
+UNIT_TEST_SRCS := $(UNIT_TEST_DIR)/testPost.cpp
+# UNIT_TEST_SRCS := $(UNIT_TEST_DIR)/testGetMimeType.cpp
 UNIT_TEST_BINS := $(patsubst $(UNIT_TEST_DIR)/%.cpp,$(UNIT_TEST_BIN_DIR)/%,$(UNIT_TEST_SRCS))
 
 SRC_FILES := $(filter-out $(SRC_DIR)/main.cpp,$(wildcard $(SRC_DIR)/*.cpp))

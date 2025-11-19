@@ -26,19 +26,19 @@ enum requestMethod Request::getMethod(void) const {
     return _method;
 }
 
-std::string Request::getPath(void) const {
+const std::string& Request::getPath(void) const {
     return _path;
 }
 
-std::string Request::getQueryString(void) const {
+const std::string& Request::getQueryString(void) const {
     return _queryString;
 }
 
-std::string Request::getProtocolVersion(void) const {
+const std::string& Request::getProtocolVersion(void) const {
     return _protocolVersion;
 }
 
-enum statusCode Request::getStatusCode(void) const {
+statusCode Request::getStatusCode(void) const {
     return _statusCode;
 }
 
@@ -46,17 +46,16 @@ enum statusCode Request::getStatusCode(void) const {
 //     return _headers;
 // }
 
-std::string Request::getHeader(enum requestHeaders headers) const {
+const std::string Request::getHeader(enum requestHeaders headers) const {
     for (std::map<enum requestHeaders, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); ++it) {
         if (headers == (*it).first) {
-            std::string res = (*it).second;
-            return res;
+            return (*it).second;
         }
     }
     return "";
 }
 
-std::string& Request::getBody(void) {
+const std::string& Request::getBody(void) const {
     return _body;
 }
 
@@ -79,6 +78,20 @@ void Request::setPath(std::string const& path) {
     _path = path;
 }
 
+void Request::setHeader(enum requestHeaders key, const std::string& value) {
+    _headers[key] = value;
+}
+
+void Request::setHeaders(const std::map<enum requestHeaders, std::string>& headers) {
+    for (std::map<enum requestHeaders, std::string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
+        setHeader(it->first, it->second);
+    }
+}
+
+void Request::setBody(std::string const& body) {
+    _body = body;
+}
+
 void Request::setQueryString(std::string const& queryString) {
     _queryString = queryString;
 }
@@ -95,22 +108,38 @@ void Request::setStatusCode(enum statusCode val) {
     _statusCode = val;
 }
 
-// void setHeaders(std::vector<std::string, std::string>);
-// void setBody(std::string &);
-
-void Request::validateRequest(void) // performs all the necessary checks to set the _validity
-{
+// performs all the static (not config based) checks to set the _validity
+enum requestValidity Request::validateRequest(Response& res) const {
     if (!validateMethod()) {
         std::cout << "Request: couldn't validate method" << std::endl;
-        return (setStatusCode(NOT_IMPLEMENTED));
+        res.setStatusCode(NOT_IMPLEMENTED);
+        return INVALID_REQUEST;
     }
-    // if (!validateTarget())
-    //     return; // n.b.: various possible error codes, set by validateTarget()
-    // if (!validateQueryString())
-    //     return; // ?
+    if (!validateTarget() || !validateQueryString()) {
+        res.setStatusCode(BAD_REQUEST);
+        return INVALID_REQUEST; // n.b.: various possible error codes, set by validateTarget()
+    }
+    
     if (!validateProtocolVersion()) {
-        std::cout << "Request: couldn't validate protocol version" << std::endl;
-        return (setStatusCode(HTTP_VERSION_NOT_SUPPORTED));
+        // must be HTTP/1.1
+        res.setStatusCode(HTTP_VERSION_NOT_SUPPORTED);
+        return INVALID_REQUEST;
+    }
+
+    if (!validateHeaders()) {
+        // must have exactly one [host] header
+        // more than 1 header contentlength: has coma => bad request (non neg, integer) 
+        // transfer-encoding => must be "chunked", must not contain content-length. If wrong: 501
+        res.setStatusCode(BAD_REQUEST);
+        // res.setStatusCode(NOT_IMPLEMENTED);
+        return INVALID_REQUEST;
+    }
+    if (!validateBody()) {
+        // has no body if POST => invalid
+        // has body if GET => invalid
+        // move validation of content length == body.size
+        res.setStatusCode(BAD_REQUEST);
+        return INVALID_REQUEST;
     }
     // if (!validateHeaders())
     //     return; // ?
@@ -121,7 +150,7 @@ void Request::validateRequest(void) // performs all the necessary checks to set 
 }
 
 // validity checks => semantic validation
-bool Request::validateMethod(void) {
+bool Request::validateMethod(void) const {
     if (_method == GET || _method == POST || _method == DELETE)
         return true;
     return false;
