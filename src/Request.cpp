@@ -96,7 +96,7 @@ void Request::setQueryString(std::string const& queryString) {
     _queryString = queryString;
 }
 
-void Request::setProtocolVersion(std::string& protocolVersion) {
+void Request::setProtocolVersion(const std::string& protocolVersion) {
     _protocolVersion = protocolVersion;
 }
 
@@ -110,81 +110,110 @@ void Request::setStatusCode(enum statusCode val) {
 
 // performs all the static (not config based) checks to set the _validity
 enum requestValidity Request::validateRequest(Response& res) const {
-    if (!validateMethod()) {
-        std::cout << "Request: couldn't validate method" << std::endl;
+    if (!isValidMethod()) {
         res.setStatusCode(NOT_IMPLEMENTED);
         return INVALID_REQUEST;
     }
-    if (!validateTarget() || !validateQueryString()) {
+    if (!isValidTarget() || !isValidQueryString()) {
         res.setStatusCode(BAD_REQUEST);
-        return INVALID_REQUEST; // n.b.: various possible error codes, set by validateTarget()
+        return INVALID_REQUEST;
     }
-    
-    if (!validateProtocolVersion()) {
+
+    if (!isValidProtocolVersion()) {
         // must be HTTP/1.1
         res.setStatusCode(HTTP_VERSION_NOT_SUPPORTED);
         return INVALID_REQUEST;
     }
 
-    if (!validateHeaders()) {
+    if (!isValidHeaders(res)) {
         // must have exactly one [host] header
-        // more than 1 header contentlength: has coma => bad request (non neg, integer) 
+        // more than 1 header contentlength: has coma => bad request (non neg, integer)
         // transfer-encoding => must be "chunked", must not contain content-length. If wrong: 501
-        res.setStatusCode(BAD_REQUEST);
         // res.setStatusCode(NOT_IMPLEMENTED);
         return INVALID_REQUEST;
     }
-    if (!validateBody()) {
+    if (!isValidBody()) {
         // has no body if POST => invalid
         // has body if GET => invalid
         // move validation of content length == body.size
         res.setStatusCode(BAD_REQUEST);
         return INVALID_REQUEST;
     }
-    // if (!validateHeaders())
-    //     return; // ?
-    // if (!validateBody())
-    //     return; // ?
     DEBUG_LOG("validateRequest: VALID");
-    _validity = VALID_REQUEST;
+    return VALID_REQUEST;
+}
+
+void Request::resolveAbsolutePath(std::string& path) {
+    std::string::size_type pos = path.find("http://");
+    path.erase(pos, 7);
+
+    pos = path.find("/");
+    path.erase(0, pos);
 }
 
 // validity checks => semantic validation
-bool Request::validateMethod(void) const {
+bool Request::isValidMethod(void) const {
     if (_method == GET || _method == POST || _method == DELETE)
         return true;
     return false;
 }
 
-// bool Request::validateTarget(void) {
-// }
-
-// bool Request::validateQueryString(void) {
-//     if (_queryString.empty())
-//         return true;
-//     // ...
-// }
-
-bool Request::validateProtocolVersion(void) {
-    if (_protocolVersion == "HTTP/1.0" || _protocolVersion == "HTTP/1.1")
-        return true;
-    else
+bool Request::isValidTarget(void) const {
+    if (!startsWith(_path, "http://") && !startsWith(_path, "/")) {
         return false;
+    }
+
+    if (_path.find("%") != std::string::npos || _path.find("=") != std::string::npos ||
+        _path.find("../") != std::string::npos || _path.find("./") != std::string::npos ||
+        _path.find("=") != std::string::npos || _path.find("&") != std::string::npos)
+        return false;
+
+    return true;
 }
 
-// bool Request::validateHeaders(void) {
-// }
+bool Request::isValidQueryString(void) const {
+    bool isvalid = true;
+    for (size_t i = 0; i < _queryString.size(); ++i) {
+        if (std::isalnum(static_cast<unsigned char>(_queryString[i])))
+            return true;
+        const std::string allowed = "_-./?&=%";
+        isvalid                   = (allowed.find(_queryString[i]) != std::string::npos);
+    }
+    return isvalid;
+}
 
-// bool Request::validateBody(void) {
-// }
+bool Request::isValidProtocolVersion(void) const {
+    return _protocolVersion == "HTTP/1.1";
+}
 
-// in class Request OR in handle_requests
-// if (INVALID_REQUEST)
-// {
-// if (req.getmethod() == method not found)
-// 		setStatusCode(METHOD_NOT_FOUND)
-// if (blabla)
-// 		setStatusCode(BLA_BLA)
-// else
-// 		setStatusCode(BAD_REQUEST)
-// }
+bool Request::isValidHeaders(Response& res) const {
+    // must have exactly one [host] header
+    // more than 1 header contentlength: has coma => bad request (non neg, integer)
+    // transfer-encoding => must be "chunked", must not contain content-length. If wrong: 501
+    bool isvalid = true;
+
+    if (_headers.find(CONTENT_LENGTH) != _headers.end() && _headers.at(CONTENT_LENGTH).find(",") != std::string::npos) {
+        isvalid = false;
+        res.setStatusCode(BAD_REQUEST);
+    }
+
+    if (_headers.find(TRANSFER_ENCODING) != _headers.end()) {
+        isvalid = _headers.at(TRANSFER_ENCODING) == "chunked";
+        if (isvalid == false)
+            res.setStatusCode(NOT_IMPLEMENTED);
+    }
+    return isvalid;
+}
+
+bool Request::isValidBody(void) const {
+    // has no body if POST => invalid
+    // has body if GET => invalid
+    // move validation of content length == body.size
+    if (getBody().empty() && getMethod() == POST)
+        return false;
+
+    if (getBody().size() != toSizet(getHeader(CONTENT_LENGTH)))
+        return false;
+
+    return true;
+}

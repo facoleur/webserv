@@ -7,9 +7,12 @@
 #include <map>
 #include <vector>
 
-enum requestMethod { GET, POST, DELETE, UNKNOWN };
-enum requestHeaders { HOST, CONTENT_LENGTH, LOCATION, TRANSFER_ENCODING, CONTENT_TYPE, CONNECTION, ACCEPT };
+enum requestMethod;
+enum requestHeaders;
+
 enum requestValidity { INVALID_REQUEST, VALID_REQUEST };
+
+class Response;
 
 // stores and validates (semantically) an HTTP request
 class Request {
@@ -22,12 +25,12 @@ class Request {
     enum requestValidity validateRequest(Response& res) const;
     // performs all the static (not config based) checks to set the _validity
 
-    bool validateMethod(void) const;
-    bool validateTarget(void) const;
-    bool validateQueryString(void) const;
-    bool validateProtocolVersion(void) const;
-    bool validateHeaders(void) const;
-    bool validateBody(void) const;
+    bool isValidMethod(void) const;
+    bool isValidTarget(void) const;
+    bool isValidQueryString(void) const;
+    bool isValidProtocolVersion(void) const;
+    bool isValidHeaders(Response&) const;
+    bool isValidBody(void) const;
 
     // Other functions
     bool hasHeader(std::string const&); // whether a specific header is present
@@ -44,12 +47,12 @@ class Request {
     const std::string&                           getBody(void) const;
     requestValidity                              getValidity(void) const;
     statusCode                                   getStatusCode(void) const;
-
+    void                                         resolveAbsolutePath(std::string& path);
     // setters
     void setMethod(const std::string&);
     void setPath(std::string const&);
     void setQueryString(std::string const&);
-    void setProtocolVersion(std::string&);
+    void setProtocolVersion(const std::string&);
     void setHeaders(const std::map<enum requestHeaders, std::string>&);
     void setHeader(enum requestHeaders, const std::string&);
     void setBody(std::string const&);

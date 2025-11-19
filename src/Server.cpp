@@ -21,7 +21,7 @@ void Server::disconnect_client(int& index, int& client_fd, struct pollfd (&pfds)
 Server::Server() {
 }
 
-Server::Server(const Config& cfg) : _cfg(cfg) {
+Server::Server(const Config& cfg) : _config(cfg) {
 }
 
 Server::~Server() {
@@ -51,7 +51,7 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
     in_addr_t                        ip;
     in_addr                          a;
     int                              opt;
-    const std::vector<ServerConfig>& servers = _cfg.getServers();
+    const std::vector<ServerConfig>& servers = _config.getServers();
 
     for (size_t si = 0; si < servers.size(); ++si) {
         const ServerConfig& srv = servers[si];
@@ -107,7 +107,7 @@ int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS],
     context[new_client_fd]              = ClientContext();
     context[new_client_fd].server_index = _listenerToServerIdx[listener];
     nfds++;
-    DEBUG_LOG("new client connected on server index " + to_string(context[new_client_fd].server_index));
+    DEBUG_LOG("new client connected on server index " + toString(context[new_client_fd].server_index));
     return 0;
 }
 
@@ -121,11 +121,11 @@ void Server::add_bad_request_to_queue(ClientContext& context) {
 void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
     RequestRouter router;
 
-    DEBUG_LOG("handle_requests: " + to_string(context.requests.size()) + " requests in queue");
+    DEBUG_LOG("handle_requests: " + toString(context.requests.size()) + " requests in queue");
     while (!context.requests.empty()) {
         Request& req = context.requests.front();
 
-        const ServerConfig& config = _cfg.getServers()[context.server_index];
+        const ServerConfig& config = _config.getServers()[context.server_index];
         Response            res    = router.route(req, config);
 
         if (res.isError()) {
@@ -136,20 +136,6 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
             context.close_after_responses = true;
             break;
         }
-
-        // requestValidity reqValidity = req.getValidity();
-        // if (reqValidity == INVALID_REQUEST) {
-        //     DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
-        //     Response res(BAD_REQUEST);
-        //     context.write_buffer.append(res.serialize());
-        //     std::queue<Request> empty;
-        //     std::swap(context.requests, empty);
-        //     context.close_after_responses = true;
-        //     break;
-        // }
-
-        // const ServerConfig& config = _cfg.getServers()[context.server_index];
-        // Response            res    = router.route(req, config);
 
         context.write_buffer.append(res.serialize());
         context.requests.pop();
@@ -194,7 +180,7 @@ void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS
     std::string& buf = context[listener].write_buffer;
     while (!buf.empty()) {
         ssize_t sent = write(listener, buf.data(), buf.size());
-        DEBUG_LOG("written bytes: " + to_string(sent));
+        DEBUG_LOG("written bytes: " + toString(sent));
         if (sent > 0) {
             buf.erase(0, sent);
             break;
@@ -239,10 +225,10 @@ void Server::run() {
         std::cerr << "error getting listening server sockets" << std::endl;
         return; // ?
     }
- 
+
     while (1) {
         DEBUG_LOG("** while loop start **");
-        DEBUG_LOG("{nfds}: " to_string(nfds) + " - {pfds[nfds].events}: " + to_string(pfds[nfds].events));
+        DEBUG_LOG("{nfds}: " + toString(nfds) + " - {pfds[nfds].events}: " + toString(pfds[nfds].events));
         DEBUG_LOG("\n((((( POLL )))))");
         if (poll(pfds, nfds, TIMEOUT) < 0) {
             DEBUG_LOG("poll error");
@@ -251,7 +237,7 @@ void Server::run() {
 
         // handle events of each pollfd
         for (int i = 0; i < nfds; i++) {
-            DEBUG_LOG("* for loop: i == " + to_string(i) + " *");
+            DEBUG_LOG("* for loop: i == " + toString(i) + " *");
             int listener = pfds[i].fd;
 
             if (pfds[i].revents & (POLLERR | POLLNVAL)) {

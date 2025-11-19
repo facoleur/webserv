@@ -3,14 +3,16 @@
 #pragma once
 
 #include "Request.hpp"
+#include "Webserv.hpp"
 #include <queue>
 #include <sstream>
 
 #define READ_BUF_SIZE 8000
 #define CRLF std::string("\r\n")
 
-enum ParserState { REQ_PARSE_START, REQ_PARSE_PARTIAL, REQ_PARSE_COMPLETE, REQ_PARSE_ERROR };
+class Request;
 
+enum ParserState { REQ_PARSE_START, REQ_PARSE_PARTIAL, REQ_PARSE_COMPLETE, REQ_PARSE_ERROR };
 enum ParsingPhase { PARSING_REQUEST_LINE, PARSING_HEADERS, PARSING_BODY, PARSING_COMPLETE };
 
 /* parses an HTTP request, (in)validating its syntax, and storing the result in
