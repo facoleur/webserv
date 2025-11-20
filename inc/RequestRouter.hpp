@@ -33,6 +33,8 @@ class RequestRouter {
                    std::string&, std::map<std::string, std::string>&, int&, std::string&) const;
 
     std::string generateErrorHtml(enum statusCode);
+    std::string generateHtml(const std::string&);
+    // std::string generateHtml(const std::string&, const std::map<std::string, std::string>&);
 
   public:
     Response makeAutoindexResponse(const std::string&, const std::string&);

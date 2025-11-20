@@ -141,6 +141,8 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
         if (!path.empty() && path[path.size() - 1] != '/') {
             res.setStatusCode(REDIRECT);
             res.setHeader(LOCATION, path + "/");
+            res.setBody("");
+            res.setHeader(CONTENT_LENGTH, "0");
             std::cout << "GET DONE redirect" << std::endl;
 
             return res;
@@ -200,16 +202,11 @@ std::string generateUploadName() {
 }
 
 Response RequestRouter::handlePost(const Request& req, const std::string& path, const LocationConfig& config) {
-    // std::cout << "body: " << req.getBody() << std::endl;
-    // std::cout << "body.size(): " << req.getBody().size() << std::endl;
-    // std::cout << "config.path: " << config.path << std::endl;
-
     if (toSizet(req.getHeader(CONTENT_LENGTH)) > config.client_max_body_size) {
         return makeErrorResponse(CONTENT_TOO_LARGE);
     }
 
     if (config.upload_enable == false) {
-
         // std::cout << "ici" << std::endl;
         return makeErrorResponse(FORBIDDEN);
     }
@@ -222,26 +219,27 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
     std::string uploadPath;
     std::string filename = generateUploadName();
     if (!config.upload_store.empty())
-        uploadPath = config.root + config.upload_store + "/" + filename;
+        uploadPath = config.root + "/" + config.upload_store + "/" + filename;
 
     while (uploadPath.find("//") != std::string::npos) {
         replace(uploadPath, "//", "/");
     }
 
-    // std::cout << "uploadPath: " << uploadPath << std::endl;
+    std::cout << "uploadPath: " << uploadPath << std::endl;
     std::ofstream out(uploadPath.c_str(), std::ios::binary);
     if (!out.is_open()) {
-        // std::cout << "500 ici" << std::endl;
+        std::cout << "500 ici" << std::endl;
         return makeErrorResponse(INTERNAL_SERVER_ERROR);
     }
 
     out.write(req.getBody().c_str(), req.getBody().size());
 
-    // std::cout << "uploadPath: " << uploadPath << std::endl;
-
     Response res;
     res.setHeader(LOCATION, uploadPath);
     res.setStatusCode(CREATED);
+    res.setBody(generateHtml("Upload success!"));
+    res.setHeader(CONTENT_LENGTH, toString(res.getBody().size()));
+
     return res;
 }
 
@@ -259,7 +257,7 @@ Response RequestRouter::handleDelete(const Request& req, const std::string& path
     }
 
     if (std::remove(path.c_str()) != 0) {
-        return makeResponse(INTERNAL_SERVER_ERROR);
+        return makeErrorResponse(INTERNAL_SERVER_ERROR);
     }
 
     return makeResponse(NO_CONTENT);
@@ -278,6 +276,28 @@ std::string RequestRouter::generateErrorHtml(enum statusCode status) {
 
     replaceVariables(html, "statusCode", toString(status));
     replaceVariables(html, "message", toString(status));
+
+    return html;
+}
+
+// std::string RequestRouter::generateHtml(const std::string&                        templatePath,
+//                                         const std::map<std::string, std::string>& variables) {
+//     std::ifstream templateHtml(templatePath);
+//     std::string   html = readFile(templateHtml);
+
+//     std::map<std::string, std::string>::const_iterator it;
+//     for (it = variables.begin(); it != variables.end(); ++it) {
+//         replaceVariables(html, it->first, it->second);
+//     }
+
+//     return html;
+// }
+
+std::string RequestRouter::generateHtml(const std::string& message) {
+    std::ifstream templateHtml("www/templates/success.html");
+    std::string   html = readFile(templateHtml);
+
+    replaceVariables(html, "message", message);
 
     return html;
 }
@@ -379,6 +399,7 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
     Response res;
     res.setStatusCode(REDIRECT);
     res.setHeader(LOCATION, location);
+    res.setHeader(CONTENT_LENGTH, "0");
     res.setBody("");
     return res;
 }
@@ -392,11 +413,11 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
 
     Request req_;
 
-    req_.setMethod("GET");
-    req_.setPath("/delete/asd.html");
+    req_.setMethod("POST");
+    req_.setPath("/www");
     req_.setProtocolVersion("HTTP/1.1");
-    // req.setHeader(CONTENT_LENGTH, toString(10));
-    // req.setBody("helloWorld");
+    req_.setHeader(CONTENT_LENGTH, toString(10));
+    req_.setBody("helloWorld");
 
     std::cout << req_ << std::endl;
 
