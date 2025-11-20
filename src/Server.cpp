@@ -54,14 +54,12 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
     const std::vector<ServerConfig>& servers = _config.getServers();
 
     for (size_t si = 0; si < servers.size(); ++si) {
-
         const ServerConfig& srv = servers[si];
         for (size_t pi = 0; pi < srv.listen_ports.size(); ++pi) {
             port     = srv.listen_ports[pi];
             listener = socket(AF_INET, SOCK_STREAM, 0);
-            if (listener < 0) {
+            if (listener < 0)
                 continue;
-            }
             opt = 1;
             setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
             fcntl(listener, F_SETFL, O_NONBLOCK);
@@ -77,12 +75,10 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
 
             if (bind(listener, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
                 close(listener);
-
                 continue;
             }
             if (listen(listener, SOMAXCONN) < 0) {
                 close(listener);
-
                 continue;
             }
             setPollFd(pfds[nfds], listener, POLLIN, 0);
@@ -132,12 +128,13 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
         const ServerConfig& config = _config.getServers()[context.server_index];
         Response            res    = router.route(req, config);
 
-        try {
-            Response res = router.route(req, config);
+        if (res.isError()) {
+            DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
             context.write_buffer.append(res.serialize());
-        } catch (const std::exception&) {
-            Response badRequest(BAD_REQUEST);
-            context.write_buffer.append(badRequest.serialize());
+            std::queue<Request> empty;
+            std::swap(context.requests, empty);
+            context.close_after_responses = true;
+            break;
         }
 
         context.write_buffer.append(res.serialize());
@@ -255,7 +252,7 @@ void Server::run() {
                 DEBUG_LOG("--- POLLIN ---");
                 if (_listenerToServerIdx.count(listener)) // Accept on any listening socket
                     handleNewConnection(listener, pfds, nfds, contextMap);
-                else
+                    else
                     handleRead(listener, i, pfds, nfds, contextMap); // Read client data
                 continue;
             }

@@ -1,8 +1,10 @@
-#include "ConfigParser.hpp"
+#include "Webserv.hpp"
 #include <iostream>
 #include <sstream>
 #include <sys/stat.h>
 #include <vector>
+
+class ConfigParser;
 
 std::ostream&            operator<<(std::ostream& os, struct pollfd pfd);
 std::string              toString(long long n);
@@ -19,8 +21,8 @@ std::string              getParentDir(const std::string& path);
 bool                     isSpace(int i);
 bool                     isAcceptedHeader(std::string&);
 std::string&             replaceVariables(std::string&, const std::string&, const std::string& value);
-std::string              methodToString(requestMethod method);
+std::string              methodToString(enum requestMethod method);
 std::string              trimString(const std::string& value);
 std::string              toLower(const std::string& str);
 bool                     isSubPath(const std::string& root, const std::string& candidate);
-requestMethod            toMethod(const std::string& s);
+enum requestMethod       toMethod(const std::string& s);

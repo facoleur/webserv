@@ -42,7 +42,7 @@ statusCode Request::getStatusCode(void) const {
     return _statusCode;
 }
 
-const std::map<enum requestHeaders, std::string> Request::getHeaders(void) const const {
+const std::map<enum requestHeaders, std::string>& Request::getHeaders(void) const {
     return _headers;
 }
 
@@ -111,8 +111,6 @@ void Request::setStatusCode(enum statusCode val) {
 // performs all the static (not config based) checks to set the _validity
 enum requestValidity Request::validateRequest(Response& res) const {
     if (!isValidMethod()) {
-        std::cout << "_method: " << _method << std::endl;
-        std::cout << "not impl here" << std::endl;
         res.setStatusCode(NOT_IMPLEMENTED);
         return INVALID_REQUEST;
     }
@@ -143,6 +141,7 @@ enum requestValidity Request::validateRequest(Response& res) const {
         return INVALID_REQUEST;
     }
     DEBUG_LOG("validateRequest: VALID until now");
+    std::cout << "valid" << std::endl;
     return VALID_REQUEST;
 }
 

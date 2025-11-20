@@ -172,7 +172,7 @@ bool isSubPath(const std::string& root, const std::string& candidate) {
 }
 
 // Map a method string to the project's enum
-requestMethod toMethod(const std::string& s) {
+enum requestMethod toMethod(const std::string& s) {
     if (s == "GET")
         return GET;
     if (s == "POST")

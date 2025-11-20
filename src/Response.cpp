@@ -49,10 +49,6 @@ void Response::setHeader(enum requestHeaders key, const std::string& value) {
     _headers[key] = value;
 }
 
-void Response::addHeader(const std::string& key, const std::string& value) {
-    _customHeaders[key] = value;
-}
-
 void Response::setHeaders(const std::map<enum requestHeaders, std::string>& headers) {
     for (std::map<enum requestHeaders, std::string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
         _headers[it->first] = it->second;

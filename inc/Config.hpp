@@ -1,11 +1,10 @@
 #pragma once
 
+#include "Request.hpp" // for enum requestMethod
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
-
-#include "Request.hpp" // for enum requestMethod
 
 struct Redirect {
     int         status; // 0 = pas de redir
