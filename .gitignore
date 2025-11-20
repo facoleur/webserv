@@ -17,3 +17,4 @@ webserv
 build/**
 journal.md
 test_uploads
+tests/logs/cgi_server.log
