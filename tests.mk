@@ -1,13 +1,15 @@
 # Unit tests
 UNIT_TEST_DIR := tests/unitTests
 UNIT_TEST_BIN_DIR := $(UNIT_TEST_DIR)/bin
-UNIT_TEST_SRCS := $(wildcard $(UNIT_TEST_DIR)/*.cpp)
+# UNIT_TEST_SRCS := $(wildcard $(UNIT_TEST_DIR)/*.cpp)
+UNIT_TEST_SRCS := $(UNIT_TEST_DIR)/testPost.cpp
+# UNIT_TEST_SRCS := $(UNIT_TEST_DIR)/testGetMimeType.cpp
 UNIT_TEST_BINS := $(patsubst $(UNIT_TEST_DIR)/%.cpp,$(UNIT_TEST_BIN_DIR)/%,$(UNIT_TEST_SRCS))
 
 SRC_FILES := $(filter-out $(SRC_DIR)/main.cpp,$(wildcard $(SRC_DIR)/*.cpp))
 
 TEST_CC := g++
-TEST_FLAGS := -Wall -Wextra -std=c++17 -O2
+TEST_FLAGS := -Wall -Wextra -Werror -std=c++98 
 
 tests: $(UNIT_TEST_BINS)
 	@echo "$(GREEN)Running all unit tests...$(DEF_COLOR)"

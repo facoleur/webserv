@@ -15,6 +15,10 @@ enum ParserState RequestParser::getState(void) {
     return _parserState;
 }
 
+void RequestParser::setState(enum ParserState parserState) {
+    _parserState = parserState;
+}
+
 // splits the line in three. Throws if less than two spaces found
 void RequestParser::splitRequestLine(std::vector<std::string>& split, std::string& line) {
     size_t pos;
@@ -44,11 +48,7 @@ void RequestParser::parseRequestLine(Request& req) {
     req.setMethod(split[0]);
 
     /* set request-target path and query-string */
-    if (split[1].empty())
-        throw RequestParsingError();
-    if (split[1][0] != '/')
-        throw RequestParsingError();
-    if (split[1].find_first_of(" \t\n\r\f\v") != std::string::npos)
+    if (split[1].empty() || split[1].find_first_of(" \t\n\r\f\v") != std::string::npos)
         throw RequestParsingError();
     queryPos = split[1].find("?");
     if (queryPos != std::string::npos) {
@@ -147,53 +147,3 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
     }
     _parserState = REQ_PARSE_COMPLETE;
 }
-
-// HOW TO USE IT IN SERVER LOOP
-// Read 1000 bytes:
-
-// request:
-// GET /trucvalide HTTP/1.1
-
-// response:
-//
-
-// GET/ HTTP/1.0 => poubelle
-// Host: 127.0.0.1 => poubelle
-// GET /root HTTP/1.1
-// Host: blabla
-
-/* IN SERVER.CPP LOOP:
-
-    while (1)
-    {
-        std::map<int, RequestParser> request_parsers;
-        Request *req = new Request();
-
-        // ...
-
-        poll(pfds);
-        ssize_t ret = read(sockFd, buf, READ_BUF_SIZE);
-        if (read <= 0)
-            return handle_read_error...
-                request_parsers[sockFd].feed(buf, req); // call the parser on the buffer to fill the Request
-                enum ParserState ps = request_parsers[sockFd].getState());
-                if (ps == REQ_PARSE_PARTIAL)
-                        continue;
-                handle_requests(req_queue);
-                if (REQ_PARSE_ERROR) // problem => if Request parse ok but Request is semantically invalid, then ... ?
-solution below: close(sockFd);
-
-                                // SOLUTION:
-                // bool allRequestsValid = handle_requests(req_queue);
-                // if (!allRequestsValid) // => this means REQ_PARSE_ERROR isn't actually that necessary. Only
-REQ_PARSE_PARTIAL
-                //        close(sockFd);
-        }
-
-handle_requests(queue requests)
-{
-        if (fd == POLLOUT)
-                read(fichier, buf, 8196);
-                write(clientFd, buf, 8196);
-}
-*/

@@ -1,13 +1,35 @@
 // Utils.cpp
 
 #include "Utils.hpp"
+#include <dirent.h>
+#include <fstream>
+#include <string>
+#include <sys/stat.h>
 
-
-std::string toString(int n) {
+std::string toString(long long n) {
 
     std::stringstream ss;
     ss << n;
     return ss.str();
+}
+size_t toSizet(const std::string& s) {
+    size_t n = 0;
+    for (size_t i = 0; i < s.size(); i++)
+        n = n * 10 + (s[i] - '0');
+    return n;
+}
+std::string tolower(const std::string& s) {
+    std::string out = s;
+    for (size_t i = 0; i < out.size(); i++)
+        out[i] = std::tolower(static_cast<unsigned char>(out[i]));
+    return out;
+}
+
+std::ostream& operator<<(std::ostream& os, struct pollfd pfd) {
+    os << "fd: " << pfd.fd << std::endl;
+    os << "events: " << pfd.events << std::endl;
+    os << "revents: " << pfd.revents << std::endl;
+    return os;
 }
 
 void replace(std::string& str, const std::string& from, const std::string& to) {
@@ -59,6 +81,30 @@ bool isDirectory(const std::string& path) {
     if (stat(path.c_str(), &info) != 0)
         return false;
     return S_ISDIR(info.st_mode);
+}
+
+std::string readFile(const std::ifstream& file) {
+    std::ostringstream content;
+    content << file.rdbuf();
+    return content.str();
+}
+
+std::string getParentDir(const std::string& path) {
+    if (path.empty())
+        return "";
+
+    std::string trimmed = path;
+    while (!trimmed.empty() && trimmed[trimmed.size() - 1] == '/')
+        trimmed.erase(trimmed.size() - 1);
+
+    std::string::size_type pos = trimmed.rfind('/');
+    if (pos == std::string::npos)
+        return "";
+
+    if (pos == 0)
+        return "/";
+
+    return trimmed.substr(0, pos);
 }
 
 std::string methodToString(requestMethod method) {

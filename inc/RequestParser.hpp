@@ -27,6 +27,7 @@ class RequestParser {
 
     // getters
     enum ParserState getState(void);
+    void             setState(enum ParserState);
 
     struct RequestParsingError : std::exception {};
 

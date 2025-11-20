@@ -20,12 +20,12 @@ struct TestCase {
 };
 
 void printResult(int i, const TestCase& t, const Response& res, bool ok, const std::string& msg = "") {
-    std::cout << "\nTEST " << (i + 1) << ": " << t.method << " " << t.path << "\n";
+    (void)res;
     if (ok)
-        std::cout << "✅ " << res.getStatusCode() << " (" << ReasonPhrase::get(res.getStatusCode()) << ")";
+        std::cout << "OK";
     else
-        std::cout << "❌ " << msg;
-    std::cout << "\n";
+        std::cout << "PAS OK" << msg;
+    std::cout << "TEST " << (i + 1) << ": " << t.method << " " << t.path << std::endl;
 }
 
 static ServerConfig makeTestConfig() {
@@ -67,17 +67,15 @@ int main() {
     std::vector<TestCase> tests;
 
     // ---------- GET ----------
-    // tests.push_back(TestCase("/index.html", "GET", 200, "OK", false));                          // Normal GET
-    // tests.push_back(TestCase("/missing.html", "GET", 404, "Not Found", false));                 // Missing file
-    // tests.push_back(TestCase("/", "GET", 200, "OK", false));                                    // Root directory
-    // tests.push_back(TestCase("/dir/", "GET", 200, "OK", false));                                // Directory with
-    // index tests.push_back(TestCase("/private/secret.txt", "GET", 403, "Forbidden", false));           // Forbidden
-    // access tests.push_back(TestCase("/../hack", "GET", 0, "", true));                                  // Traversal
-    // attempt tests.push_back(TestCase("/bigfile.bin", "GET", 200, "OK", false));                         // Large file
-    // tests.push_back(TestCase("/redirect", "GET", 301, "Moved Permanently", false));             // Redirect
-    // tests.push_back(TestCase("/redirect-loop", "GET", 508, "Loop Detected", false));            // Redirect loop
-    // tests.push_back(TestCase("/cgi-bin/cgi.py", "GET", 200, "OK", false));                      // CGI GET
-    // tests.push_back(TestCase("/cgi-bin/error.py", "GET", 500, "Internal Server Error", false)); // Broken CGI
+    tests.push_back(TestCase("/index.html", "GET", 200, "OK", false));                          // Normal GET
+    tests.push_back(TestCase("/missing.html", "GET", 404, "Not Found", false));                 // Missing file
+    tests.push_back(TestCase("/", "GET", 200, "OK", false));                                    // Root directory
+    tests.push_back(TestCase("/dir/", "GET", 200, "OK", false));                                // Directory with
+    tests.push_back(TestCase("/private/secret.txt", "GET", 403, "Forbidden", false));           // Forbidden
+    tests.push_back(TestCase("/../hack", "GET", 0, "", true));                                  // Traversal
+    tests.push_back(TestCase("/redirect", "GET", 301, "Moved Permanently", false));             // Redirect
+    tests.push_back(TestCase("/cgi-bin/cgi.py", "GET", 200, "OK", false));                      // CGI GET
+    tests.push_back(TestCase("/cgi-bin/error.py", "GET", 500, "Internal Server Error", false)); // Broken CGI
 
     // // ---------- POST ----------
     // tests.push_back(TestCase("/api/upload", "POST", 201, "Created", false));           // Normal POST (create)

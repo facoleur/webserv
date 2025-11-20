@@ -1,25 +1,28 @@
 // RequestRouter.hpp
 
+#include "AutoIndex.hpp"
 #include "Config.hpp"
 #include "Request.hpp"
 #include "Response.hpp"
 #include "Utils.hpp"
 #include <algorithm>
+#include <dirent.h>
 #include <fstream>
+#include <sys/types.h>
+#include <unistd.h>
 
 class RequestRouter {
-  private:
-    bool        resourceExist(const std::string&);
+  protected:
+    bool        resourceExist(const std::string&, const Request&);
     bool        isMethodAllowed(const Request&, const LocationConfig&);
     bool        isCgiRequest(const std::string&, const LocationConfig&);
     std::string getCgiInterpreter(const std::string&, const LocationConfig&) const;
-    std::string readFile(const std::ifstream&);
-    Response    handleGet(const Request&, std::string&, const ServerConfig&);
-    Response    handlePost(const Request&, const std::string&);
-    Response    handleDelete(const Request&, const std::string&);
+    Response    handleGet(const Request&, std::string&, const LocationConfig&);
+    Response    handlePost(const Request&, const std::string&, const LocationConfig&);
+    Response    handleDelete(const Request&, const std::string&, const LocationConfig&);
     Response    handleCgi(const Request&, const std::string&, const ServerConfig&, const LocationConfig&);
+    Response    makeResponse(enum statusCode statusCode);
     Response    makeErrorResponse(enum statusCode);
-    Response    makeAutoindexResponse(const std::string&);
     Response    makeRedirectResponse(const std::string&);
     void        resolveAbsolutePath(std::string&);
     std::string getMimeType(const std::string&);
@@ -28,6 +31,7 @@ class RequestRouter {
                            std::string&) const;
 
   public:
+    Response makeAutoindexResponse(const std::string&);
     RequestRouter();
     ~RequestRouter();
 
