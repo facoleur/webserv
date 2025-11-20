@@ -39,7 +39,7 @@ void RequestParser::splitRequestLine(std::vector<std::string>& split, std::strin
     for (size_t i = 0; i < 2; i++) {
         pos = line.find(' ');
         if (pos == line.npos)
-            throw RequestParsingError();
+            throw RequestParsingError("splitRequestLine(): found less than two spaces");
         split.push_back(line.substr(0, pos));
         line = line.substr(pos + 1);
     }
@@ -56,13 +56,13 @@ void RequestParser::parseRequestLine(Request& req) {
 
     /* set method */
     if (split[0].empty())
-        throw RequestParsingError();
+        throw RequestParsingError("parseRequestLine(): method field is empty");
 
     req.setMethod(split[0]);
 
     /* set request-target path and query-string */
     if (split[1].empty() || split[1].find_first_of(" \t\n\r\f\v") != std::string::npos)
-        throw RequestParsingError();
+        throw RequestParsingError("parseRequestLine(): request-target is empty or contains whitespace");
     queryPos = split[1].find("?");
     if (queryPos != std::string::npos) {
         req.setQueryString(split[1].substr(queryPos + 1));
@@ -73,7 +73,7 @@ void RequestParser::parseRequestLine(Request& req) {
     /* set HTTP version */
     if (split[2] != "HTTP/1.0" && split[2] != "HTTP/1.1" && split[2] != "HTTP/0.9" && split[2] != "HTTP/2" &&
         split[2] != "HTTP/3")
-        throw RequestParsingError();
+        throw RequestParsingError("parseRequestLine(): HTTP version not in the list");
     req.setProtocolVersion(split[2]);
 }
 
@@ -119,36 +119,42 @@ std::pair<std::string, std::string> RequestParser::checkHeaderSyntax(std::string
     std::string                  headerField;
 
     // check header size
-    if (header.size() < MIN_HEADER_SIZE)
-        throw RequestParsingError();
+    if (header.size() < MIN_HEADER_SIZE) {
+        DEBUG_LOG("checkHeaderSyntax: ");
+        throw RequestParsingError("checkHeaderSyntax(): header < MIN_HEADER_SIZE");
+    }
 
     if (header.size() > MAX_HEADER_SIZE) {
         req.setStatusCode(CONTENT_TOO_LARGE);
-        throw RequestParsingError();
+        DEBUG_LOG("checkHeaderSyntax: ");
+        throw RequestParsingError("checkHeaderSyntax(): header > MAX_HEADER_SIZE");
     }
 
     // split on colon
     n     = std::count(header.begin(), header.end(), ':');
     count = static_cast<int>(n);
     if (count != 1) // not exactly one colon
-        throw RequestParsingError();
+        throw RequestParsingError("checkHeaderSyntax(): header doesn't have exactly one colon (':')");
+
     pos = header.find(":");
     if (pos == 0 || pos == header.size() - 1) // colon is first or last character
-        throw RequestParsingError();
+        throw RequestParsingError("checkHeaderSyntax(): colon (':') is first or last character");
+
     headerName  = header.substr(0, pos);
     headerField = header.substr(pos + 1); // skip the ":"
-    DEBUG_LOG("checkHeaderSyntax – headerName: {" + headerName + "}, headerField: {" + headerName + "}");
+    DEBUG_LOG("checkHeaderSyntax – headerName: {" + headerName + "}, headerField: {" + headerField + "}");
 
     // check if whitespace before colon
     it = std::find_if(headerName.begin(), headerName.end(), isSpace);
     if (it != header.end())
-        throw RequestParsingError();
+        throw RequestParsingError("checkHeaderSyntax(): whitespace found before colon (':')");
 
     // format header name and field
     headerName = tolower(headerName);
     trimWhitespace(headerField);
     if (isCaseInsensitiveHeader(headerName))
         headerField = tolower(headerField);
+
     return std::pair<std::string, std::string>(headerName, headerField);
 }
 
@@ -281,6 +287,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
                 _parsingPhase = PARSING_REQUEST_LINE;
             }
         } catch (RequestParsingError& e) {
+            DEBUG_LOG(e.what());
             return handleParseError(req, reqQueue);
         }
     }

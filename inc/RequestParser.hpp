@@ -30,7 +30,18 @@ class RequestParser {
     enum ParserState getState(void);
     void             setState(enum ParserState);
 
-    struct RequestParsingError : std::exception {};
+    struct RequestParsingError : public std::exception {
+        RequestParsingError(const std::string& msg) throw() : _message(msg) {
+        }
+        virtual ~RequestParsingError(void) throw() {
+        }
+        virtual const char* what() const throw() {
+            return _message.c_str();
+        }
+
+      private:
+        std::string _message;
+    };
 
   private:
     // Main parsing functions

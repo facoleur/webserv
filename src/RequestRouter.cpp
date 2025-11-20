@@ -12,6 +12,7 @@
 #include "Request.hpp"
 #include "RequestRouter.hpp"
 #include "Response.hpp"
+#include "Utils.hpp"
 
 RequestRouter::RequestRouter() {
 }
@@ -354,7 +355,8 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
 
     if (req.getStatusCode() != NO_STATUS) {
         makeErrorResponse(req.getStatusCode()); // can be 413 CONTENT_TOO_LARGE, for example
-        DEBUG_LOG("RequestRouter.route(): status already set before to: " + ReasonPhrase::get(req.getStatusCode()));
+        std::string reasonPhrase(ReasonPhrase::get(req.getStatusCode()));
+        DEBUG_LOG("RequestRouter.route(): status already set before to: " + reasonPhrase);
     }
 
     // Request req = req_;
@@ -371,7 +373,9 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     // static/HTTP-based semantic checks
     if (req.validateRequest(response) == INVALID_REQUEST) {
         DEBUG_LOG("RequestRouter.route(): INVALID_REQUEST, returning response:");
-
+#ifdef DEBUG_LOG
+        std::cout << response << std::endl;
+#endif
         return response;
     }
 
