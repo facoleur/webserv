@@ -12,56 +12,6 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-namespace {
-
-std::string methodToString(requestMethod method) {
-    switch (method) {
-        case GET:
-            return "GET";
-        case POST:
-            return "POST";
-        case DELETE:
-            return "DELETE";
-        default:
-            return "UNKNOWN";
-    }
-}
-
-std::string trimString(const std::string& value) {
-    size_t start = 0;
-    while (start < value.size() && (value[start] == ' ' || value[start] == '\t' || value[start] == '\r'))
-        ++start;
-    size_t end = value.size();
-    while (end > start && (value[end - 1] == ' ' || value[end - 1] == '\t' || value[end - 1] == '\r'))
-        --end;
-    return value.substr(start, end - start);
-}
-
-std::string toLower(const std::string& str) {
-    std::string lowered = str;
-    for (size_t i = 0; i < lowered.size(); ++i) {
-        lowered[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(lowered[i])));
-    }
-    return lowered;
-}
-
-bool isSubPath(const std::string& root, const std::string& candidate) {
-    if (root.empty())
-        return true;
-    if (candidate.size() < root.size())
-        return false;
-    if (candidate.compare(0, root.size(), root) != 0)
-        return false;
-    if (candidate.size() == root.size())
-        return true;
-    char last = root[root.size() - 1];
-    if (last == '/')
-        return true;
-    return candidate[root.size()] == '/';
-}
-
-} // namespace
-
 std::ostream& operator<<(std::ostream& os, struct pollfd pfd) {
     os << "fd: " << pfd.fd << std::endl;
     os << "events: " << pfd.events << std::endl;

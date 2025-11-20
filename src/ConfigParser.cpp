@@ -133,17 +133,6 @@ bool ConfigParser::isMethod(const std::string& m) {
     return m == "GET" || m == "POST" || m == "DELETE";
 }
 
-// Map a method string to the project's enum
-static requestMethod toMethod(const std::string& s) {
-    if (s == "GET")
-        return GET;
-    if (s == "POST")
-        return POST;
-    if (s == "DELETE")
-        return DELETE;
-    return UNKNOWN;
-}
-
 int ConfigParser::toInt(const std::string& s) {
     // minimal, no overflow checks
     return std::atoi(s.c_str());
