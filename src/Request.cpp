@@ -119,22 +119,25 @@ void Request::setStatusCode(enum statusCode val) {
 // performs all the static (not config based) checks to set the _validity
 enum requestValidity Request::validateRequest(Response& res) const {
     if (!isValidMethod()) {
+        DEBUG_LOG("validateRequest: !validMethod");
         res.setStatusCode(NOT_IMPLEMENTED);
         return INVALID_REQUEST;
     }
 
     if (!isValidTarget() || !isValidQueryString()) {
+        DEBUG_LOG("validateRequest: !isValidTarget() || !isValidQueryString()");
         res.setStatusCode(BAD_REQUEST);
         return INVALID_REQUEST;
     }
 
     if (!isValidProtocolVersion()) {
-        // must be HTTP/1.1
+        DEBUG_LOG("validateRequest: !isValidProtocolVersion()");
         res.setStatusCode(HTTP_VERSION_NOT_SUPPORTED);
         return INVALID_REQUEST;
     }
 
     if (!isValidHeaders(res)) {
+        DEBUG_LOG("validateRequest: !isValidHeaders()");
         // must have exactly one [host] header
         // more than 1 header contentlength: has coma => bad request (non neg, integer)
         // transfer-encoding => must be "chunked", must not contain content-length. If wrong: 501
@@ -142,6 +145,7 @@ enum requestValidity Request::validateRequest(Response& res) const {
         return INVALID_REQUEST;
     }
     if (!isValidBody()) {
+        DEBUG_LOG("validateRequest: !isValidBody()");
         // has no body if POST => invalid
         // has body if GET => invalid
         // move validation of content length == body.size
@@ -196,34 +200,47 @@ bool Request::isValidProtocolVersion(void) const {
 }
 
 bool Request::isValidHeaders(Response& res) const {
-    // must have exactly one [host] header
-    // more than 1 header contentlength: has coma => bad request (non neg, integer)
-    // transfer-encoding => must be "chunked", must not contain content-length. If wrong: 501
-    bool isvalid = true;
+
+    headersMap::const_iterator it = _headers.end();
+    if (_headers.find(HOST) == it ||
+        _headers.at(HOST).find(",") != std::string::npos) { // must have exactly one [host] header
+        res.setStatusCode(BAD_REQUEST);
+        return false;
+    }
+
+    if (_headers.find(HOST) != _headers.end() &&
+        _headers.at(HOST).find(",") !=
+            std::string::npos) { // more than 1 header content-length: has coma => bad request (non neg, integer)
+        res.setStatusCode(BAD_REQUEST);
+        return false;
+    }
 
     if (_headers.find(CONTENT_LENGTH) != _headers.end() && _headers.at(CONTENT_LENGTH).find(",") != std::string::npos) {
-        isvalid = false;
         res.setStatusCode(BAD_REQUEST);
+        return false;
     }
 
-    if (_headers.find(TRANSFER_ENCODING) != _headers.end()) {
-        isvalid = _headers.at(TRANSFER_ENCODING) == "chunked";
-        if (isvalid == false)
-            res.setStatusCode(NOT_IMPLEMENTED);
+    if (_headers.find(TRANSFER_ENCODING) != _headers.end() &&
+        _headers.at(TRANSFER_ENCODING) != "chunked") { // the transfer-encoding header value must be "chunked"
+        res.setStatusCode(NOT_IMPLEMENTED);
+        return false;
     }
-    return isvalid;
+    return true;
 }
 
 bool Request::isValidBody(void) const {
-    // has no body if POST => invalid
-    // has body if GET => invalid
     // move validation of content length == body.size
-    if (getBody().empty() && getMethod() == POST)
+    if (getMethod() == POST && getBody().empty())
         return false;
 
-    if (getBody().size() != toSizet(getHeader(CONTENT_LENGTH)))
+    if (getMethod() == GET && !getBody().empty())
         return false;
 
+    if (getBody().size() != toSizet(getHeader(CONTENT_LENGTH))) {
+        DEBUG_LOG("getBody().size(): " + toString(getBody().size()) + " != content-length(" +
+                  toString(toSizet(getHeader(CONTENT_LENGTH))));
+        return false;
+    }
     return true;
 }
 

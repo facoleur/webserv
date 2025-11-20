@@ -119,9 +119,13 @@ fi
 # printf "Test: {GET / HTTP/1.1\r\nHost: example.com\r\nFoo:  bar \r\n\r\n}\n\n"
 # printf 'GET / HTTP/1.1\r\nHost: example.com\r\nFoo:  bar \r\n\r\n' | nc localhost 8080
 
-## Test a simple valid request with two valid headers - Host: example.com, Content-Length: 400
-printf "Test: {GET / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 400\r\n\r\n}\n\n"
-printf 'GET / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 400\r\n\r\n' | nc localhost 8080
+## Test a simple valid request with two valid headers - Host: example.com, Connection: True
+printf "Test: {GET / HTTP/1.1\r\nHost: example.com\r\nConnection: True\r\n\r\n}\n\n"
+printf 'GET / HTTP/1.1\r\nHost: example.com\r\nConnection: True\r\n\r\n' | nc localhost 8080
+
+## Test a simple invalid request with two valid headers but no body - Host: example.com, Content-Length: 400
+# printf "Test: {GET / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 400\r\n\r\n}\n\n"
+# printf 'GET / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 400\r\n\r\n' | nc localhost 8080
 
 ## Test a simple valid request with two identic headers - Host: example.com, Host:blabla.net
 # printf "Test: {GET / HTTP/1.1\r\nHost: example.com\r\nHost:blabla.net\r\n\r\n}\n\n"
