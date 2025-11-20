@@ -62,8 +62,8 @@ static std::string joinPaths(const std::string &root, const std::string &child) 
 
 static void ensureDirectory(const std::string &path,
                             const std::string &context) {
-  int type = ConfigFile::getTypePath(path);
-  if (type != 2)
+  PathType type = ConfigFile::getTypePath(path);
+  if (type != PATH_DIR)
     throw std::runtime_error("Invalid directory for " + context + ": " + path);
   if (ConfigFile::checkFile(path, R_OK | X_OK) != 0)
     throw std::runtime_error("Directory not accessible for " + context + ": " +
@@ -74,7 +74,7 @@ static void ensureIndexFiles(const std::string &root,
                              const std::vector<std::string> &indexes) {
   for (size_t i = 0; i < indexes.size(); ++i) {
     std::string full = joinPaths(root, indexes[i]);
-    if (ConfigFile::getTypePath(full) != 1 ||
+    if (ConfigFile::getTypePath(full) != PATH_FILE ||
         ConfigFile::checkFile(full, R_OK) != 0) {
       throw std::runtime_error("Index file not accessible: " + full);
     }
@@ -85,7 +85,7 @@ static void ensureCgiMap(const std::map<std::string, std::string> &cgi_map) {
   for (std::map<std::string, std::string>::const_iterator it = cgi_map.begin();
        it != cgi_map.end(); ++it) {
     const std::string &interp = it->second;
-    if (ConfigFile::getTypePath(interp) != 1 ||
+    if (ConfigFile::getTypePath(interp) != PATH_FILE ||
         ConfigFile::checkFile(interp, X_OK) != 0) {
       throw std::runtime_error("CGI interpreter not executable: " + interp);
     }
@@ -106,14 +106,14 @@ static void ensureUploadStore(const LocationConfig &loc) {
     return;
   if (loc.upload_store.empty())
     throw std::runtime_error("upload_store required when upload_enable is on");
-  int type = ConfigFile::getTypePath(loc.upload_store);
-  if (type == 2) {
+  PathType type = ConfigFile::getTypePath(loc.upload_store);
+  if (type == PATH_DIR) {
     if (ConfigFile::checkFile(loc.upload_store, W_OK | X_OK) != 0)
       throw std::runtime_error("Upload directory not writable: " +
                                loc.upload_store);
     return;
   }
-  if (type == -1) {
+  if (type == PATH_ERROR) {
     std::string parent = parentDir(loc.upload_store);
     if (ConfigFile::checkFile(parent, W_OK | X_OK) != 0)
       throw std::runtime_error("Cannot create upload directory (permission "
