@@ -4,16 +4,7 @@
 
 #include <map>
 
-enum requestHeaders {
-    HOST,
-    CONTENT_LENGTH,
-    LOCATION,
-    TRANSFER_ENCODING,
-    CONTENT_TYPE,
-    CONNECTION,
-    ACCEPT,
-    NB_REQUEST_HEADERS // used to check if a given header is defined in the enum
-};
+enum requestHeaders { HOST, CONTENT_LENGTH, LOCATION, TRANSFER_ENCODING, CONTENT_TYPE, CONNECTION, ACCEPT };
 
 enum requestMethod { GET, POST, DELETE, UNKNOWN };
 

@@ -115,8 +115,18 @@ fi
 # printf 'Test: %s%s' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALID[0]}" | nc localhost ${WEBSERV_PORT}
 
 
-## Test a simple valid request with one header - Host: example.com
-printf 'GET / HTTP/1.1\r\nHost: example.com\r\nFoo:  bar \r\n\r\n' | nc localhost 8080
+## Test a simple valid request with two headers, one valid one ingored - Host: example.com Foo:  bar
+# printf "Test: {GET / HTTP/1.1\r\nHost: example.com\r\nFoo:  bar \r\n\r\n}\n\n"
+# printf 'GET / HTTP/1.1\r\nHost: example.com\r\nFoo:  bar \r\n\r\n' | nc localhost 8080
+
+## Test a simple valid request with two valid headers - Host: example.com, Content-Length: 400
+printf "Test: {GET / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 400\r\n\r\n}\n\n"
+printf 'GET / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 400\r\n\r\n' | nc localhost 8080
+
+## Test a simple valid request with two identic headers - Host: example.com, Host:blabla.net
+# printf "Test: {GET / HTTP/1.1\r\nHost: example.com\r\nHost:blabla.net\r\n\r\n}\n\n"
+# printf 'GET / HTTP/1.1\r\nHost: example.com\r\nHost:blabla.net\r\n\r\n' | nc localhost 8080
+
 
 # Test all possible requests (selected from VALID, INVALID, ALL)
 # if [[ $PRINT_EACH_TEST == TRUE ]]; then

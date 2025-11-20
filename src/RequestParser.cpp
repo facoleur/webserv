@@ -15,13 +15,13 @@ RequestParser::~RequestParser(void) {
 }
 
 void RequestParser::initHeaderStringToEnumMap(void) {
-    _headerStringToEnum["Host"]              = HOST;
-    _headerStringToEnum["Content-Length"]    = CONTENT_LENGTH;
-    _headerStringToEnum["Location"]          = LOCATION;
-    _headerStringToEnum["Transfer-Encoding"] = TRANSFER_ENCODING;
-    _headerStringToEnum["Content-Type"]      = CONTENT_TYPE;
-    _headerStringToEnum["Connection"]        = CONNECTION;
-    _headerStringToEnum["Accept"]            = ACCEPT;
+    _headerStringToEnum["host"]              = HOST;
+    _headerStringToEnum["content-length"]    = CONTENT_LENGTH;
+    _headerStringToEnum["location"]          = LOCATION;
+    _headerStringToEnum["transfer-encoding"] = TRANSFER_ENCODING;
+    _headerStringToEnum["content-type"]      = CONTENT_TYPE;
+    _headerStringToEnum["connection"]        = CONNECTION;
+    _headerStringToEnum["accept"]            = ACCEPT;
 }
 
 ParserState RequestParser::getState(void) {
@@ -118,11 +118,11 @@ std::pair<std::string, std::string> RequestParser::checkHeaderSyntax(std::string
     std::string                  headerName;
     std::string                  headerField;
 
+    DEBUG_LOG("checkHeaderSyntax – header is {" + header + "}");
+
     // check header size
-    if (header.size() < MIN_HEADER_SIZE) {
-        DEBUG_LOG("checkHeaderSyntax: ");
+    if (header.size() < MIN_HEADER_SIZE)
         throw RequestParsingError("checkHeaderSyntax(): header < MIN_HEADER_SIZE");
-    }
 
     if (header.size() > MAX_HEADER_SIZE) {
         req.setStatusCode(CONTENT_TOO_LARGE);
@@ -146,8 +146,11 @@ std::pair<std::string, std::string> RequestParser::checkHeaderSyntax(std::string
 
     // check if whitespace before colon
     it = std::find_if(headerName.begin(), headerName.end(), isSpace);
-    if (it != header.end())
+    DEBUG_LOG("checkHeaderSyntax – headerName is {" + headerName + "}");
+    if (it != headerName.end()) {
+        DEBUG_LOG("*it: " + toString(*it));
         throw RequestParsingError("checkHeaderSyntax(): whitespace found before colon (':')");
+    }
 
     // format header name and field
     headerName = tolower(headerName);
@@ -167,11 +170,14 @@ void RequestParser::fillHeadersMap(std::pair<std::string, std::string> const& he
     std::string existingHeader;
 
     initHeaderStringToEnumMap();
-    if (_headerStringToEnum[headerName] > NB_REQUEST_HEADERS)
+    if (_headerStringToEnum.find(headerName) == _headerStringToEnum.end()) {
+        DEBUG_LOG("headerName {" + headerName + "} not found in headers enum");
         return;
+    }
     existingHeader = req.getHeader(_headerStringToEnum[headerName]);
     if (!existingHeader.empty())
         headerField = "," + headerField; // add a comma if there is already a value for a given header
+    DEBUG_LOG("fillHeadersMap: headerField is {" + headerField + "}");
     req.setHeader(_headerStringToEnum[headerName], headerField);
 #ifdef DEBUG_LOG
     std::cout << "fillHeadersMap: header {" << headerName << "} now has value {"
@@ -183,6 +189,7 @@ void RequestParser::fillHeadersMap(std::pair<std::string, std::string> const& he
 void RequestParser::parseHeader(std::string& header, Request& req) {
     std::pair<std::string, std::string> header_pair;
 
+    DEBUG_LOG("*** parseHeader ***");
     header_pair = checkHeaderSyntax(header, req);
     fillHeadersMap(header_pair, req);
 }
@@ -191,15 +198,19 @@ void RequestParser::parseHeaders(Request& req) {
     size_t      pos;
     std::string header;
 
+    // example: 'Host: example.com\r\nFoo:  bar \r\n\r\n'
     pos = _headers.find(CRLF);
     while (pos != std::string::npos) {
         header   = _headers.substr(0, pos);
-        _headers = _headers.substr(pos + 1);
+        _headers = _headers.substr(pos + 2);
+        DEBUG_LOG("parseHeaders - header is {" + header + "}, and _headers is {" + _headers + "}");
         parseHeader(header, req);
         pos = _headers.find(CRLF);
     }
     if (_headers.size()) // last header
-        parseHeader(header, req);
+        header = _headers.substr(0, pos);
+    DEBUG_LOG("parseHeaders - last header is {" + header + "}");
+    parseHeader(header, req);
     _headers.clear();
 }
 

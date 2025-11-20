@@ -35,9 +35,6 @@ std::ostream& operator<<(std::ostream& os, requestHeaders headerName) {
         case ACCEPT:
             os << "ACCEPT";
             break;
-        case NB_REQUEST_HEADERS:
-            os << "NB_REQUEST_HEADERS";
-            break;
         default:
             os << "ERROR: UNKNOWN_HEADER";
             break;
@@ -46,8 +43,9 @@ std::ostream& operator<<(std::ostream& os, requestHeaders headerName) {
 }
 
 std::ostream& operator<<(std::ostream& os, const headersMap& headersMap) {
+    os << std::endl;
     for (headersMap::const_iterator it = headersMap.begin(); it != headersMap.end(); it++) {
-        os << (*it).first << ": " << (*it).second << std::endl;
+        os << "\t" << (*it).first << ": " << (*it).second << std::endl;
     }
     return os;
 }
