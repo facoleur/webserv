@@ -54,12 +54,14 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
     const std::vector<ServerConfig>& servers = _config.getServers();
 
     for (size_t si = 0; si < servers.size(); ++si) {
+
         const ServerConfig& srv = servers[si];
         for (size_t pi = 0; pi < srv.listen_ports.size(); ++pi) {
             port     = srv.listen_ports[pi];
             listener = socket(AF_INET, SOCK_STREAM, 0);
-            if (listener < 0)
+            if (listener < 0) {
                 continue;
+            }
             opt = 1;
             setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
             fcntl(listener, F_SETFL, O_NONBLOCK);
@@ -75,10 +77,12 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
 
             if (bind(listener, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
                 close(listener);
+
                 continue;
             }
             if (listen(listener, SOMAXCONN) < 0) {
                 close(listener);
+
                 continue;
             }
             setPollFd(pfds[nfds], listener, POLLIN, 0);

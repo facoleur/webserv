@@ -27,6 +27,8 @@ class RequestRouter {
     void        resolveAbsolutePath(std::string&);
     std::string getMimeType(const std::string&);
 
+    std::string generateErrorHtml(enum statusCode);
+
   public:
     Response makeAutoindexResponse(const std::string&, const std::string&);
     RequestRouter();

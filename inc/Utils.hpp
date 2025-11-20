@@ -13,7 +13,8 @@ bool                     startsWith(const std::string& str, const std::string& p
 bool                     endsWith(const std::string& str, const std::string& prefix);
 std::string              join(const std::vector<std::string>& parts, char delim);
 bool                     isDirectory(const std::string& path);
-std::string              readFile(const std::ifstream& file);
+std::string              readFile(const std::ifstream&);
 std::string              getParentDir(const std::string& path);
 bool                     isSpace(int i);
 bool                     isAcceptedHeader(std::string&);
+std::string&             replaceVariables(std::string&, const std::string&, const std::string& value);

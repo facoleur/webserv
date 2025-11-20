@@ -112,3 +112,16 @@ std::string getParentDir(const std::string& path) {
 bool isSpace(int i) {
     return (std::isspace(i));
 }
+
+
+std::string& replaceVariables(std::string& html, const std::string& variable, const std::string& value) {
+    if (html.find("{{" + variable + "}}") == std::string::npos)
+        return html;
+
+    size_t pos = html.find("{{" + variable + "}}");
+    html.replace(pos, variable.size() + 4, value);
+
+    replaceVariables(html, variable, value);
+
+    return html;
+}

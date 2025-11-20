@@ -2,6 +2,7 @@
 
 #include "RequestRouter.hpp"
 #include <ctime>
+#include <fstream>
 
 RequestRouter::RequestRouter() {
 }
@@ -237,9 +238,19 @@ Response RequestRouter::makeResponse(enum statusCode statusCode) {
     return res;
 }
 
+std::string RequestRouter::generateErrorHtml(enum statusCode status) {
+    std::ifstream templateHtml("www/templates/error.html");
+    std::string   html = readFile(templateHtml);
+
+    replaceVariables(html, "statusCode", toString(status));
+    replaceVariables(html, "message", toString(status));
+
+    return html;
+}
+
 Response RequestRouter::makeErrorResponse(enum statusCode statusCode) {
     Response res;
-    // res.setbody(getHtml(statusCode));
+    res.setBody(generateErrorHtml(statusCode));
     res.setStatusCode(statusCode);
 
     return res;
@@ -347,7 +358,7 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
 
     Request req_;
 
-    req_.setMethod("DELETE");
+    req_.setMethod("GET");
     req_.setPath("/delete/asd");
     req_.setProtocolVersion("HTTP/1.1");
     // req.setHeader(CONTENT_LENGTH, toString(10));
@@ -358,8 +369,9 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     Response response;
 
     // static/HTTP-based semantic checks
-    if (req_.validateRequest(response) == INVALID_REQUEST)
-        return response;
+    if (req_.validateRequest(response) == INVALID_REQUEST) {
+        return makeErrorResponse(response.getStatusCode());
+    }
 
     // dynamic/config-based checks
     const LocationConfig* locationConfig = findLocationConfig(req_.getPath(), config);
