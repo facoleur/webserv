@@ -132,13 +132,12 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
         const ServerConfig& config = _config.getServers()[context.server_index];
         Response            res    = router.route(req, config);
 
-        if (res.isError()) {
-            DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
+        try {
+            Response res = router.route(req, config);
             context.write_buffer.append(res.serialize());
-            std::queue<Request> empty;
-            std::swap(context.requests, empty);
-            context.close_after_responses = true;
-            break;
+        } catch (const std::exception&) {
+            Response badRequest(BAD_REQUEST);
+            context.write_buffer.append(badRequest.serialize());
         }
 
         context.write_buffer.append(res.serialize());

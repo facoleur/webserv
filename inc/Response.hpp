@@ -66,6 +66,8 @@ class ReasonPhrase {
                 return "Server Error";
             case 501:
                 return "Not Implemented";
+            case 502:
+                return "Bad Gateway";
             case 505:
                 return "Http Version Not Supported";
             default:
@@ -78,6 +80,7 @@ class Response {
   private:
     enum statusCode                            _statusCode;
     std::map<enum requestHeaders, std::string> _headers;
+    std::map<std::string, std::string>         _customHeaders;
     std::string                                _body;
 
     std::string _serializedResponse;

@@ -24,15 +24,15 @@ std::string joinPaths(const std::string& base, const std::string& leaf) {
 ConfigFile::ConfigFile() : path_(), size_(0) {
 }
 
-int ConfigFile::getTypePath(const std::string& path) {
+PathType ConfigFile::getTypePath(const std::string& path) {
     struct stat st;
     if (stat(path.c_str(), &st) == -1)
-        return -1;
+        return PATH_ERROR;
     if (S_ISREG(st.st_mode))
-        return 1;
+        return PATH_FILE;
     if (S_ISDIR(st.st_mode))
-        return 2;
-    return 3;
+        return PATH_DIR;
+    return PATH_OTHER;
 }
 
 int ConfigFile::checkFile(const std::string& path, int mode) {
@@ -43,11 +43,11 @@ int ConfigFile::isFileExistAndReadable(const std::string& path, const std::strin
     if (index.empty())
         return 0;
 
-    if (getTypePath(index) == 1 && checkFile(index, R_OK) == 0)
+    if (getTypePath(index) == PATH_FILE && checkFile(index, R_OK) == 0)
         return 1;
 
     const std::string candidate = joinPaths(path, index);
-    if (getTypePath(candidate) == 1 && checkFile(candidate, R_OK) == 0)
+    if (getTypePath(candidate) == PATH_FILE && checkFile(candidate, R_OK) == 0)
         return 1;
 
     return 0;
@@ -77,12 +77,12 @@ int ConfigFile::getSize() const {
 }
 
 bool ConfigFile::validateConfigPath(const std::string& path, std::string& err) {
-    int type = getTypePath(path);
-    if (type == -1) {
+    PathType type = getTypePath(path);
+    if (type == PATH_ERROR) {
         err = std::string("Error: cannot access config file '") + path + "'";
         return false;
     }
-    if (type != 1) {
+    if (type != PATH_FILE) {
         err = std::string("Error: '") + path + "' is not a regular file";
         return false;
     }

@@ -29,6 +29,12 @@ std::string& Response::serialize() {
         _serializedResponse.append(it->second);
         _serializedResponse.append("\r\n");
     }
+    for (std::map<std::string, std::string>::iterator it = _customHeaders.begin(); it != _customHeaders.end(); ++it) {
+        _serializedResponse.append(it->first);
+        _serializedResponse.append(": ");
+        _serializedResponse.append(it->second);
+        _serializedResponse.append("\r\n");
+    }
     _serializedResponse.append("\r\n");
     _serializedResponse.append(_body);
 
@@ -41,6 +47,10 @@ void Response::setStatusCode(enum statusCode statusCode) {
 
 void Response::setHeader(enum requestHeaders key, const std::string& value) {
     _headers[key] = value;
+}
+
+void Response::addHeader(const std::string& key, const std::string& value) {
+    _customHeaders[key] = value;
 }
 
 void Response::setHeaders(const std::map<enum requestHeaders, std::string>& headers) {

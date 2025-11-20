@@ -42,9 +42,9 @@ statusCode Request::getStatusCode(void) const {
     return _statusCode;
 }
 
-// std::vector<std::string, std::string> Request::getHeaders(void) const {
-//     return _headers;
-// }
+const std::map<enum requestHeaders, std::string> Request::getHeaders(void) const const {
+    return _headers;
+}
 
 const std::string Request::getHeader(enum requestHeaders headers) const {
     for (std::map<enum requestHeaders, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); ++it) {

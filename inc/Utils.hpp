@@ -1,3 +1,4 @@
+#include "ConfigParser.hpp"
 #include <iostream>
 #include <sstream>
 #include <sys/stat.h>
@@ -18,3 +19,8 @@ std::string              getParentDir(const std::string& path);
 bool                     isSpace(int i);
 bool                     isAcceptedHeader(std::string&);
 std::string&             replaceVariables(std::string&, const std::string&, const std::string& value);
+std::string              methodToString(requestMethod method);
+std::string              trimString(const std::string& value);
+std::string              toLower(const std::string& str);
+bool                     isSubPath(const std::string& root, const std::string& candidate);
+requestMethod            toMethod(const std::string& s);
