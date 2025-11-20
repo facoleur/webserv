@@ -13,6 +13,16 @@ RequestParser::RequestParser(void)
 RequestParser::~RequestParser(void) {
 }
 
+void RequestParser::initHeaderStringToEnumMap(void) {
+    _headerStringToEnum["Host"]              = HOST;
+    _headerStringToEnum["Content-Length"]    = CONTENT_LENGTH;
+    _headerStringToEnum["Location"]          = LOCATION;
+    _headerStringToEnum["Transfer-Encoding"] = TRANSFER_ENCODING;
+    _headerStringToEnum["Content-Type"]      = CONTENT_TYPE;
+    _headerStringToEnum["Connection"]        = CONNECTION;
+    _headerStringToEnum["Accept"]            = ACCEPT;
+}
+
 enum ParserState RequestParser::getState(void) {
     return _parserState;
 }
@@ -108,6 +118,9 @@ std::pair<std::string, std::string> RequestParser::checkHeaderSyntax(std::string
     std::string                  headerField;
 
     // check header size
+    if (header.size() < MIN_HEADER_SIZE)
+        throw RequestParsingError();
+
     if (header.size() > MAX_HEADER_SIZE) {
         req.setStatusCode(CONTENT_TOO_LARGE);
         throw RequestParsingError();
@@ -168,17 +181,19 @@ void RequestParser::parseHeader(std::string& header, Request& req) {
 }
 
 void RequestParser::parseHeaders(Request& req) {
-    (void)req;
-    size_t pos;
+    size_t      pos;
+    std::string header;
 
     pos = _headers.find(CRLF);
     while (pos != std::string::npos) {
-        parseHeader(req);
-        _headers = _headers.substr;
-        pos      = _headers.find(CRLF);
+        header   = _headers.substr(0, pos);
+        _headers = _headers.substr(pos + 1);
+        parseHeader(header, req);
+        pos = _headers.find(CRLF);
     }
     if (_headers.size()) // last header
-        parseHeader(req);
+        parseHeader(header, req);
+    _headers.clear();
 }
 
 void RequestParser::handleParseError(Request& req, std::queue<Request>& reqQueue) {
@@ -247,8 +262,8 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
             }
             if (_parsingPhase == PARSING_HEADERS) {
                 _headers = _firstSection;
-                // parseHeaders();
-                if (true) // has header content-length
+                parseHeaders(req);
+                if (req.hasHeader(CONTENT_LENGTH))
                     _parsingPhase = PARSING_BODY;
                 else
                     _parsingPhase = PARSING_COMPLETE;

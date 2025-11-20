@@ -218,3 +218,9 @@ bool Request::isValidBody(void) const {
 
     return true;
 }
+
+bool Request::hasHeader(requestHeaders header) {
+    if (getHeader(header).empty())
+        return false;
+    return true;
+}
