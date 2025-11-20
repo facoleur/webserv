@@ -1,4 +1,5 @@
 #include "ConfigParser.hpp"
+#include "Utils.hpp"
 #include <cctype>
 #include <cstdlib>
 #include <fstream>
@@ -131,17 +132,6 @@ std::vector<ConfigParser::Token> ConfigParser::tokenize(const std::string& text)
 
 bool ConfigParser::isMethod(const std::string& m) {
     return m == "GET" || m == "POST" || m == "DELETE";
-}
-
-// Map a method string to the project's enum
-static requestMethod toMethod(const std::string& s) {
-    if (s == "GET")
-        return GET;
-    if (s == "POST")
-        return POST;
-    if (s == "DELETE")
-        return DELETE;
-    return UNKNOWN;
 }
 
 int ConfigParser::toInt(const std::string& s) {

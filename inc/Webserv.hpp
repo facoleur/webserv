@@ -27,6 +27,7 @@ enum statusCode {
     CONTENT_TOO_LARGE          = 413,
     INTERNAL_SERVER_ERROR      = 500,
     NOT_IMPLEMENTED            = 501,
+    BAD_GATEWAY                = 502,
     HTTP_VERSION_NOT_SUPPORTED = 505
 };
 

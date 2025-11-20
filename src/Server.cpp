@@ -125,34 +125,15 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
     DEBUG_LOG("handle_requests queue size: " + to_string(context.requests.size()));
     while (!context.requests.empty()) {
         Request& req = context.requests.front();
-
         const ServerConfig& config = _cfg.getServers()[context.server_index];
-        Response            res    = router.route(req, config);
 
-        if (res.isError()) {
-            DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
+        try {
+            Response res = router.route(req, config);
             context.write_buffer.append(res.serialize());
-            std::queue<Request> empty;
-            std::swap(context.requests, empty);
-            context.close_after_responses = true;
-            break;
+        } catch (const std::exception&) {
+            Response badRequest(BAD_REQUEST);
+            context.write_buffer.append(badRequest.serialize());
         }
-
-        // requestValidity reqValidity = req.getValidity();
-        // if (reqValidity == INVALID_REQUEST) {
-        //     DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
-        //     Response res(BAD_REQUEST);
-        //     context.write_buffer.append(res.serialize());
-        //     std::queue<Request> empty;
-        //     std::swap(context.requests, empty);
-        //     context.close_after_responses = true;
-        //     break;
-        // }
-
-        // const ServerConfig& config = _cfg.getServers()[context.server_index];
-        // Response            res    = router.route(req, config);
-
-        context.write_buffer.append(res.serialize());
         context.requests.pop();
     }
     pfd.events = POLLOUT;

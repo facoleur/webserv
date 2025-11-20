@@ -3,6 +3,7 @@
 #include <sstream>
 #include <sys/stat.h>
 #include <vector>
+#include "ConfigParser.hpp"
 
 std::ostream& operator<<(std::ostream& os, struct pollfd pfd);
 std::string              toString(long long n);
@@ -16,3 +17,8 @@ std::string              join(const std::vector<std::string>& parts, char delim)
 bool                     isDirectory(const std::string& path);
 std::string              readFile(const std::ifstream& file);
 std::string              getParentDir(const std::string& path);
+std::string				methodToString(requestMethod method);
+std::string				trimString(const std::string& value);
+std::string				toLower(const std::string& str);
+bool					isSubPath(const std::string& root, const std::string& candidate);
+requestMethod			toMethod(const std::string& s);
