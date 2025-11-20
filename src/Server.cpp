@@ -424,39 +424,6 @@ requestValidity Server::handle_requests(ClientContext& context, struct pollfd& p
     while (!context.requests.empty()) {
         Request& req = context.requests.front();
 
-        const ServerConfig& config         = _cfg.getServers()[context.server_index];
-        const LocationConfig* locationConf = findLocationConfig(req.getPath(), config);
-        const LocationConfig  resolvedConf = resolveConfig(config, locationConf);
-        const LocationConfig* effectiveLoc = &resolvedConf;
-
-        std::string fullPath;
-        try {
-            fullPath = router.resolvePath(req, resolvedConf.root);
-        } catch (const std::exception&) {
-            Response badRequest(BAD_REQUEST);
-            context.write_buffer.append(badRequest.serialize());
-            context.requests.pop();
-            continue;
-        }
-
-        bool useCgi = false;
-        std::string interpreter;
-        if (!resolvedConf.cgi_map.empty()) {
-            std::string::size_type dot = fullPath.find_last_of('.');
-            if (dot != std::string::npos) {
-                std::string ext = fullPath.substr(dot);
-                std::map<std::string, std::string>::const_iterator it = resolvedConf.cgi_map.find(ext);
-                if (it == resolvedConf.cgi_map.end() && dot + 1 < fullPath.size()) {
-                    std::string altExt = fullPath.substr(dot + 1);
-                    it                 = resolvedConf.cgi_map.find(altExt);
-                }
-                if (it != resolvedConf.cgi_map.end()) {
-                    useCgi      = true;
-                    interpreter = it->second;
-                }
-            }
-        }
-
         if (useCgi) {
             if (!isSubPath(resolvedConf.root, fullPath)) {
                 Response res(FORBIDDEN);
