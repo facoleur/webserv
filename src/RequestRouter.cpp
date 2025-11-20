@@ -261,8 +261,9 @@ Response RequestRouter::makeAutoindexResponse(const std::string& path, const std
             continue;
 
         std::string name(f->d_name);
-        std::string fullpath = location + "/" + f->d_name;
+        std::string fileloc = location + "/" + f->d_name;
 
+        std::string fullpath = path + "/" + f->d_name;
         struct stat st;
         stat(fullpath.c_str(), &st);
 
@@ -276,7 +277,7 @@ Response RequestRouter::makeAutoindexResponse(const std::string& path, const std
             type = T_DIR;
             name.push_back('/');
         }
-        files.push_back(AutoIndexItem(fullpath, name, st.st_size, type, lastModifedReadable));
+        files.push_back(AutoIndexItem(fileloc, name, st.st_size, type, lastModifedReadable));
     }
 
     std::string html = AutoIndex::fillTemplate(loc, files);
@@ -344,23 +345,24 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
         DEBUG_LOG("RequestRouter.route(): status already set before to: " + ReasonPhrase::get(req_.getStatusCode()));
     }
 
-    // Request req = req_;
-    // req.setMethod("GET");
-    // req.setPath("/getonly/");
-    // req.setProtocolVersion("HTTP/1.1");
+    Request req_;
+
+    req_.setMethod("DELETE");
+    req_.setPath("/delete/asd");
+    req_.setProtocolVersion("HTTP/1.1");
     // req.setHeader(CONTENT_LENGTH, toString(10));
     // req.setBody("helloWorld");
 
-    std::cout << req << std::endl;
+    std::cout << req_ << std::endl;
 
     Response response;
 
     // static/HTTP-based semantic checks
-    if (req.validateRequest(response) == INVALID_REQUEST)
+    if (req_.validateRequest(response) == INVALID_REQUEST)
         return response;
 
     // dynamic/config-based checks
-    const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
+    const LocationConfig* locationConfig = findLocationConfig(req_.getPath(), config);
 
     std::string           locationPath;
     const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig, locationPath);
@@ -372,29 +374,29 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     std::string resolvedPath;
 
     try {
-        resolvedPath = resolvePath(req, resolvedConfig.root, locationPath);
+        resolvedPath = resolvePath(req_, resolvedConfig.root, locationPath);
     } catch (std::exception&) {
         return makeErrorResponse(BAD_REQUEST);
     }
 
-    if (!resourceExists(resolvedPath, req)) {
+    if (!resourceExists(resolvedPath, req_)) {
         return makeErrorResponse(NOT_FOUND);
     }
 
-    if (!isMethodAllowed(req, resolvedConfig)) {
+    if (!isMethodAllowed(req_, resolvedConfig)) {
         return makeErrorResponse(NOT_ALLOWED);
     }
 
     if (isCgiRequest(resolvedPath, resolvedConfig))
-        return handleCgi(req, resolvedPath, resolvedConfig);
+        return handleCgi(req_, resolvedPath, resolvedConfig);
 
-    switch (req.getMethod()) {
+    switch (req_.getMethod()) {
         case GET:
-            return handleGet(req, resolvedPath, resolvedConfig);
+            return handleGet(req_, resolvedPath, resolvedConfig);
         case POST:
-            return handlePost(req, resolvedPath, resolvedConfig);
+            return handlePost(req_, resolvedPath, resolvedConfig);
         case DELETE:
-            return handleDelete(req, resolvedPath, resolvedConfig);
+            return handleDelete(req_, resolvedPath, resolvedConfig);
         default:
             return makeErrorResponse(BAD_REQUEST);
     }

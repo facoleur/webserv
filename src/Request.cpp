@@ -111,6 +111,8 @@ void Request::setStatusCode(enum statusCode val) {
 // performs all the static (not config based) checks to set the _validity
 enum requestValidity Request::validateRequest(Response& res) const {
     if (!isValidMethod()) {
+        std::cout << "_method: " << _method << std::endl;
+        std::cout << "not impl here" << std::endl;
         res.setStatusCode(NOT_IMPLEMENTED);
         return INVALID_REQUEST;
     }

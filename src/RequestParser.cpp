@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cctype>
 
+std::map<std::string, enum requestHeaders> RequestParser::_headerStringToEnum;
+
 RequestParser::RequestParser(void)
     : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_REQUEST_LINE), _statusCode(NO_STATUS), _contentLength(0),
       _accumulator(), _firstSection(), _requestLine(), _headers(), _body() {
@@ -173,12 +175,15 @@ void RequestParser::parseHeaders(Request& req) {
 
     pos = _headers.find(CRLF);
     while (pos != std::string::npos) {
-        parseHeader(req);
-        _headers = _headers.substr;
-        pos      = _headers.find(CRLF);
+        // parseHeader(req);
+        // _headers = _headers.substr;
+        // pos      = _headers.find(CRLF);
     }
-    if (_headers.size()) // last header
-        parseHeader(req);
+    if (_headers.size()) {
+        ;
+    }
+    // last header
+    // parseHeader(req);
 }
 
 void RequestParser::handleParseError(Request& req, std::queue<Request>& reqQueue) {

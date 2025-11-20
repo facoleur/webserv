@@ -21,7 +21,7 @@ class RequestRouter {
     Response    handlePost(const Request&, const std::string&, const LocationConfig&);
     Response    handleDelete(const Request&, const std::string&, const LocationConfig&);
     Response    handleCgi(const Request&, const std::string&, const LocationConfig&);
-    Response    makeResponse(enum statusCode statusCode);
+    Response    makeResponse(enum statusCode);
     Response    makeErrorResponse(enum statusCode);
     Response    makeRedirectResponse(const std::string&);
     void        resolveAbsolutePath(std::string&);
