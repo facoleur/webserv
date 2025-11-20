@@ -10,6 +10,7 @@ int main(int argc, char const* argv[]) {
     // Validate config path early
     std::string err;
     if (!ConfigFile::validateConfigPath(path, err)) {
+        std::cout << "printing err here" << std::endl;
         std::cerr << err << "\n";
         return 1;
     }

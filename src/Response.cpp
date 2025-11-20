@@ -1,6 +1,7 @@
 // Response.cpp
 
 #include "Response.hpp"
+#include "Enums.hpp"
 #include "Request.hpp"
 #include "Utils.hpp"
 
@@ -29,6 +30,7 @@ std::string& Response::serialize() {
         _serializedResponse.append(it->second);
         _serializedResponse.append("\r\n");
     }
+
     _serializedResponse.append("\r\n");
     _serializedResponse.append(_body);
 

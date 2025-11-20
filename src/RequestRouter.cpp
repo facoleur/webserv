@@ -1,14 +1,19 @@
 // RequestRouter.cpp
 
 #include <algorithm>
+#include <cctype>
 #include <ctime>
 #include <dirent.h>
 #include <fstream>
 #include <sstream>
+#include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
+#include <vector>
 
+#include "Enums.hpp"
 #include "Request.hpp"
 #include "RequestRouter.hpp"
 #include "Response.hpp"
@@ -34,14 +39,34 @@ bool RequestRouter::isMethodAllowed(const Request& req, const LocationConfig& co
 }
 
 bool RequestRouter::isCgiRequest(const std::string& path, const LocationConfig& config) {
+    return !getCgiInterpreter(path, config).empty();
+}
 
+std::string RequestRouter::getCgiInterpreter(const std::string& path, const LocationConfig& config) const {
     const std::map<std::string, std::string>& cgi_ext = config.cgi_map;
+    if (cgi_ext.empty())
+        return "";
 
-    for (std::map<std::string, std::string>::const_iterator it = cgi_ext.begin(); it != cgi_ext.end(); ++it) {
-        if (endsWith(path, "." + (*it).first))
-            return true;
+    std::string::size_type dot = path.find_last_of('.');
+    if (dot != std::string::npos) {
+        std::string                                        ext = path.substr(dot);
+        std::map<std::string, std::string>::const_iterator it  = cgi_ext.find(ext);
+        if (it != cgi_ext.end())
+            return it->second;
+        if (dot + 1 < path.size()) {
+            std::string alt = path.substr(dot + 1);
+            it              = cgi_ext.find(alt);
+            if (it != cgi_ext.end())
+                return it->second;
+            if (!alt.empty()) {
+                std::string withDot = "." + alt;
+                it                  = cgi_ext.find(withDot);
+                if (it != cgi_ext.end())
+                    return it->second;
+            }
+        }
     }
-    return false;
+    return "";
 }
 
 void RequestRouter::resolveAbsolutePath(std::string& path) {
@@ -118,11 +143,17 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
     (void)req;
     Response res;
 
+    std::cout << "HANDLING GET" << std::endl;
+
     if (isDirectory(path)) {
 
         if (!path.empty() && path[path.size() - 1] != '/') {
             res.setStatusCode(REDIRECT);
             res.setHeader(LOCATION, path + "/");
+            res.setBody("");
+            res.setHeader(CONTENT_LENGTH, "0");
+            std::cout << "GET DONE redirect" << std::endl;
+
             return res;
         }
 
@@ -139,26 +170,37 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
             res.setHeader(CONTENT_TYPE, getMimeType(indexPath));
             res.setHeader(CONTENT_LENGTH, toString(body.size()));
             res.setBody(body);
+            std::cout << "GET DONE inedxfile" << std::endl;
+
             return res;
         }
 
         if (config.autoindex) {
+            std::cout << "GET DONE autoindex" << std::endl;
             return makeAutoindexResponse(path, config.path);
         } else {
-            // std::cout << "forbidden here!" << std::endl;
+            std::cout << "GET DONE 403 no autoindex" << std::endl;
             return makeErrorResponse(FORBIDDEN);
         }
     }
 
-    if (!resourceExists(path, req))
+    if (!resourceExists(path, req)) {
+        std::cout << "GET DONE 404" << std::endl;
         return makeErrorResponse(NOT_FOUND);
+    }
 
     std::ifstream file(path.c_str());
-    if (!file.is_open())
+    if (!file.is_open()) {
+        std::cout << "GET DONE cant open fine" << std::endl;
         return makeErrorResponse(NOT_FOUND);
+    }
 
     res.setBody(readFile(file));
     res.setHeader(CONTENT_TYPE, getMimeType(path));
+    res.setHeader(CONTENT_LENGTH, toString(res.getBody().size()));
+
+    std::cout << "GET DONE good" << std::endl;
+
     return res;
 }
 
@@ -169,16 +211,11 @@ std::string generateUploadName() {
 }
 
 Response RequestRouter::handlePost(const Request& req, const std::string& path, const LocationConfig& config) {
-    // std::cout << "body: " << req.getBody() << std::endl;
-    // std::cout << "body.size(): " << req.getBody().size() << std::endl;
-    // std::cout << "config.path: " << config.path << std::endl;
-
     if (toSizet(req.getHeader(CONTENT_LENGTH)) > config.client_max_body_size) {
         return makeErrorResponse(CONTENT_TOO_LARGE);
     }
 
     if (config.upload_enable == false) {
-
         // std::cout << "ici" << std::endl;
         return makeErrorResponse(FORBIDDEN);
     }
@@ -191,26 +228,27 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
     std::string uploadPath;
     std::string filename = generateUploadName();
     if (!config.upload_store.empty())
-        uploadPath = config.root + config.upload_store + "/" + filename;
+        uploadPath = config.root + "/" + config.upload_store + "/" + filename;
 
     while (uploadPath.find("//") != std::string::npos) {
         replace(uploadPath, "//", "/");
     }
 
-    // std::cout << "uploadPath: " << uploadPath << std::endl;
+    std::cout << "uploadPath: " << uploadPath << std::endl;
     std::ofstream out(uploadPath.c_str(), std::ios::binary);
     if (!out.is_open()) {
-        // std::cout << "500 ici" << std::endl;
+        std::cout << "500 ici" << std::endl;
         return makeErrorResponse(INTERNAL_SERVER_ERROR);
     }
 
     out.write(req.getBody().c_str(), req.getBody().size());
 
-    // std::cout << "uploadPath: " << uploadPath << std::endl;
-
     Response res;
     res.setHeader(LOCATION, uploadPath);
     res.setStatusCode(CREATED);
+    res.setBody(generateHtml("Upload success!"));
+    res.setHeader(CONTENT_LENGTH, toString(res.getBody().size()));
+
     return res;
 }
 
@@ -228,18 +266,10 @@ Response RequestRouter::handleDelete(const Request& req, const std::string& path
     }
 
     if (std::remove(path.c_str()) != 0) {
-        return makeResponse(INTERNAL_SERVER_ERROR);
+        return makeErrorResponse(INTERNAL_SERVER_ERROR);
     }
 
     return makeResponse(NO_CONTENT);
-}
-
-Response RequestRouter::handleCgi(const Request& req, const std::string& path, const LocationConfig& config) {
-    (void)req;
-    (void)path;
-    (void)config;
-    Response res;
-    return res;
 }
 
 Response RequestRouter::makeResponse(enum statusCode statusCode) {
@@ -249,9 +279,41 @@ Response RequestRouter::makeResponse(enum statusCode statusCode) {
     return res;
 }
 
+std::string RequestRouter::generateErrorHtml(enum statusCode status) {
+    std::ifstream templateHtml("www/templates/error.html");
+    std::string   html = readFile(templateHtml);
+
+    replaceVariables(html, "statusCode", toString(status));
+    replaceVariables(html, "message", toString(status));
+
+    return html;
+}
+
+// std::string RequestRouter::generateHtml(const std::string&                        templatePath,
+//                                         const std::map<std::string, std::string>& variables) {
+//     std::ifstream templateHtml(templatePath);
+//     std::string   html = readFile(templateHtml);
+
+//     std::map<std::string, std::string>::const_iterator it;
+//     for (it = variables.begin(); it != variables.end(); ++it) {
+//         replaceVariables(html, it->first, it->second);
+//     }
+
+//     return html;
+// }
+
+std::string RequestRouter::generateHtml(const std::string& message) {
+    std::ifstream templateHtml("www/templates/success.html");
+    std::string   html = readFile(templateHtml);
+
+    replaceVariables(html, "message", message);
+
+    return html;
+}
+
 Response RequestRouter::makeErrorResponse(enum statusCode statusCode) {
     Response res;
-    // res.setbody(getHtml(statusCode));
+    res.setBody(generateErrorHtml(statusCode));
     res.setStatusCode(statusCode);
 
     return res;
@@ -273,8 +335,9 @@ Response RequestRouter::makeAutoindexResponse(const std::string& path, const std
             continue;
 
         std::string name(f->d_name);
-        std::string fullpath = location + "/" + f->d_name;
+        std::string fileloc = location + "/" + f->d_name;
 
+        std::string fullpath = path + "/" + f->d_name;
         struct stat st;
         stat(fullpath.c_str(), &st);
 
@@ -288,7 +351,7 @@ Response RequestRouter::makeAutoindexResponse(const std::string& path, const std
             type = T_DIR;
             name.push_back('/');
         }
-        files.push_back(AutoIndexItem(fullpath, name, st.st_size, type, lastModifedReadable));
+        files.push_back(AutoIndexItem(fileloc, name, st.st_size, type, lastModifedReadable));
     }
 
     std::string html = AutoIndex::fillTemplate(loc, files);
@@ -345,6 +408,7 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
     Response res;
     res.setStatusCode(REDIRECT);
     res.setHeader(LOCATION, location);
+    res.setHeader(CONTENT_LENGTH, "0");
     res.setBody("");
     return res;
 }
@@ -359,19 +423,22 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
         return makeErrorResponse(req.getStatusCode()); // can be 413 CONTENT_TOO_LARGE, for example
     }
 
-    // Request req = req_;
-    // req.setMethod("GET");
-    // req.setPath("/getonly/");
-    // req.setProtocolVersion("HTTP/1.1");
-    // req.setHeader(CONTENT_LENGTH, toString(10));
-    // req.setBody("helloWorld");
+    Request req_;
 
-    std::cout << req << std::endl;
+    req_.setMethod("POST");
+    req_.setPath("/www");
+    req_.setProtocolVersion("HTTP/1.1");
+    req_.setHeader(CONTENT_LENGTH, toString(10));
+    req_.setBody("helloWorld");
+
+    std::cout << req_ << std::endl;
 
     Response response;
 
     // static/HTTP-based semantic checks
+
     if (req.validateRequest(response) == INVALID_REQUEST) {
+        return makeErrorResponse(response.getStatusCode());
         DEBUG_LOG("RequestRouter.route(): INVALID_REQUEST, returning response:");
 #ifdef DEBUG_LOG
         std::cout << response << std::endl;
@@ -380,7 +447,7 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     }
 
     // dynamic/config-based checks
-    const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
+    const LocationConfig* locationConfig = findLocationConfig(req_.getPath(), config);
 
     std::string           locationPath;
     const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig, locationPath);
@@ -392,29 +459,29 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     std::string resolvedPath;
 
     try {
-        resolvedPath = resolvePath(req, resolvedConfig.root, locationPath);
+        resolvedPath = resolvePath(req_, resolvedConfig.root, locationPath);
     } catch (std::exception&) {
         return makeErrorResponse(BAD_REQUEST);
     }
 
-    if (!resourceExists(resolvedPath, req)) {
+    if (!resourceExists(resolvedPath, req_)) {
         return makeErrorResponse(NOT_FOUND);
     }
 
-    if (!isMethodAllowed(req, resolvedConfig)) {
+    if (!isMethodAllowed(req_, resolvedConfig)) {
         return makeErrorResponse(NOT_ALLOWED);
     }
 
     if (isCgiRequest(resolvedPath, resolvedConfig))
-        return handleCgi(req, resolvedPath, resolvedConfig);
+        return handleCgi(req, resolvedPath, config, resolvedConfig);
 
-    switch (req.getMethod()) {
+    switch (req_.getMethod()) {
         case GET:
-            return handleGet(req, resolvedPath, resolvedConfig);
+            return handleGet(req_, resolvedPath, resolvedConfig);
         case POST:
-            return handlePost(req, resolvedPath, resolvedConfig);
+            return handlePost(req_, resolvedPath, resolvedConfig);
         case DELETE:
-            return handleDelete(req, resolvedPath, resolvedConfig);
+            return handleDelete(req_, resolvedPath, resolvedConfig);
         default:
             return makeErrorResponse(BAD_REQUEST);
     }

@@ -1,10 +1,18 @@
-// Utils.hpp
-
+#include "Enums.hpp"
+#include "Webserv.hpp"
+#include <iostream>
+#include <sstream>
+#include <sys/stat.h>
 #include <vector>
 
-#include "Enums.hpp"
+class ConfigParser;
 
-// Utils.cpp
+std::string&             replaceVariables(std::string&, const std::string&, const std::string&);
+std::string              methodToString(requestMethod);
+std::string              trimString(const std::string&);
+std::string              toLower(const std::string&);
+bool                     isSubPath(const std::string&, const std::string&);
+requestMethod            toMethod(const std::string&);
 std::string              toString(long long);
 size_t                   toSizet(const std::string&);
 std::string              tolower(const std::string&);

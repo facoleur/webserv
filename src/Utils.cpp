@@ -107,3 +107,72 @@ std::string getParentDir(const std::string& path) {
 bool isSpace(int i) {
     return (std::isspace(i));
 }
+
+std::string& replaceVariables(std::string& html, const std::string& variable, const std::string& value) {
+    if (html.find("{{" + variable + "}}") == std::string::npos)
+        return html;
+
+    size_t pos = html.find("{{" + variable + "}}");
+    html.replace(pos, variable.size() + 4, value);
+
+    replaceVariables(html, variable, value);
+
+    return html;
+}
+
+std::string methodToString(requestMethod method) {
+    switch (method) {
+        case GET:
+            return "GET";
+        case POST:
+            return "POST";
+        case DELETE:
+            return "DELETE";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+std::string trimString(const std::string& value) {
+    size_t start = 0;
+    while (start < value.size() && (value[start] == ' ' || value[start] == '\t' || value[start] == '\r'))
+        ++start;
+    size_t end = value.size();
+    while (end > start && (value[end - 1] == ' ' || value[end - 1] == '\t' || value[end - 1] == '\r'))
+        --end;
+    return value.substr(start, end - start);
+}
+
+std::string toLower(const std::string& str) {
+    std::string lowered = str;
+    for (size_t i = 0; i < lowered.size(); ++i) {
+        lowered[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(lowered[i])));
+    }
+    return lowered;
+}
+
+bool isSubPath(const std::string& root, const std::string& candidate) {
+    if (root.empty())
+        return true;
+    if (candidate.size() < root.size())
+        return false;
+    if (candidate.compare(0, root.size(), root) != 0)
+        return false;
+    if (candidate.size() == root.size())
+        return true;
+    char last = root[root.size() - 1];
+    if (last == '/')
+        return true;
+    return candidate[root.size()] == '/';
+}
+
+// Map a method string to the project's enum
+enum requestMethod toMethod(const std::string& s) {
+    if (s == "GET")
+        return GET;
+    if (s == "POST")
+        return POST;
+    if (s == "DELETE")
+        return DELETE;
+    return UNKNOWN;
+}

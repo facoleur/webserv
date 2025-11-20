@@ -154,6 +154,7 @@ enum requestValidity Request::validateRequest(Response& res) const {
         return INVALID_REQUEST;
     }
     DEBUG_LOG("validateRequest: VALID until now");
+    std::cout << "valid" << std::endl;
     return VALID_REQUEST;
 }
 

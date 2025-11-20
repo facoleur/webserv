@@ -6,6 +6,8 @@
 #include "RequestParser.hpp"
 #include "Server.hpp"
 
+// std::map<std::string, enum requestHeaders> RequestParser::_headerStringToEnum;
+
 RequestParser::RequestParser(void)
     : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_REQUEST_LINE), _statusCode(NO_STATUS), _contentLength(0),
       _accumulator(), _firstSection(), _requestLine(), _headers(), _body() {
