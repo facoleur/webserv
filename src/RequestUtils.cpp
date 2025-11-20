@@ -76,14 +76,14 @@ std::ostream& operator<<(std::ostream& os, enum statusCode stat) {
     return os;
 }
 
-void Request::printHeaders(std::ostream& os) {
+void Request::printHeaders(std::ostream& os) const {
 
-    for (std::map<enum requestHeaders, std::string>::iterator it = _headers.begin(); it != _headers.end(); it++) {
+    for (std::map<enum requestHeaders, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); it++) {
         os << (*it).first << ": " << (*it).second << std::endl;
     }
 }
 
-std::ostream& operator<<(std::ostream& os, Request& req) {
+std::ostream& operator<<(std::ostream& os, const Request& req) {
     os << "[REQUEST]" << std::endl;
     os << "--------------------------------" << std::endl;
     os << "Method:           " << req._method << std::endl;

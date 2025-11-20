@@ -337,16 +337,17 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
     return res;
 }
 
-Response RequestRouter::route(const Request& req_, const ServerConfig& config) {
+Response RequestRouter::route(const Request& req, const ServerConfig& config) {
 
-    if (req_.getStatusCode() == BAD_REQUEST) {
-        makeErrorResponse(BAD_REQUEST);
+    if (req.getStatusCode() != NO_STATUS) {
+        makeErrorResponse(req.getStatusCode()); // can be 413 CONTENT_TOO_LARGE, for example
+        DEBUG_LOG("RequestRouter.route(): status already set before to: " + ReasonPhrase::get(req_.getStatusCode()));
     }
 
-    Request req = req_;
-    req.setMethod("GET");
-    req.setPath("/getonly/");
-    req.setProtocolVersion("HTTP/1.1");
+    // Request req = req_;
+    // req.setMethod("GET");
+    // req.setPath("/getonly/");
+    // req.setProtocolVersion("HTTP/1.1");
     // req.setHeader(CONTENT_LENGTH, toString(10));
     // req.setBody("helloWorld");
 
@@ -354,13 +355,11 @@ Response RequestRouter::route(const Request& req_, const ServerConfig& config) {
 
     Response response;
 
+    // static/HTTP-based semantic checks
     if (req.validateRequest(response) == INVALID_REQUEST)
         return response;
 
-    if (req.getValidity() == INVALID_REQUEST) {
-        makeErrorResponse(BAD_REQUEST);
-    }
-
+    // dynamic/config-based checks
     const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
 
     std::string           locationPath;

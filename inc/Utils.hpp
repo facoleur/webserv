@@ -15,3 +15,5 @@ std::string              join(const std::vector<std::string>& parts, char delim)
 bool                     isDirectory(const std::string& path);
 std::string              readFile(const std::ifstream& file);
 std::string              getParentDir(const std::string& path);
+bool                     isSpace(int i);
+bool                     isAcceptedHeader(std::string&);

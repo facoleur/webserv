@@ -38,16 +38,16 @@ class Request {
     void printRequest(void) const;
 
     // getters
-    requestMethod                                getMethod(void) const;
-    const std::string&                           getPath(void) const;
-    const std::string&                           getQueryString(void) const;
-    const std::string&                           getProtocolVersion(void) const;
-    const std::vector<std::string, std::string>& getHeaders(void) const;
-    const std::string                            getHeader(enum requestHeaders) const;
-    const std::string&                           getBody(void) const;
-    requestValidity                              getValidity(void) const;
-    statusCode                                   getStatusCode(void) const;
-    void                                         resolveAbsolutePath(std::string& path);
+    requestMethod                                     getMethod(void) const;
+    const std::string&                                getPath(void) const;
+    const std::string&                                getQueryString(void) const;
+    const std::string&                                getProtocolVersion(void) const;
+    const std::map<enum requestHeaders, std::string>& getHeaders(void) const;
+    const std::string                                 getHeader(enum requestHeaders) const;
+    const std::string&                                getBody(void) const;
+    requestValidity                                   getValidity(void) const;
+    statusCode                                        getStatusCode(void) const;
+    void                                              resolveAbsolutePath(std::string& path);
     // setters
     void setMethod(const std::string&);
     void setPath(std::string const&);
@@ -62,8 +62,8 @@ class Request {
     friend std::ostream& operator<<(std::ostream&, requestMethod);
     friend std::ostream& operator<<(std::ostream&, requestValidity);
     friend std::ostream& operator<<(std::ostream&, statusCode);
-    friend std::ostream& operator<<(std::ostream&, Request&);
-    void                 printHeaders(std::ostream&);
+    friend std::ostream& operator<<(std::ostream&, const Request&);
+    void                 printHeaders(std::ostream&) const;
 
   private:
     // Attributes
@@ -78,4 +78,5 @@ class Request {
     requestValidity                            _validity;
 };
 
-std::ostream& operator<<(std::ostream& os, Request& req);
+// std::ostream& operator<<(std::ostream& os, Request& req);
+std::ostream& operator<<(std::ostream& os, const Request& req);

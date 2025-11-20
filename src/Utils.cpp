@@ -1,9 +1,9 @@
 // Utils.cpp
 
 #include "Utils.hpp"
-#include <poll.h>
 #include <dirent.h>
 #include <fstream>
+#include <poll.h>
 #include <string>
 #include <sys/stat.h>
 
@@ -19,6 +19,7 @@ size_t toSizet(const std::string& s) {
         n = n * 10 + (s[i] - '0');
     return n;
 }
+
 std::string tolower(const std::string& s) {
     std::string out = s;
     for (size_t i = 0; i < out.size(); i++)
@@ -106,4 +107,8 @@ std::string getParentDir(const std::string& path) {
         return "/";
 
     return trimmed.substr(0, pos);
+}
+
+bool isSpace(int i) {
+    return (std::isspace(i));
 }

@@ -17,7 +17,16 @@
 #include <vector>
 
 enum requestMethod { GET, POST, DELETE, UNKNOWN };
-enum requestHeaders { HOST, CONTENT_LENGTH, LOCATION, TRANSFER_ENCODING, CONTENT_TYPE, CONNECTION, ACCEPT };
+enum requestHeaders {
+    HOST,
+    CONTENT_LENGTH,
+    LOCATION,
+    TRANSFER_ENCODING,
+    CONTENT_TYPE,
+    CONNECTION,
+    ACCEPT,
+    NB_REQUEST_HEADERS // used to check if a given header is defined in the enum
+};
 
 enum statusCode {
     NO_STATUS = 0,

@@ -8,6 +8,8 @@
 #include <sstream>
 
 #define READ_BUF_SIZE 8000
+#define MIN_REQ_SIZE 19      // shortest possible request without ending CRLFCRLF: "GET / HTTP/2\r\nHost:"
+#define MAX_HEADER_SIZE 4000 // header name + field max length
 #define CRLF std::string("\r\n")
 
 class Request;
@@ -36,12 +38,17 @@ class RequestParser {
   private:
     // Main parsing functions
     void parseRequestLine(Request&);
-    void parseHeaders(void);
-    void parseHeader(std::string&);
-    void parseBody(int sockFd, size_t contentLength);
+    void parseHeaders(Request&);
+    void parseHeader(std::string&, Request&);
+    void parseBody(size_t contentLength);
 
     // Helpers
-    void splitRequestLine(std::vector<std::string>&, std::string& line);
+    void                                splitRequestLine(std::vector<std::string>&, std::string&);
+    std::pair<std::string, std::string> checkHeaderSyntax(std::string&, Request&);
+    void                                fillHeadersMap(std::pair<std::string, std::string> const&, Request&);
+    unsigned char                       toLowerChar(unsigned char c);
+    void                                trimWhitespace(std::string&);
+    bool                                isCaseInsensitiveHeader(std::string&);
 
     // Error handling
     void handleParseError(Request&, std::queue<Request>&);
@@ -57,4 +64,16 @@ class RequestParser {
     std::string       _requestLine;
     std::string       _headers;
     std::string       _body;
+
+    static std::map<std::string, enum requestHeaders> _headerStringToEnum;
+
+    static void initHeaderStringToEnumMap() {
+        _headerStringToEnum["Host"]              = HOST;
+        _headerStringToEnum["Content-Length"]    = CONTENT_LENGTH;
+        _headerStringToEnum["Location"]          = LOCATION;
+        _headerStringToEnum["Transfer-Encoding"] = TRANSFER_ENCODING;
+        _headerStringToEnum["Content-Type"]      = CONTENT_TYPE;
+        _headerStringToEnum["Connection"]        = CONNECTION;
+        _headerStringToEnum["Accept"]            = ACCEPT;
+    }
 };

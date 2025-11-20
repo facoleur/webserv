@@ -79,7 +79,7 @@ void Request::setPath(std::string const& path) {
 }
 
 void Request::setHeader(enum requestHeaders key, const std::string& value) {
-    _headers[key] = value;
+    _headers[key] += value;
 }
 
 void Request::setHeaders(const std::map<enum requestHeaders, std::string>& headers) {
@@ -114,6 +114,7 @@ enum requestValidity Request::validateRequest(Response& res) const {
         res.setStatusCode(NOT_IMPLEMENTED);
         return INVALID_REQUEST;
     }
+
     if (!isValidTarget() || !isValidQueryString()) {
         res.setStatusCode(BAD_REQUEST);
         return INVALID_REQUEST;
@@ -139,7 +140,7 @@ enum requestValidity Request::validateRequest(Response& res) const {
         res.setStatusCode(BAD_REQUEST);
         return INVALID_REQUEST;
     }
-    DEBUG_LOG("validateRequest: VALID");
+    DEBUG_LOG("validateRequest: VALID until now");
     return VALID_REQUEST;
 }
 
