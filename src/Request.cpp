@@ -131,6 +131,7 @@ enum requestValidity Request::validateRequest(Response& res) const {
     }
 
     if (!isValidProtocolVersion()) {
+
         DEBUG_LOG("validateRequest: !isValidProtocolVersion()");
         res.setStatusCode(HTTP_VERSION_NOT_SUPPORTED);
         return INVALID_REQUEST;
@@ -196,6 +197,7 @@ bool Request::isValidQueryString(void) const {
 }
 
 bool Request::isValidProtocolVersion(void) const {
+    DEBUG_LOG("isValidProtocolVersion: _protocolVersion: {" + _protocolVersion + "}");
     return _protocolVersion == "HTTP/1.1";
 }
 
@@ -225,6 +227,12 @@ bool Request::isValidHeaders(Response& res) const {
         res.setStatusCode(NOT_IMPLEMENTED);
         return false;
     }
+
+    if ((_headers.find(CONTENT_LENGTH) != _headers.end()) && (_headers.find(TRANSFER_ENCODING)) != _headers.end()) {
+        res.setStatusCode(BAD_REQUEST); // ?
+        return false;
+    }
+
     return true;
 }
 

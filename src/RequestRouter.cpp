@@ -354,9 +354,9 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     DEBUG_LOG("RequestRouter.route():");
 
     if (req.getStatusCode() != NO_STATUS) {
-        makeErrorResponse(req.getStatusCode()); // can be 413 CONTENT_TOO_LARGE, for example
         std::string reasonPhrase(ReasonPhrase::get(req.getStatusCode()));
         DEBUG_LOG("RequestRouter.route(): status already set before to: " + reasonPhrase);
+        return makeErrorResponse(req.getStatusCode()); // can be 413 CONTENT_TOO_LARGE, for example
     }
 
     // Request req = req_;

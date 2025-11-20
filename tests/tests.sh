@@ -114,7 +114,6 @@ fi
 # printf 'Test: %s%s\n' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALID[0]}"
 # printf 'Test: %s%s' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALID[0]}" | nc localhost ${WEBSERV_PORT}
 
-
 ## Test a simple valid request with two headers, one valid one ingored - Host: example.com Foo:  bar
 # printf "Test: {GET / HTTP/1.1\r\nHost: example.com\r\nFoo:  bar \r\n\r\n}\n\n"
 # printf 'GET / HTTP/1.1\r\nHost: example.com\r\nFoo:  bar \r\n\r\n' | nc localhost 8080

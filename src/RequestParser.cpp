@@ -72,8 +72,10 @@ void RequestParser::parseRequestLine(Request& req) {
 
     /* set HTTP version */
     if (split[2] != "HTTP/1.0" && split[2] != "HTTP/1.1" && split[2] != "HTTP/0.9" && split[2] != "HTTP/2" &&
-        split[2] != "HTTP/3")
+        split[2] != "HTTP/3") {
+        DEBUG_LOG("RequestParser: split[2]: " + split[2]);
         throw RequestParsingError("parseRequestLine(): HTTP version not in the list");
+    }
     req.setProtocolVersion(split[2]);
 }
 
@@ -272,9 +274,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
                     parseRequestLine(req);
                     _parsingPhase = PARSING_HEADERS;
                 } else { // _firstSection is a pure request-line with no headers => CHANGE THIS TO BAD REQUEST !
-                    _requestLine = _firstSection;
-                    _firstSection.clear();
-                    parseRequestLine(req);
+                    handleParseError(req, reqQueue);
                     _parsingPhase = PARSING_COMPLETE;
                 }
             }
