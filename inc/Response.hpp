@@ -6,39 +6,37 @@
 #include <map>
 #include <utility>
 
+#include "Enums.hpp"
 #include "Request.hpp"
-#include "Utils.hpp"
 #include "Webserv.hpp"
-
-enum requestHeaders;
-enum statusCode;
 
 class Headers {
   private:
-    static std::map<enum requestHeaders, std::string> _headersString;
+    static headersMap _headersMap;
 
     static void init() {
-        _headersString[HOST]              = "Host";
-        _headersString[CONTENT_LENGTH]    = "Content-Length";
-        _headersString[LOCATION]          = "Location";
-        _headersString[TRANSFER_ENCODING] = "Transfer-Encoding";
-        _headersString[CONTENT_TYPE]      = "Content-Type";
-        _headersString[CONNECTION]        = "Connection";
-        _headersString[ACCEPT]            = "Accept";
+        _headersMap[HOST]              = "Host";
+        _headersMap[CONTENT_LENGTH]    = "Content-Length";
+        _headersMap[LOCATION]          = "Location";
+        _headersMap[TRANSFER_ENCODING] = "Transfer-Encoding";
+        _headersMap[CONTENT_TYPE]      = "Content-Type";
+        _headersMap[CONNECTION]        = "Connection";
+        _headersMap[ACCEPT]            = "Accept";
     }
 
   public:
     Headers();
     ~Headers();
 
-    static std::string getHeader(enum requestHeaders header) {
+    static std::string getHeader(requestHeaders header) {
         init();
-        return _headersString[header];
+        return _headersMap[header];
     }
 };
+
 class ReasonPhrase {
   public:
-    static const char* get(enum statusCode code) {
+    static const char* get(statusCode code) {
         switch (code) {
             case 200:
                 return "OK";
@@ -76,26 +74,28 @@ class ReasonPhrase {
 
 class Response {
   private:
-    enum statusCode                            _statusCode;
-    std::map<enum requestHeaders, std::string> _headers;
-    std::string                                _body;
+    statusCode  _statusCode;
+    headersMap  _headers;
+    std::string _body;
 
     std::string _serializedResponse;
 
   public:
     Response();
-    Response(enum statusCode statusCode);
+    Response(statusCode statusCode);
     ~Response();
 
-    void                                              setStatusCode(enum statusCode);
-    void                                              setHeader(enum requestHeaders, const std::string&);
-    void                                              setHeaders(const std::map<enum requestHeaders, std::string>&);
-    void                                              setBody(const std::string&);
-    enum statusCode                                   getStatusCode() const;
-    const std::string&                                getHeader(enum requestHeaders) const;
-    const std::map<enum requestHeaders, std::string>& getHeaders() const;
-    const std::string&                                getBody() const;
-    bool                                              isError();
+    void               setStatusCode(statusCode);
+    void               setHeader(requestHeaders, const std::string&);
+    void               setHeaders(const headersMap&);
+    void               setBody(const std::string&);
+    statusCode         getStatusCode() const;
+    const std::string& getHeader(requestHeaders) const;
+    const headersMap&  getHeaders() const;
+    const std::string& getBody() const;
+    bool               isError();
 
     std::string& serialize();
+
+    friend std::ostream& operator<<(std::ostream&, const Response&);
 };

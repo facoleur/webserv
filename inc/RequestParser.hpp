@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "Webserv.hpp"
 #include <queue>
-#include <sstream>
+
+#include "Enums.hpp"
 
 #define READ_BUF_SIZE 8000
 #define MIN_REQ_SIZE 19      // shortest possible request without ending CRLFCRLF: "GET / HTTP/2\r\nHost:"
@@ -13,9 +13,6 @@
 #define CRLF std::string("\r\n")
 
 class Request;
-
-enum ParserState { REQ_PARSE_START, REQ_PARSE_PARTIAL, REQ_PARSE_COMPLETE, REQ_PARSE_ERROR };
-enum ParsingPhase { PARSING_REQUEST_LINE, PARSING_HEADERS, PARSING_BODY, PARSING_COMPLETE };
 
 /* parses an HTTP request, (in)validating its syntax, and storing the result in
 a Request object */
@@ -56,9 +53,9 @@ class RequestParser {
     void handleParsePartial(size_t);
 
     // attributes
-    enum ParserState                      _parserState;
-    enum ParsingPhase                     _parsingPhase;
-    enum statusCode                       _statusCode;
+    ParserState                           _parserState;
+    ParsingPhase                          _parsingPhase;
+    statusCode                            _statusCode;
     size_t                                _contentLength;
     std::string                           _accumulator;
     std::string                           _firstSection; // request-line + headers

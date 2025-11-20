@@ -1,9 +1,10 @@
 // RequestParser.cpp
 
-#include "RequestParser.hpp"
-#include "Server.hpp"
 #include <algorithm>
 #include <cctype>
+
+#include "RequestParser.hpp"
+#include "Server.hpp"
 
 RequestParser::RequestParser(void)
     : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_REQUEST_LINE), _statusCode(NO_STATUS), _contentLength(0),
@@ -23,11 +24,11 @@ void RequestParser::initHeaderStringToEnumMap(void) {
     _headerStringToEnum["Accept"]            = ACCEPT;
 }
 
-enum ParserState RequestParser::getState(void) {
+ParserState RequestParser::getState(void) {
     return _parserState;
 }
 
-void RequestParser::setState(enum ParserState parserState) {
+void RequestParser::setState(ParserState parserState) {
     _parserState = parserState;
 }
 
@@ -169,7 +170,7 @@ void RequestParser::fillHeadersMap(std::pair<std::string, std::string> const& he
 #ifdef DEBUG_LOG
     std::cout << "fillHeadersMap: header {" << headerName << "} now has value {"
               << req.getHeader(_headerStringToEnum[headerName]) << "}" << std::endl;
-    req.printHeaders(std::cout);
+    std::cout << req.getHeaders() << std::endl;
 #endif
 }
 

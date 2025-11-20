@@ -1,6 +1,11 @@
 // Request.cpp
 
+#include <iostream>
+
 #include "Request.hpp"
+#include "Response.hpp"
+#include "Utils.hpp"
+#include "Webserv.hpp"
 
 Request::Request(void)
     : _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _body(), _statusCode(NO_STATUS),
@@ -10,16 +15,19 @@ Request::Request(void)
 Request::~Request(void) {
 }
 
-void Request::printRequest(void) const {
-    std::cout << "path: " << _path << std::endl;
-    std::cout << "method: " << _method << std::endl;
-    std::cout << "body: " << _body << std::endl;
-
-    for (std::map<enum requestHeaders, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); ++it) {
-        std::cout << "header: " << (*it).first << ": " << (*it).second << std::endl;
-    }
-
-    std::cout << _body << std::endl;
+std::ostream& operator<<(std::ostream& os, const Request& req) {
+    os << "[REQUEST]" << std::endl;
+    os << "--------------------------------" << std::endl;
+    os << "Method:           " << req.getMethod() << std::endl;
+    os << "Path:             " << req.getPath() << std::endl;
+    os << "Query String:     " << req.getQueryString() << std::endl;
+    os << "Headers:          " << req.getHeaders() << std::endl;
+    os << "Body:             " << req.getBody() << std::endl;
+    os << "Protocol version: " << req.getProtocolVersion() << std::endl;
+    os << "Status code:      " << req.getStatusCode() << std::endl;
+    os << "Validity:         " << req.getValidity() << std::endl;
+    os << "--------------------------------" << std::endl;
+    return os;
 }
 
 enum requestMethod Request::getMethod(void) const {
@@ -42,9 +50,9 @@ statusCode Request::getStatusCode(void) const {
     return _statusCode;
 }
 
-// std::vector<std::string, std::string> Request::getHeaders(void) const {
-//     return _headers;
-// }
+const headersMap& Request::getHeaders() const {
+    return _headers;
+}
 
 const std::string Request::getHeader(enum requestHeaders headers) const {
     for (std::map<enum requestHeaders, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); ++it) {

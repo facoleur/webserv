@@ -4,16 +4,16 @@
 #include "Request.hpp"
 #include "Utils.hpp"
 
-std::map<enum requestHeaders, std::string> Headers::_headersString;
-
 Response::Response() : _statusCode(OK) {
 }
 
-Response::Response(enum statusCode statusCode) : _statusCode(statusCode) {
+Response::Response(statusCode statusCode) : _statusCode(statusCode) {
 }
 
 Response::~Response() {
 }
+
+headersMap Headers::_headersMap;
 
 std::string& Response::serialize() {
     _serializedResponse.clear();
@@ -23,7 +23,7 @@ std::string& Response::serialize() {
     _serializedResponse.append(ReasonPhrase::get(_statusCode));
     _serializedResponse.append("\r\n");
 
-    for (std::map<enum requestHeaders, std::string>::iterator it = _headers.begin(); it != _headers.end(); it++) {
+    for (headersMap::iterator it = _headers.begin(); it != _headers.end(); it++) {
         _serializedResponse.append(Headers::getHeader(it->first));
         _serializedResponse.append(": ");
         _serializedResponse.append(it->second);
@@ -35,16 +35,16 @@ std::string& Response::serialize() {
     return _serializedResponse;
 }
 
-void Response::setStatusCode(enum statusCode statusCode) {
+void Response::setStatusCode(statusCode statusCode) {
     _statusCode = statusCode;
 }
 
-void Response::setHeader(enum requestHeaders key, const std::string& value) {
+void Response::setHeader(requestHeaders key, const std::string& value) {
     _headers[key] = value;
 }
 
-void Response::setHeaders(const std::map<enum requestHeaders, std::string>& headers) {
-    for (std::map<enum requestHeaders, std::string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
+void Response::setHeaders(const headersMap& headers) {
+    for (headersMap::const_iterator it = headers.begin(); it != headers.end(); ++it) {
         _headers[it->first] = it->second;
     }
 }
@@ -53,15 +53,15 @@ void Response::setBody(const std::string& body) {
     _body = body;
 }
 
-enum statusCode Response::getStatusCode() const {
+statusCode Response::getStatusCode() const {
     return _statusCode;
 }
 
-const std::map<enum requestHeaders, std::string>& Response::getHeaders() const {
+const headersMap& Response::getHeaders() const {
     return _headers;
 }
 
-const std::string& Response::getHeader(enum requestHeaders header) const {
+const std::string& Response::getHeader(requestHeaders header) const {
     return _headers.at(header);
 }
 
@@ -71,4 +71,15 @@ const std::string& Response::getBody() const {
 
 bool Response::isError() {
     return _statusCode >= 400;
+}
+
+std::ostream& operator<<(std::ostream& os, const Response& res) {
+    os << "[RESPONSE]" << std::endl;
+    os << "--------------------------------" << std::endl;
+    os << "Headers:          " << res._headers << std::endl;
+    os << std::endl;
+    os << "Body:             " << res._body << std::endl;
+    os << "Status code:      " << res._statusCode << std::endl;
+    os << "--------------------------------" << std::endl;
+    return os;
 }

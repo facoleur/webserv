@@ -1,10 +1,21 @@
 // RequestRouter.cpp
 
-#include "RequestRouter.hpp"
+#include <algorithm>
 #include <ctime>
+#include <dirent.h>
+#include <fstream>
+#include <sstream>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include "Request.hpp"
+#include "RequestRouter.hpp"
+#include "Response.hpp"
 
 RequestRouter::RequestRouter() {
 }
+
 RequestRouter::~RequestRouter() {
 }
 
@@ -339,9 +350,11 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
 
 Response RequestRouter::route(const Request& req, const ServerConfig& config) {
 
+    DEBUG_LOG("RequestRouter.route():");
+
     if (req.getStatusCode() != NO_STATUS) {
         makeErrorResponse(req.getStatusCode()); // can be 413 CONTENT_TOO_LARGE, for example
-        DEBUG_LOG("RequestRouter.route(): status already set before to: " + ReasonPhrase::get(req_.getStatusCode()));
+        DEBUG_LOG("RequestRouter.route(): status already set before to: " + ReasonPhrase::get(req.getStatusCode()));
     }
 
     // Request req = req_;
@@ -356,8 +369,11 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     Response response;
 
     // static/HTTP-based semantic checks
-    if (req.validateRequest(response) == INVALID_REQUEST)
+    if (req.validateRequest(response) == INVALID_REQUEST) {
+        DEBUG_LOG("RequestRouter.route(): INVALID_REQUEST, returning response:");
+
         return response;
+    }
 
     // dynamic/config-based checks
     const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
