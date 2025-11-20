@@ -1,4 +1,5 @@
 #include "ConfigParser.hpp"
+#include "Utils.hpp"
 #include <cctype>
 #include <cstdlib>
 #include <fstream>
