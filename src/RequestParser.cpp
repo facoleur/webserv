@@ -1,11 +1,12 @@
 // RequestParser.cpp
 
-#include "RequestParser.hpp"
-#include "Server.hpp"
 #include <algorithm>
 #include <cctype>
 
-std::map<std::string, enum requestHeaders> RequestParser::_headerStringToEnum;
+#include "RequestParser.hpp"
+#include "Server.hpp"
+
+// std::map<std::string, enum requestHeaders> RequestParser::_headerStringToEnum;
 
 RequestParser::RequestParser(void)
     : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_REQUEST_LINE), _statusCode(NO_STATUS), _contentLength(0),
@@ -15,11 +16,21 @@ RequestParser::RequestParser(void)
 RequestParser::~RequestParser(void) {
 }
 
-enum ParserState RequestParser::getState(void) {
+void RequestParser::initHeaderStringToEnumMap(void) {
+    _headerStringToEnum["host"]              = HOST;
+    _headerStringToEnum["content-length"]    = CONTENT_LENGTH;
+    _headerStringToEnum["location"]          = LOCATION;
+    _headerStringToEnum["transfer-encoding"] = TRANSFER_ENCODING;
+    _headerStringToEnum["content-type"]      = CONTENT_TYPE;
+    _headerStringToEnum["connection"]        = CONNECTION;
+    _headerStringToEnum["accept"]            = ACCEPT;
+}
+
+ParserState RequestParser::getState(void) {
     return _parserState;
 }
 
-void RequestParser::setState(enum ParserState parserState) {
+void RequestParser::setState(ParserState parserState) {
     _parserState = parserState;
 }
 
@@ -30,7 +41,7 @@ void RequestParser::splitRequestLine(std::vector<std::string>& split, std::strin
     for (size_t i = 0; i < 2; i++) {
         pos = line.find(' ');
         if (pos == line.npos)
-            throw RequestParsingError();
+            throw RequestParsingError("splitRequestLine(): found less than two spaces");
         split.push_back(line.substr(0, pos));
         line = line.substr(pos + 1);
     }
@@ -47,13 +58,13 @@ void RequestParser::parseRequestLine(Request& req) {
 
     /* set method */
     if (split[0].empty())
-        throw RequestParsingError();
+        throw RequestParsingError("parseRequestLine(): method field is empty");
 
     req.setMethod(split[0]);
 
     /* set request-target path and query-string */
     if (split[1].empty() || split[1].find_first_of(" \t\n\r\f\v") != std::string::npos)
-        throw RequestParsingError();
+        throw RequestParsingError("parseRequestLine(): request-target is empty or contains whitespace");
     queryPos = split[1].find("?");
     if (queryPos != std::string::npos) {
         req.setQueryString(split[1].substr(queryPos + 1));
@@ -64,7 +75,7 @@ void RequestParser::parseRequestLine(Request& req) {
     /* set HTTP version */
     if (split[2] != "HTTP/1.0" && split[2] != "HTTP/1.1" && split[2] != "HTTP/0.9" && split[2] != "HTTP/2" &&
         split[2] != "HTTP/3")
-        throw RequestParsingError();
+        throw RequestParsingError("parseRequestLine(): HTTP version not in the list");
     req.setProtocolVersion(split[2]);
 }
 
@@ -109,34 +120,46 @@ std::pair<std::string, std::string> RequestParser::checkHeaderSyntax(std::string
     std::string                  headerName;
     std::string                  headerField;
 
+    DEBUG_LOG("checkHeaderSyntax – header is {" + header + "}");
+
     // check header size
+    if (header.size() < MIN_HEADER_SIZE)
+        throw RequestParsingError("checkHeaderSyntax(): header < MIN_HEADER_SIZE");
+
     if (header.size() > MAX_HEADER_SIZE) {
         req.setStatusCode(CONTENT_TOO_LARGE);
-        throw RequestParsingError();
+        DEBUG_LOG("checkHeaderSyntax: ");
+        throw RequestParsingError("checkHeaderSyntax(): header > MAX_HEADER_SIZE");
     }
 
     // split on colon
     n     = std::count(header.begin(), header.end(), ':');
     count = static_cast<int>(n);
     if (count != 1) // not exactly one colon
-        throw RequestParsingError();
+        throw RequestParsingError("checkHeaderSyntax(): header doesn't have exactly one colon (':')");
+
     pos = header.find(":");
     if (pos == 0 || pos == header.size() - 1) // colon is first or last character
-        throw RequestParsingError();
+        throw RequestParsingError("checkHeaderSyntax(): colon (':') is first or last character");
+
     headerName  = header.substr(0, pos);
     headerField = header.substr(pos + 1); // skip the ":"
-    DEBUG_LOG("checkHeaderSyntax – headerName: {" + headerName + "}, headerField: {" + headerName + "}");
+    DEBUG_LOG("checkHeaderSyntax – headerName: {" + headerName + "}, headerField: {" + headerField + "}");
 
     // check if whitespace before colon
     it = std::find_if(headerName.begin(), headerName.end(), isSpace);
-    if (it != header.end())
-        throw RequestParsingError();
+    DEBUG_LOG("checkHeaderSyntax – headerName is {" + headerName + "}");
+    if (it != headerName.end()) {
+        DEBUG_LOG("*it: " + toString(*it));
+        throw RequestParsingError("checkHeaderSyntax(): whitespace found before colon (':')");
+    }
 
     // format header name and field
     headerName = tolower(headerName);
     trimWhitespace(headerField);
     if (isCaseInsensitiveHeader(headerName))
         headerField = tolower(headerField);
+
     return std::pair<std::string, std::string>(headerName, headerField);
 }
 
@@ -149,41 +172,48 @@ void RequestParser::fillHeadersMap(std::pair<std::string, std::string> const& he
     std::string existingHeader;
 
     initHeaderStringToEnumMap();
-    if (_headerStringToEnum[headerName] > NB_REQUEST_HEADERS)
+    if (_headerStringToEnum.find(headerName) == _headerStringToEnum.end()) {
+        DEBUG_LOG("headerName {" + headerName + "} not found in headers enum");
         return;
+    }
     existingHeader = req.getHeader(_headerStringToEnum[headerName]);
     if (!existingHeader.empty())
         headerField = "," + headerField; // add a comma if there is already a value for a given header
+    DEBUG_LOG("fillHeadersMap: headerField is {" + headerField + "}");
     req.setHeader(_headerStringToEnum[headerName], headerField);
 #ifdef DEBUG_LOG
     std::cout << "fillHeadersMap: header {" << headerName << "} now has value {"
               << req.getHeader(_headerStringToEnum[headerName]) << "}" << std::endl;
-    req.printHeaders(std::cout);
+    std::cout << req.getHeaders() << std::endl;
 #endif
 }
 
 void RequestParser::parseHeader(std::string& header, Request& req) {
     std::pair<std::string, std::string> header_pair;
 
+    DEBUG_LOG("*** parseHeader ***");
     header_pair = checkHeaderSyntax(header, req);
     fillHeadersMap(header_pair, req);
 }
 
 void RequestParser::parseHeaders(Request& req) {
-    (void)req;
-    size_t pos;
+    size_t      pos;
+    std::string header;
 
+    // example: 'Host: example.com\r\nFoo:  bar \r\n\r\n'
     pos = _headers.find(CRLF);
     while (pos != std::string::npos) {
-        // parseHeader(req);
-        // _headers = _headers.substr;
-        // pos      = _headers.find(CRLF);
+        header   = _headers.substr(0, pos);
+        _headers = _headers.substr(pos + 2);
+        DEBUG_LOG("parseHeaders - header is {" + header + "}, and _headers is {" + _headers + "}");
+        parseHeader(header, req);
+        pos = _headers.find(CRLF);
     }
-    if (_headers.size()) {
-        ;
-    }
-    // last header
-    // parseHeader(req);
+    if (_headers.size()) // last header
+        header = _headers.substr(0, pos);
+    DEBUG_LOG("parseHeaders - last header is {" + header + "}");
+    parseHeader(header, req);
+    _headers.clear();
 }
 
 void RequestParser::handleParseError(Request& req, std::queue<Request>& reqQueue) {
@@ -252,8 +282,8 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
             }
             if (_parsingPhase == PARSING_HEADERS) {
                 _headers = _firstSection;
-                // parseHeaders();
-                if (true) // has header content-length
+                parseHeaders(req);
+                if (req.hasHeader(CONTENT_LENGTH))
                     _parsingPhase = PARSING_BODY;
                 else
                     _parsingPhase = PARSING_COMPLETE;
@@ -270,6 +300,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
                 _parsingPhase = PARSING_REQUEST_LINE;
             }
         } catch (RequestParsingError& e) {
+            DEBUG_LOG(e.what());
             return handleParseError(req, reqQueue);
         }
     }

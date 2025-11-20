@@ -4,15 +4,11 @@
 
 #include "AutoIndex.hpp"
 #include "Config.hpp"
-#include "Request.hpp"
-#include "Response.hpp"
+#include "Enums.hpp"
 #include "Utils.hpp"
-#include "Webserv.hpp"
-#include <algorithm>
-#include <dirent.h>
-#include <fstream>
-#include <sys/types.h>
-#include <unistd.h>
+
+class Request;
+class Response;
 
 class RequestRouter {
   protected:
@@ -23,9 +19,9 @@ class RequestRouter {
     Response    handleGet(const Request&, std::string&, const LocationConfig&);
     Response    handlePost(const Request&, const std::string&, const LocationConfig&);
     Response    handleDelete(const Request&, const std::string&, const LocationConfig&);
-    Response    makeResponse(enum statusCode);
     Response    handleCgi(const Request&, const std::string&, const ServerConfig&, const LocationConfig&);
-    Response    makeErrorResponse(enum statusCode);
+    Response    makeResponse(statusCode);
+    Response    makeErrorResponse(statusCode);
     Response    makeRedirectResponse(const std::string&);
     void        resolveAbsolutePath(std::string&);
     std::string getMimeType(const std::string&);

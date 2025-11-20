@@ -43,7 +43,7 @@ NGINX_PORT=8081
 TOGGLE_TESTS=TEST_VALID # Options: TEST_VALID TEST_INVALID TEST_ALL
 PRINT_EACH_TEST=TRUE
 
-## Request elements
+## Request-line elements
 METHODS_VALID=(GET POST DELETE)
 METHODS_INVALID=(UNKNOWN BLABLA /BLABLA)
 
@@ -58,9 +58,23 @@ PATHS_INVALID=(' ' / /blabla /blabla.html /blabla.htm)
 PROTOCOLS_VALID=(HTTP/1.0 HTTP/1.1)
 PROTOCOLS_INVALID=('' ' ' HTTP/0.9 HTTP/2 HTTP)
 
+
+## Headers elements
+HEADERS_NAME_VALID=(Host Content-length Content-type Transfer-encoding foo)
+HEADERS_NAME_INVALID=('foo :' ' foo:' 'foo')
+
+HEADERS_FIELD_VALID=('localhost' '      localhost' 'local host' 'localhost      ' 'chunked' 'CHUNKED')
+HEADERS_FIELD_INVALID=(':localhost' 'localhost:' '::localhost')
+
+## Syntax elements
+CRLF=( $'\r\n' )
+COLON=( $':' )
+
 ENDING_VALID=( $'\r\n\r\n' )
 ENDING_INVALID=( $'\r\n' $'\r\n\r\n ' $' \r\n\r\n' $'\r' $'\n' $'' )
 
+CRLF_LABEL=( '\r\n' )
+COLON_LABEL=( ':' )
 ENDING_LABELS_VALID=( '\r\n\r\n' )
 ENDING_LABELS_INVALID=( '\r\n' '\r\n\r\n' '\r\n\r\n' '\r' '\n' )
 
@@ -101,18 +115,46 @@ fi
 # printf 'Test: %s%s' "${METHODS[0]} ${PATHS[2]} ${PROTOCOLS[0]}" "${ENDING_INVALID[0]}" | nc localhost ${WEBSERV_PORT}
 
 
+## Test a simple valid request with two headers, one valid one ingored - Host: example.com Foo:  bar
+# printf "Test: {GET / HTTP/1.1\r\nHost: example.com\r\nFoo:  bar \r\n\r\n}\n\n"
+# printf 'GET / HTTP/1.1\r\nHost: example.com\r\nFoo:  bar \r\n\r\n' | nc localhost 8080
+
+## Test a simple valid request with two valid headers - Host: example.com, Connection: True
+printf "Test: {GET / HTTP/1.1\r\nHost: example.com\r\nConnection: True\r\n\r\n}\n\n"
+printf 'GET / HTTP/1.1\r\nHost: example.com\r\nConnection: True\r\n\r\n' | nc localhost 8080
+
+## Test a simple invalid request with two valid headers but no body - Host: example.com, Content-Length: 400
+# printf "Test: {GET / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 400\r\n\r\n}\n\n"
+# printf 'GET / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 400\r\n\r\n' | nc localhost 8080
+
+## Test a simple valid request with two identic headers - Host: example.com, Host:blabla.net
+# printf "Test: {GET / HTTP/1.1\r\nHost: example.com\r\nHost:blabla.net\r\n\r\n}\n\n"
+# printf 'GET / HTTP/1.1\r\nHost: example.com\r\nHost:blabla.net\r\n\r\n' | nc localhost 8080
+
+
 # Test all possible requests (selected from VALID, INVALID, ALL)
-for method in "${METHODS[@]}"; do
-	for paths in "${PATHS[@]}"; do
-		for protocol in "${PROTOCOLS[@]}"; do
-			for idx in "${!ENDING[@]}"; do
-				ending=${ENDING[$idx]}
-				label=${ENDING_LABELS[$idx]}
-				if [[ $PRINT_EACH_TEST == TRUE ]]; then
-					printf '*******************\nTest: {%s%s}:\n*******************\n' "$method $paths $protocol" "$label"
-				fi
-				printf '%s%s' "$method $paths $protocol" "$ending" | nc localhost ${WEBSERV_PORT} # -w 1 
-			done
-		done
-	done
-done
+# if [[ $PRINT_EACH_TEST == TRUE ]]; then
+# 	printf '*****\nTest: {%s%s%s%s}:\n' "$header_name" "$COLON" "$header_field" "$ENDING"
+# fi
+# 	printf '%s%s%s%s' "$header_name" "$COLON" "$header_field" "$ENDING" | ./header_tester
+
+
+# Test all possible requests (selected from VALID, INVALID, ALL)
+# for method in "${METHODS[@]}"; do
+# 	for paths in "${PATHS[@]}"; do
+# 		for protocol in "${PROTOCOLS[@]}"; do
+# 			for header_name in "${HEADERS_NAMES[@]}"; do
+# 				for header_field in "${HEADERS_FIELDS[@]}"; do
+# 					for idx in "${!ENDING[@]}"; do
+# 						ending=${ENDING[$idx]}
+# 						label=${ENDING_LABELS[$idx]}
+# 						if [[ $PRINT_EACH_TEST == TRUE ]]; then
+# 							printf '*******************\nTest: {%s%s}:\n*******************\n' "$method $paths $protocol" "$label"
+# 						fi
+# 						printf '%s%s' "$method $paths $protocol" "$ending" | nc localhost ${WEBSERV_PORT} # -w 1 
+# 					done
+# 				done
+# 			done
+# 		done
+# 	done
+# done

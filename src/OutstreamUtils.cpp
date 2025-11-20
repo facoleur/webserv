@@ -1,5 +1,54 @@
-#include "Request.hpp"
+// OutstreamUtils.cpp
+
 #include <ostream>
+#include <poll.h>
+
+#include "Enums.hpp"
+
+std::ostream& operator<<(std::ostream& os, const struct pollfd pfd) {
+    os << "fd: " << pfd.fd << std::endl;
+    os << "events: " << pfd.events << std::endl;
+    os << "revents: " << pfd.revents << std::endl;
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, requestHeaders headerName) {
+    switch (headerName) {
+        case HOST:
+            os << "HOST";
+            break;
+        case CONTENT_LENGTH:
+            os << "CONTENT_LENGTH";
+            break;
+        case LOCATION:
+            os << "LOCATION";
+            break;
+        case TRANSFER_ENCODING:
+            os << "TRANSFER_ENCODING";
+            break;
+        case CONTENT_TYPE:
+            os << "CONTENT_TYPE";
+            break;
+        case CONNECTION:
+            os << "CONNECTION";
+            break;
+        case ACCEPT:
+            os << "ACCEPT";
+            break;
+        default:
+            os << "ERROR: UNKNOWN_HEADER";
+            break;
+    }
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const headersMap& headersMap) {
+    os << std::endl;
+    for (headersMap::const_iterator it = headersMap.begin(); it != headersMap.end(); it++) {
+        os << "\t" << (*it).first << ": " << (*it).second << std::endl;
+    }
+    return os;
+}
 
 std::ostream& operator<<(std::ostream& os, requestMethod method) {
     switch (method) {
@@ -13,13 +62,13 @@ std::ostream& operator<<(std::ostream& os, requestMethod method) {
             os << "DELETE";
             break;
         default:
-            os << "UNKNOWN";
+            os << "ERROR: UNKNOWN_METHOD";
             break;
     }
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, enum requestValidity reqVal) {
+std::ostream& operator<<(std::ostream& os, requestValidity reqVal) {
     switch (reqVal) {
         case VALID_REQUEST:
             os << "VALID_REQUEST";
@@ -34,7 +83,7 @@ std::ostream& operator<<(std::ostream& os, enum requestValidity reqVal) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, enum statusCode stat) {
+std::ostream& operator<<(std::ostream& os, statusCode stat) {
     switch (stat) {
         case NO_STATUS:
             os << "NO_STATUS";
@@ -70,32 +119,8 @@ std::ostream& operator<<(std::ostream& os, enum statusCode stat) {
             os << "HTTP_VERSION_NOT_SUPPORTED";
             break;
         default:
-            os << "NO_STATUS";
+            os << "ERROR: UNKNOWN_STATUS";
             break;
     }
-    return os;
-}
-
-void Request::printHeaders(std::ostream& os) const {
-
-    for (std::map<enum requestHeaders, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); it++) {
-        os << (*it).first << ": " << (*it).second << std::endl;
-    }
-}
-
-std::ostream& operator<<(std::ostream& os, const Request& req) {
-    os << "[REQUEST]" << std::endl;
-    os << "--------------------------------" << std::endl;
-    os << "Method:           " << req._method << std::endl;
-    os << "Path:             " << req._path << std::endl;
-    os << "Query String:     " << req._queryString << std::endl;
-    os << "Headers:          ";
-    req.printHeaders(os);
-    os << std::endl;
-    os << "Body:             " << req._body << std::endl;
-    os << "Protocol version: " << req._protocolVersion << std::endl;
-    os << "Status code:      " << req._statusCode << std::endl;
-    os << "Validity:         " << req._validity << std::endl;
-    os << "--------------------------------" << std::endl;
     return os;
 }

@@ -3,7 +3,9 @@
 #include "Utils.hpp"
 #include <dirent.h>
 #include <fstream>
+#include <iostream>
 #include <poll.h>
+#include <sstream>
 #include <string>
 #include <sys/stat.h>
 
@@ -25,13 +27,6 @@ std::string tolower(const std::string& s) {
     for (size_t i = 0; i < out.size(); i++)
         out[i] = std::tolower(static_cast<unsigned char>(out[i]));
     return out;
-}
-
-std::ostream& operator<<(std::ostream& os, struct pollfd pfd) {
-    os << "fd: " << pfd.fd << std::endl;
-    os << "events: " << pfd.events << std::endl;
-    os << "revents: " << pfd.revents << std::endl;
-    return os;
 }
 
 void replace(std::string& str, const std::string& from, const std::string& to) {

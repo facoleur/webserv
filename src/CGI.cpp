@@ -1,4 +1,5 @@
 #include "RequestRouter.hpp"
+#include "Response.hpp"
 #include <wait.h>
 
 int RequestRouter::executeCgi(const ServerConfig& serverConfig, const LocationConfig& locationConfig,
