@@ -19,3 +19,5 @@ journal.md
 test_uploads
 tests/logs/
 tests/logs/cgi_server.log
+
+.cache/**

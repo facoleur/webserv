@@ -252,7 +252,7 @@ void Server::run() {
                 DEBUG_LOG("--- POLLIN ---");
                 if (_listenerToServerIdx.count(listener)) // Accept on any listening socket
                     handleNewConnection(listener, pfds, nfds, contextMap);
-                    else
+                else
                     handleRead(listener, i, pfds, nfds, contextMap); // Read client data
                 continue;
             }

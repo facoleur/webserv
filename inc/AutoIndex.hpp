@@ -1,8 +1,5 @@
 #include "Utils.hpp"
-#include "Webserv.hpp"
-#include <algorithm>
 #include <dirent.h>
-#include <fstream>
 #include <vector>
 
 enum autoIndexType { T_DIR, T_FILE };

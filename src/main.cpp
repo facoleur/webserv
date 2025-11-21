@@ -3,7 +3,6 @@
 #include "ConfigFile.hpp"
 #include "ConfigParser.hpp"
 #include "Server.hpp"
-#include "Webserv.hpp"
 
 int main(int argc, char const* argv[]) {
     const char* path = (argc > 1) ? argv[1] : "config/default.conf";
