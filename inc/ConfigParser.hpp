@@ -6,8 +6,8 @@
 #include <vector>
 
 class Config;
-class ServerConfig;
-class LocationConfig;
+struct ServerConfig;
+struct LocationConfig;
 
 class ParseError : public std::runtime_error {
   public:
