@@ -5,6 +5,7 @@
 #include "Server.hpp"
 
 int main(int argc, char const* argv[]) {
+    system("clear");
     const char* path = (argc > 1) ? argv[1] : "config/default.conf";
     // Validate config path early
     std::string err;

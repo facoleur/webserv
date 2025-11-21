@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 
+#include "Enums.hpp"
 #include "RequestParser.hpp"
 #include "Server.hpp"
 
@@ -283,7 +284,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
             if (_parsingPhase == PARSING_HEADERS) {
                 _headers = _firstSection;
                 parseHeaders(req);
-                if (req.hasHeader(CONTENT_LENGTH))
+                if (req.hasHeader(CONTENT_LENGTH) || req.hasHeader(TRANSFER_ENCODING))
                     _parsingPhase = PARSING_BODY;
                 else
                     _parsingPhase = PARSING_COMPLETE;

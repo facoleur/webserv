@@ -1,4 +1,5 @@
 #include "AutoIndex.hpp"
+#include <fstream>
 
 std::string AutoIndex::fillTemplate(const std::string& dir, const std::vector<AutoIndexItem>& items) {
     std::ifstream templateFile("www/templates/autoindex.html");
@@ -31,5 +32,6 @@ struct IsSpace {
 
 AutoIndex::AutoIndex() {
 }
+
 AutoIndex::~AutoIndex() {
 }
