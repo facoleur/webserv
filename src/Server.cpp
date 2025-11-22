@@ -1,6 +1,7 @@
 // Server.cpp
 
 #include "Server.hpp"
+#include "Enums.hpp"
 #include "RequestParser.hpp"
 #include "RequestRouter.hpp"
 #include "Response.hpp"
@@ -96,7 +97,7 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
 
 // Handle incoming connections
 int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
-    DEBUG_LOG("(_listenerToServerIdx.count(listener) != 0");
+    DEBUG_LOG("handleNewConnection()");
     int new_client_fd = accept(listener, NULL, NULL);
     if (new_client_fd < 0) {
         DEBUG_LOG("accept error");
@@ -122,9 +123,11 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
     RequestRouter router;
 
     DEBUG_LOG("handle_requests: " + toString(context.requests.size()) + " requests in queue");
+
     while (!context.requests.empty()) {
         Request& req = context.requests.front();
-
+        DEBUG_LOG("- handling request:");
+        DEBUG_LOG(req);
         const ServerConfig& config = _config.getServers()[context.server_index];
         Response            res    = router.route(req, config);
 
@@ -148,9 +151,10 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
     int            len;
     ClientContext& ctx = context[listener];
 
-    DEBUG_LOG("--- _listenerToServerIdx.count(listener) == 0 ---");
+    DEBUG_LOG("handleRead()");
     len = read(listener, tmp, READ_SIZE);
     if (len == 0) { // client closed their send side (or POLLHUP ? unclear but it works)
+        DEBUG_LOG("read returned 0 (client closed their send side)");
         context[listener].close_after_responses = true;
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
             handlePartialRequest(context[listener], pfds[i]);

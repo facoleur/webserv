@@ -121,46 +121,52 @@ void validateCompatibility(const Config& cfg) {
     for (size_t i = 0; i < servers.size(); ++i) {
         const ServerConfig& srv = servers[i];
         // Server-level checks
-        if (srv.listen_ports.empty()) {
-            std::cerr << "Error: server[" << i << "] missing listen directive (at least one port required)\n";
-            throw std::runtime_error("invalid config: missing listen");
-        }
-        for (size_t p = 0; p < srv.listen_ports.size(); ++p) {
-            int port = srv.listen_ports[p];
-            if (port < 1 || port > 65535)
-                throw std::runtime_error("invalid listen port outside range 1..65535");
-        }
-        if (srv.client_max_body_size == 0)
-            throw std::runtime_error("invalid server client_max_body_size (must be > 0)");
-        for (std::map<int, std::string>::const_iterator it = srv.error_pages.begin(); it != srv.error_pages.end();
-             ++it) {
-            int code = it->first;
-            if (code < 100 || code > 599)
-                throw std::runtime_error("invalid error_page code (must be 100..599)");
-        }
-        ensureDirectory(srv.root, "server root");
-        ensureIndexFiles(srv.root, srv.index_files);
-        ensureCgiMap(srv.cgi_map);
-        for (size_t j = 0; j < srv.locations.size(); ++j) {
-            const LocationConfig& loc = srv.locations[j];
-            // if (loc.methods.count(POST) && loc.redirect.status == 0 && loc.root.find("upload") == std::string::npos)
-            // {
-            //     std::cerr << "Warning: Location " << loc.path
-            //               << " allows POST but is not obviously an upload route (no 'upload' "
-            //                  "in root and no redirect). "
-            //                  "Consider restricting methods or implementing POST handling.\n";
-            // }
-            if (loc.methods.count(DELETE) && loc.redirect.status != 0) {
-                std::cerr << "Warning: Location " << loc.path << " defines DELETE but has a redirect\n";
+        try {
+
+            if (srv.listen_ports.empty()) {
+                std::cerr << "Error: server[" << i << "] missing listen directive (at least one port required)\n";
+                throw std::runtime_error("invalid config: missing listen");
             }
-            if (loc.client_max_body_size == 0)
-                throw std::runtime_error("invalid location client_max_body_size (must be > 0)");
-            if (loc.upload_enable && loc.upload_store.empty())
-                throw std::runtime_error("upload enabled but upload_store not set in location");
-            ensureDirectory(loc.root, "location root");
-            ensureIndexFiles(loc.root, loc.index_files);
-            ensureCgiMap(loc.cgi_map);
-            ensureUploadStore(loc, srv.root);
+            for (size_t p = 0; p < srv.listen_ports.size(); ++p) {
+                int port = srv.listen_ports[p];
+                if (port < 1 || port > 65535)
+                    throw std::runtime_error("invalid listen port outside range 1..65535");
+            }
+            if (srv.client_max_body_size == 0)
+                throw std::runtime_error("invalid server client_max_body_size (must be > 0)");
+            for (std::map<int, std::string>::const_iterator it = srv.error_pages.begin(); it != srv.error_pages.end();
+                 ++it) {
+                int code = it->first;
+                if (code < 100 || code > 599)
+                    throw std::runtime_error("invalid error_page code (must be 100..599)");
+            }
+            ensureDirectory(srv.root, "server root");
+            ensureIndexFiles(srv.root, srv.index_files);
+            ensureCgiMap(srv.cgi_map);
+            for (size_t j = 0; j < srv.locations.size(); ++j) {
+                const LocationConfig& loc = srv.locations[j];
+                // if (loc.methods.count(POST) && loc.redirect.status == 0 && loc.root.find("upload") ==
+                // std::string::npos)
+                // {
+                //     std::cerr << "Warning: Location " << loc.path
+                //               << " allows POST but is not obviously an upload route (no 'upload' "
+                //                  "in root and no redirect). "
+                //                  "Consider restricting methods or implementing POST handling.\n";
+                // }
+                if (loc.methods.count(DELETE) && loc.redirect.status != 0) {
+                    std::cerr << "Warning: Location " << loc.path << " defines DELETE but has a redirect\n";
+                }
+                if (loc.client_max_body_size == 0)
+                    throw std::runtime_error("invalid location client_max_body_size (must be > 0)");
+                if (loc.upload_enable && loc.upload_store.empty())
+                    throw std::runtime_error("upload enabled but upload_store not set in location");
+                ensureDirectory(loc.root, "location root");
+                ensureIndexFiles(loc.root, loc.index_files);
+                ensureCgiMap(loc.cgi_map);
+                ensureUploadStore(loc, srv.root);
+            }
+        } catch (std::runtime_error& re) {
+            std::cerr << "Config invalid: " << re.what() << std::endl;
         }
     }
 }

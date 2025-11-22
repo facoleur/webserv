@@ -36,7 +36,7 @@ std::ostream& operator<<(std::ostream& os, requestHeaders headerName) {
             os << "ACCEPT";
             break;
         default:
-            os << "ERROR: UNKNOWN_HEADER";
+            os << "UNKNOWN_HEADER";
             break;
     }
     return os;
@@ -62,7 +62,7 @@ std::ostream& operator<<(std::ostream& os, requestMethod method) {
             os << "DELETE";
             break;
         default:
-            os << "ERROR: UNKNOWN_METHOD";
+            os << "UNKNOWN_METHOD";
             break;
     }
     return os;
@@ -77,7 +77,7 @@ std::ostream& operator<<(std::ostream& os, requestValidity reqVal) {
             os << "INVALID_REQUEST";
             break;
         default:
-            os << "ERROR: UNKNOWN_VALIDITY";
+            os << "UNKNOWN_VALIDITY";
             break;
     }
     return os;
@@ -119,7 +119,7 @@ std::ostream& operator<<(std::ostream& os, statusCode stat) {
             os << "HTTP_VERSION_NOT_SUPPORTED";
             break;
         default:
-            os << "ERROR: UNKNOWN_STATUS";
+            os << "UNKNOWN_STATUS";
             break;
     }
     return os;

@@ -422,13 +422,13 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
         return makeErrorResponse(req.getStatusCode()); // can be 413 CONTENT_TOO_LARGE, for example
     }
 
-    Request req_;
+    Request req_(req);
 
-    req_.setMethod("POST");
-    req_.setPath("/www");
-    req_.setProtocolVersion("HTTP/1.1");
-    req_.setHeader(CONTENT_LENGTH, toString(10));
-    req_.setBody("helloWorld");
+    // req_.setMethod("POST");
+    // req_.setPath("/www");
+    // req_.setProtocolVersion("HTTP/1.1");
+    // req_.setHeader(CONTENT_LENGTH, toString(10));
+    // req_.setBody("helloWorld");
 
     std::cout << req_ << std::endl;
 

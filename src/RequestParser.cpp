@@ -276,9 +276,9 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
                     _firstSection = _firstSection.substr(pos + 2);
                     parseRequestLine(req);
                     _parsingPhase = PARSING_HEADERS;
-                } else { // _firstSection is a pure request-line with no headers => CHANGE THIS TO BAD REQUEST !
-                    handleParseError(req, reqQueue);
-                    _parsingPhase = PARSING_COMPLETE;
+                } else { // _firstSection is a pure request-line with no headers
+                    DEBUG_LOG("exiting at PARSING_REQUEST_LINE: no headers found");
+                    return handleParseError(req, reqQueue);
                 }
             }
             if (_parsingPhase == PARSING_HEADERS) {
@@ -295,7 +295,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
             }
             if (_parsingPhase == PARSING_COMPLETE) {
                 reqQueue.push(req);
-                DEBUG_LOG("RequestParser::feed() parsed a request:");
+                DEBUG_LOG("RequestParser::feed() parsed a request and added it to the queue:");
                 DEBUG_LOG(req);
                 req           = Request();
                 _parsingPhase = PARSING_REQUEST_LINE;
