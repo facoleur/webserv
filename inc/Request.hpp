@@ -21,13 +21,6 @@ class Request {
     requestValidity validateRequest(Response& res) const;
     // performs all the static (not config based) checks to set the _validity
 
-    bool isValidMethod(void) const;
-    bool isValidTarget(void) const;
-    bool isValidQueryString(void) const;
-    bool isValidProtocolVersion(void) const;
-    bool isValidHeaders(Response&) const;
-    bool isValidBody(void) const;
-
     // Other functions
     bool hasHeader(requestHeaders); // whether a specific header is present
     bool hasBody(void);

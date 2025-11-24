@@ -133,14 +133,23 @@ std::string methodToString(requestMethod method) {
     }
 }
 
-std::string trimString(const std::string& value) {
-    size_t start = 0;
-    while (start < value.size() && (value[start] == ' ' || value[start] == '\t' || value[start] == '\r'))
-        ++start;
-    size_t end = value.size();
-    while (end > start && (value[end - 1] == ' ' || value[end - 1] == '\t' || value[end - 1] == '\r'))
-        --end;
-    return value.substr(start, end - start);
+// trims whitespace at the beginning and end of a std::string
+std::string trimString(const std::string& str) {
+    std::string::const_iterator begin = str.begin();
+    std::string::const_iterator end   = str.end();
+
+    // move begin forward while it points to whitespace
+    while (begin != end && isSpace(static_cast<unsigned char>(*begin)))
+        ++begin;
+
+    // move end backward while it points to whitespace
+    if (begin != end) {
+        do {
+            --end;
+        } while (end != begin && isSpace(static_cast<unsigned char>(*end)));
+        ++end; // move back to one-past-last non-space
+    }
+    return std::string(begin, end);
 }
 
 std::string toLower(const std::string& str) {
@@ -149,6 +158,10 @@ std::string toLower(const std::string& str) {
         lowered[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(lowered[i])));
     }
     return lowered;
+}
+
+unsigned char toLowerChar(unsigned char c) {
+    return static_cast<unsigned char>(std::tolower(c));
 }
 
 bool isSubPath(const std::string& root, const std::string& candidate) {

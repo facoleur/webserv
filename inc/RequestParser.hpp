@@ -45,17 +45,24 @@ class RequestParser {
 
   private:
     // Main parsing functions
-    void parseRequestLine(Request&);
+    void parseStartLine(Request&);
     void parseHeaders(Request&);
     void parseHeader(std::string&, Request&);
     void parseBody(size_t contentLength);
 
+    // sub-parsing functions
+    void parsePathAndQueryString(std::string&, Request&);
+    void parseMethod(std::string&, Request&);
+    void parseProtocolVersion(std::string&, Request&);
+
+    // Validation
+    void validateHeaders(Request&) const;
+    bool isValidBody(Request&) const; // used ?
+
     // Helpers
-    void                                splitRequestLine(std::vector<std::string>&, std::string&);
+    void                                splitStartLine(std::vector<std::string>&, std::string&);
     std::pair<std::string, std::string> checkHeaderSyntax(std::string&, Request&);
     void                                fillHeadersMap(std::pair<std::string, std::string> const&, Request&);
-    unsigned char                       toLowerChar(unsigned char c);
-    void                                trimWhitespace(std::string&);
     bool                                isCaseInsensitiveHeader(std::string&);
     void                                initHeaderStringToEnumMap(void);
 
@@ -70,7 +77,7 @@ class RequestParser {
     size_t                                _contentLength;
     std::string                           _accumulator;
     std::string                           _firstSection; // request-line + headers
-    std::string                           _requestLine;
+    std::string                           _startLine;
     std::string                           _headers;
     std::string                           _body;
     std::map<std::string, requestHeaders> _headerStringToEnum;

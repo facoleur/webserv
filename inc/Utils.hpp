@@ -16,6 +16,7 @@ requestMethod            toMethod(const std::string&);
 std::string              toString(long long);
 size_t                   toSizet(const std::string&);
 std::string              tolower(const std::string&);
+unsigned char            toLowerChar(unsigned char);
 void                     replace(std::string&, const std::string&, const std::string&);
 std::vector<std::string> split(const std::string&, char);
 bool                     startsWith(const std::string&, const std::string&);
