@@ -27,7 +27,6 @@ void RequestParser::handleParseError(Request& req, std::queue<Request>& reqQueue
     DEBUG_LOG("Parse error");
     if (req.getStatusCode() == NO_STATUS)
         req.setStatusCode(BAD_REQUEST);
-    req.setValidity(INVALID_REQUEST);
     reqQueue.push(req);
     _parserState = REQ_PARSE_ERROR;
 }

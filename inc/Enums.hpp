@@ -10,8 +10,6 @@ enum requestHeaders { HOST, CONTENT_LENGTH, LOCATION, TRANSFER_ENCODING, CONTENT
 
 enum requestMethod { GET, POST, DELETE, UNKNOWN };
 
-enum requestValidity { INVALID_REQUEST, VALID_REQUEST };
-
 enum statusCode {
     NO_STATUS = 0,
 

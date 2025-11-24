@@ -115,7 +115,6 @@ int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS],
 void Server::add_bad_request_to_queue(ClientContext& context) {
     Request req;
     req.setStatusCode(BAD_REQUEST);
-    req.setValidity(INVALID_REQUEST);
     context.requests.push(req);
 }
 
@@ -132,7 +131,8 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
         Response            res    = router.route(req, config);
 
         if (res.isError()) {
-            DEBUG_LOG("handle_requests() exiting with: INVALID_REQUEST");
+            std::string reasonPhrase(ReasonPhrase::get(res.getStatusCode()))
+            DEBUG_LOG("handle_requests() exiting with error: " + reasonPhrase);
             context.write_buffer.append(res.serialize());
             std::queue<Request> empty;
             std::swap(context.requests, empty);

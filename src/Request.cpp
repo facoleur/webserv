@@ -8,8 +8,7 @@
 #include "Webserv.hpp"
 
 Request::Request(void)
-    : _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _body(), _statusCode(NO_STATUS),
-      _validity(INVALID_REQUEST) {
+    : _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _body(), _statusCode(NO_STATUS) {
 }
 
 Request::~Request(void) {
@@ -25,7 +24,6 @@ std::ostream& operator<<(std::ostream& os, const Request& req) {
     os << "Body:             " << req.getBody() << std::endl;
     os << "Protocol version: " << req.getProtocolVersion() << std::endl;
     os << "Status code:      " << req.getStatusCode() << std::endl;
-    os << "Validity:         " << req.getValidity() << std::endl;
     os << "--------------------------------" << std::endl;
     return os;
 }
@@ -67,10 +65,6 @@ const std::string& Request::getBody(void) const {
     return _body;
 }
 
-enum requestValidity Request::getValidity(void) const {
-    return _validity;
-}
-
 void Request::setMethod(const std::string& method) {
     if (method == "GET")
         _method = GET;
@@ -106,10 +100,6 @@ void Request::setQueryString(std::string const& queryString) {
 
 void Request::setProtocolVersion(const std::string& protocolVersion) {
     _protocolVersion = protocolVersion;
-}
-
-void Request::setValidity(enum requestValidity val) {
-    _validity = val;
 }
 
 void Request::setStatusCode(enum statusCode val) {

@@ -78,7 +78,6 @@ void RequestParser::parseProtocolVersion(std::string &split2, Request& req) {
 
     if (split2 != "HTTP/1.1") {
         req.setStatusCode(HTTP_VERSION_NOT_SUPPORTED);
-        req.setValidity(INVALID_REQUEST);
         throw RequestParsingError("parseStartLine(): HTTP version \"" + split2 + "\" not supported");
     }
 }

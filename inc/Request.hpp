@@ -17,10 +17,6 @@ class Request {
     Request(void);
     ~Request(void);
 
-    // Semantic validation
-    requestValidity validateRequest(Response& res) const;
-    // performs all the static (not config based) checks to set the _validity
-
     // Other functions
     bool hasHeader(requestHeaders); // whether a specific header is present
     bool hasBody(void);
@@ -33,7 +29,6 @@ class Request {
     const headersMap&  getHeaders(void) const;
     const std::string  getHeader(requestHeaders) const;
     const std::string& getBody(void) const;
-    requestValidity    getValidity(void) const;
     statusCode         getStatusCode(void) const;
     void               resolveAbsolutePath(std::string& path);
     // setters
@@ -44,7 +39,6 @@ class Request {
     void setHeaders(const headersMap&);
     void setHeader(requestHeaders, const std::string&);
     void setBody(std::string const&);
-    void setValidity(requestValidity);
     void setStatusCode(statusCode);
 
   private:
@@ -57,7 +51,6 @@ class Request {
     headersMap      _headers;
     std::string     _body;
     statusCode      _statusCode;
-    requestValidity _validity;
 };
 
 std::ostream& operator<<(std::ostream&, const Request&);

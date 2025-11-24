@@ -33,5 +33,4 @@ std::ostream& operator<<(std::ostream&, const struct pollfd);
 std::ostream& operator<<(std::ostream&, const headersMap&);
 std::ostream& operator<<(std::ostream&, requestHeaders);
 std::ostream& operator<<(std::ostream&, requestMethod);
-std::ostream& operator<<(std::ostream&, requestValidity);
 std::ostream& operator<<(std::ostream&, statusCode);
