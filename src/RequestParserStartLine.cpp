@@ -29,7 +29,7 @@ void RequestParser::splitStartLine(std::vector<std::string>& split, std::string&
     for (size_t i = 0; i < 2; i++) {
         pos = line.find(' ');
         if (pos == line.npos)
-            throw RequestParsingError("splitStartLine(): found less than two spaces");
+            throw RequestParsingError("splitStartLine(): found less than two spaces - {" + line + "}");
         split.push_back(line.substr(0, pos));
         line = line.substr(pos + 1);
     }

@@ -79,7 +79,7 @@ std::pair<std::string, std::string> RequestParser::checkHeaderSyntax(std::string
     // split on colon
     n     = std::count(header.begin(), header.end(), ':');
     count = static_cast<int>(n);
-    if (count != 1) // not exactly one colon
+    if (count < 1) // less than one colon
         throw RequestParsingError("checkHeaderSyntax(): header doesn't have exactly one colon (':')");
 
     pos = header.find(":");

@@ -3,6 +3,7 @@
 #include "RequestParser.hpp"
 #include "Enums.hpp"
 #include "Request.hpp"
+#include "Utils.hpp"
 #include "Webserv.hpp"
 
 RequestParser::RequestParser(void)

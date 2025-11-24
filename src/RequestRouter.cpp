@@ -416,11 +416,11 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
 Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     DEBUG_LOG("RequestRouter.route():");
 
-    if (req.getStatusCode() != NO_STATUS) {
-        std::string reasonPhrase(ReasonPhrase::get(req.getStatusCode()));
-        DEBUG_LOG("RequestRouter.route(): status already set before to: " + reasonPhrase);
-        return makeErrorResponse(req.getStatusCode()); // can be 413 CONTENT_TOO_LARGE, for example
-    }
+    // if (req.getStatusCode() != NO_STATUS) {
+    //     std::string reasonPhrase(ReasonPhrase::get(req.getStatusCode()));
+    //     DEBUG_LOG("RequestRouter.route(): status already set before to: " + reasonPhrase);
+    //     return makeErrorResponse(req.getStatusCode()); // can be 413 CONTENT_TOO_LARGE, for example
+    // }
 
     // dynamic/config-based checks
     const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
