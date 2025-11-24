@@ -1,12 +1,14 @@
 // Server.cpp
 
+#include <arpa/inet.h>
+
 #include "Server.hpp"
 #include "Enums.hpp"
 #include "RequestParser.hpp"
 #include "RequestRouter.hpp"
 #include "Response.hpp"
 #include "Utils.hpp"
-#include <arpa/inet.h>
+#include "Webserv.hpp"
 
 void Server::disconnect_client(int& index, int& client_fd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
                                ContextMap& context) {
@@ -132,7 +134,7 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
 
         if (res.isError()) {
             std::string reasonPhrase(ReasonPhrase::get(res.getStatusCode()))
-            DEBUG_LOG("handle_requests() exiting with error: " + reasonPhrase);
+                DEBUG_LOG("handle_requests() exiting with error: " + reasonPhrase);
             context.write_buffer.append(res.serialize());
             std::queue<Request> empty;
             std::swap(context.requests, empty);

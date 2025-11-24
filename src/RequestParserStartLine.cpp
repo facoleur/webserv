@@ -4,6 +4,7 @@
 #include "Request.hpp"
 #include "RequestParser.hpp"
 #include "Utils.hpp"
+#include "Webserv.hpp"
 
 void RequestParser::parseStartLine(Request& req) {
     std::vector<std::string> split;
@@ -16,7 +17,7 @@ void RequestParser::parseStartLine(Request& req) {
 
     /* set request-target path and query-string */
     parsePathAndQueryString(split[1], req);
-    
+
     /* set HTTP protocol version */
     parseProtocolVersion(split[2], req);
 }
@@ -36,7 +37,7 @@ void RequestParser::splitStartLine(std::vector<std::string>& split, std::string&
     return;
 }
 
-void RequestParser::parseMethod(std::string &split0, Request& req) {
+void RequestParser::parseMethod(std::string& split0, Request& req) {
     if (split0.empty())
         throw RequestParsingError("parseMethod(): method field is empty");
 
@@ -48,11 +49,11 @@ void RequestParser::parseMethod(std::string &split0, Request& req) {
     }
 }
 
-void RequestParser::parsePathAndQueryString(std::string &split1, Request& req) {
-    size_t  queryPos;
+void RequestParser::parsePathAndQueryString(std::string& split1, Request& req) {
+    size_t queryPos;
 
     if (split1.empty() || split1.find_first_of(" \t\n\r\f\v") != std::string::npos)
-       throw RequestParsingError("parsePathAndQueryString(): ");
+        throw RequestParsingError("parsePathAndQueryString(): ");
     queryPos = split1.find("?");
     if (queryPos != std::string::npos) {
         req.setQueryString(split1.substr(queryPos + 1));
@@ -61,10 +62,11 @@ void RequestParser::parsePathAndQueryString(std::string &split1, Request& req) {
     req.setPath(split1);
 
     if (!startsWith(req.getPath(), "http://") && !startsWith(req.getPath(), "/"))
-        throw RequestParsingError("parsePathAndQueryString() - invalid request-target: does not start with \"http://\" or \"/\"");
+        throw RequestParsingError(
+            "parsePathAndQueryString() - invalid request-target: does not start with \"http://\" or \"/\"");
 }
 
-void RequestParser::parseProtocolVersion(std::string &split2, Request& req) {
+void RequestParser::parseProtocolVersion(std::string& split2, Request& req) {
     if (split2.empty())
         throw RequestParsingError("parseProtocolVersion(): ProtocolVersion field is empty");
 

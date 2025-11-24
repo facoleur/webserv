@@ -3,8 +3,6 @@
 #pragma once
 
 #include <iostream>
-#include <map>
-#include <vector>
 
 #include "Enums.hpp"
 
@@ -48,9 +46,9 @@ class Request {
     std::string   _queryString;
     std::string   _protocolVersion;
 
-    headersMap      _headers;
-    std::string     _body;
-    statusCode      _statusCode;
+    headersMap  _headers;
+    std::string _body;
+    statusCode  _statusCode;
 };
 
 std::ostream& operator<<(std::ostream&, const Request&);

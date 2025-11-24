@@ -99,7 +99,7 @@ std::pair<std::string, std::string> RequestParser::checkHeaderSyntax(std::string
     }
 
     // format header name and field
-    headerName = tolower(headerName);
+    headerName  = tolower(headerName);
     headerField = trimString(headerField);
     if (isCaseInsensitiveHeader(headerName))
         headerField = tolower(headerField);
@@ -132,29 +132,29 @@ void RequestParser::fillHeadersMap(std::pair<std::string, std::string> const& he
 #endif
 }
 
-void RequestParser::validateHeaders(Request & req) const {
-	const headersMap	headers = req.getHeaders();
+void RequestParser::validateHeaders(Request& req) const {
+    const headersMap headers = req.getHeaders();
 
     if (!req.hasHeader(HOST) || // TEST THIS
-    headers.at(HOST).find(",") != std::string::npos) {
+        headers.at(HOST).find(",") != std::string::npos) {
         req.setStatusCode(BAD_REQUEST);
         throw RequestParsingError("parseHeaders: request must have exactly one host header");
     }
 
-    if (req.hasHeader(CONTENT_LENGTH) &&
-	headers.at(CONTENT_LENGTH).find(",") != std::string::npos) {
+    if (req.hasHeader(CONTENT_LENGTH) && headers.at(CONTENT_LENGTH).find(",") != std::string::npos) {
         req.setStatusCode(BAD_REQUEST);
         throw RequestParsingError("parseHeaders: content-length header can only appear once in the request");
     }
 
     if (req.hasHeader(TRANSFER_ENCODING) &&
-	headers.at(TRANSFER_ENCODING) != "chunked") { // the transfer-encoding header value must be "chunked"
+        headers.at(TRANSFER_ENCODING) != "chunked") { // the transfer-encoding header value must be "chunked"
         req.setStatusCode(NOT_IMPLEMENTED);
         throw RequestParsingError("parseHeaders: transfer-encoding can only have value 'chunked'");
     }
 
     if (req.hasHeader(CONTENT_LENGTH) && req.hasHeader(TRANSFER_ENCODING)) {
         req.setStatusCode(BAD_REQUEST); // ?
-        throw RequestParsingError("parseHeaders: a request cannot have both content-length and transfer-encoding headers");
+        throw RequestParsingError(
+            "parseHeaders: a request cannot have both content-length and transfer-encoding headers");
     }
 }

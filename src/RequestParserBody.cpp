@@ -5,7 +5,7 @@
 #include "RequestParser.hpp"
 #include "Utils.hpp"
 
-bool RequestParser::isValidBody(Request& req) const {
+bool RequestParser::isValidBody(Request& req) const { // not called yet
     // move validation of content length == body.size
     if (req.getMethod() == POST && req.getBody().empty())
         return false;

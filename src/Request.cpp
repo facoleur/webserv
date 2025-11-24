@@ -2,10 +2,9 @@
 
 #include <iostream>
 
+#include "Enums.hpp"
 #include "Request.hpp"
-#include "Response.hpp"
 #include "Utils.hpp"
-#include "Webserv.hpp"
 
 Request::Request(void)
     : _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _body(), _statusCode(NO_STATUS) {

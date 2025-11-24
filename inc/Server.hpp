@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <poll.h>
+
 #include "Config.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"

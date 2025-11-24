@@ -17,6 +17,7 @@
 #include "RequestRouter.hpp"
 #include "Response.hpp"
 #include "Utils.hpp"
+#include "Webserv.hpp"
 
 RequestRouter::RequestRouter() {
 }

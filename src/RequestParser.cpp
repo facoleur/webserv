@@ -1,11 +1,9 @@
 // RequestParser.cpp
 
-#include <algorithm>
-#include <cctype>
-
-#include "Enums.hpp"
 #include "RequestParser.hpp"
-#include "Server.hpp"
+#include "Enums.hpp"
+#include "Request.hpp"
+#include "Webserv.hpp"
 
 RequestParser::RequestParser(void)
     : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_START_LINE), _statusCode(NO_STATUS), _contentLength(0),
@@ -75,7 +73,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
             {
                 pos = _firstSection.find(CRLF);
                 if (pos != std::string::npos) { // _firstSection has start-line + headers
-                    _startLine  = _firstSection.substr(0, pos);
+                    _startLine    = _firstSection.substr(0, pos);
                     _firstSection = _firstSection.substr(pos + 2);
                     parseStartLine(req);
                     _parsingPhase = PARSING_HEADERS;
