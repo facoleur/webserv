@@ -3,6 +3,7 @@
 #include "ConfigFile.hpp"
 #include "ConfigParser.hpp"
 #include "Server.hpp"
+#include <cstdlib>
 
 int main(int argc, char const* argv[]) {
     system("clear");
