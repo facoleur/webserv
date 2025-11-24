@@ -1,5 +1,7 @@
-#include "AutoIndex.hpp"
 #include <fstream>
+#include <sys/types.h>
+
+#include "AutoIndex.hpp"
 
 std::string AutoIndex::fillTemplate(const std::string& dir, const std::vector<AutoIndexItem>& items) {
     std::ifstream templateFile("www/templates/autoindex.html");
