@@ -1,6 +1,11 @@
+// CGI.cpp
+
+#include <sstream>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include "RequestRouter.hpp"
 #include "Response.hpp"
-#include <sys/wait.h>
 
 int RequestRouter::executeCgi(const ServerConfig& serverConfig, const LocationConfig& locationConfig,
                               const Request& request, const std::string& scriptPath, const std::string& interpreter,

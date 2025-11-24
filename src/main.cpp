@@ -1,5 +1,7 @@
 // main.cpp
 
+#include <stdlib.h>
+
 #include "ConfigFile.hpp"
 #include "ConfigParser.hpp"
 #include "Server.hpp"

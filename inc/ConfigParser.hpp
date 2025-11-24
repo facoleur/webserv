@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Config.hpp"
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#include "Config.hpp"
 
 class Config;
 struct ServerConfig;

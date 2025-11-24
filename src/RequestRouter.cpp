@@ -17,6 +17,7 @@
 #include "RequestRouter.hpp"
 #include "Response.hpp"
 #include "Utils.hpp"
+#include "Webserv.hpp"
 
 RequestRouter::RequestRouter() {
 }
@@ -413,7 +414,6 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
 }
 
 Response RequestRouter::route(const Request& req, const ServerConfig& config) {
-
     DEBUG_LOG("RequestRouter.route():");
 
     if (req.getStatusCode() != NO_STATUS) {
@@ -422,31 +422,8 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
         return makeErrorResponse(req.getStatusCode()); // can be 413 CONTENT_TOO_LARGE, for example
     }
 
-    Request req_(req);
-
-    // req_.setMethod("POST");
-    // req_.setPath("/www");
-    // req_.setProtocolVersion("HTTP/1.1");
-    // req_.setHeader(CONTENT_LENGTH, toString(10));
-    // req_.setBody("helloWorld");
-
-    std::cout << req_ << std::endl;
-
-    Response response;
-
-    // static/HTTP-based semantic checks
-
-    if (req.validateRequest(response) == INVALID_REQUEST) {
-        return makeErrorResponse(response.getStatusCode());
-        DEBUG_LOG("RequestRouter.route(): INVALID_REQUEST, returning response:");
-#ifdef DEBUG_LOG
-        std::cout << response << std::endl;
-#endif
-        return response;
-    }
-
     // dynamic/config-based checks
-    const LocationConfig* locationConfig = findLocationConfig(req_.getPath(), config);
+    const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
 
     std::string           locationPath;
     const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig, locationPath);
@@ -458,29 +435,29 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     std::string resolvedPath;
 
     try {
-        resolvedPath = resolvePath(req_, resolvedConfig.root, locationPath);
+        resolvedPath = resolvePath(req, resolvedConfig.root, locationPath);
     } catch (std::exception&) {
         return makeErrorResponse(BAD_REQUEST);
     }
 
-    if (!resourceExists(resolvedPath, req_)) {
+    if (!resourceExists(resolvedPath, req)) {
         return makeErrorResponse(NOT_FOUND);
     }
 
-    if (!isMethodAllowed(req_, resolvedConfig)) {
+    if (!isMethodAllowed(req, resolvedConfig)) {
         return makeErrorResponse(NOT_ALLOWED);
     }
 
     if (isCgiRequest(resolvedPath, resolvedConfig))
         return handleCgi(req, resolvedPath, config, resolvedConfig);
 
-    switch (req_.getMethod()) {
+    switch (req.getMethod()) {
         case GET:
-            return handleGet(req_, resolvedPath, resolvedConfig);
+            return handleGet(req, resolvedPath, resolvedConfig);
         case POST:
-            return handlePost(req_, resolvedPath, resolvedConfig);
+            return handlePost(req, resolvedPath, resolvedConfig);
         case DELETE:
-            return handleDelete(req_, resolvedPath, resolvedConfig);
+            return handleDelete(req, resolvedPath, resolvedConfig);
         default:
             return makeErrorResponse(BAD_REQUEST);
     }

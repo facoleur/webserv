@@ -68,21 +68,6 @@ std::ostream& operator<<(std::ostream& os, requestMethod method) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, requestValidity reqVal) {
-    switch (reqVal) {
-        case VALID_REQUEST:
-            os << "VALID_REQUEST";
-            break;
-        case INVALID_REQUEST:
-            os << "INVALID_REQUEST";
-            break;
-        default:
-            os << "UNKNOWN_VALIDITY";
-            break;
-    }
-    return os;
-}
-
 std::ostream& operator<<(std::ostream& os, statusCode stat) {
     switch (stat) {
         case NO_STATUS:

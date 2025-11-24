@@ -5,12 +5,9 @@
 #include <map>
 #include <string>
 
-
 enum requestHeaders { HOST, CONTENT_LENGTH, LOCATION, TRANSFER_ENCODING, CONTENT_TYPE, CONNECTION, ACCEPT };
 
 enum requestMethod { GET, POST, DELETE, UNKNOWN };
-
-enum requestValidity { INVALID_REQUEST, VALID_REQUEST };
 
 enum statusCode {
     NO_STATUS = 0,
@@ -41,4 +38,4 @@ typedef std::map<requestHeaders, std::string> headersMap;
 
 enum ParserState { REQ_PARSE_START, REQ_PARSE_PARTIAL, REQ_PARSE_COMPLETE, REQ_PARSE_ERROR };
 
-enum ParsingPhase { PARSING_REQUEST_LINE, PARSING_HEADERS, PARSING_BODY, PARSING_COMPLETE };
+enum ParsingPhase { PARSING_START_LINE, PARSING_HEADERS, PARSING_BODY, PARSING_COMPLETE };

@@ -1,30 +1,16 @@
 // RequestParser.cpp
 
-#include <algorithm>
-#include <cctype>
-
-#include "Enums.hpp"
 #include "RequestParser.hpp"
-#include "Server.hpp"
-
-// std::map<std::string, enum requestHeaders> RequestParser::_headerStringToEnum;
+#include "Enums.hpp"
+#include "Request.hpp"
+#include "Webserv.hpp"
 
 RequestParser::RequestParser(void)
-    : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_REQUEST_LINE), _statusCode(NO_STATUS), _contentLength(0),
-      _accumulator(), _firstSection(), _requestLine(), _headers(), _body() {
+    : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_START_LINE), _statusCode(NO_STATUS), _contentLength(0),
+      _accumulator(), _firstSection(), _startLine(), _headers(), _body() {
 }
 
 RequestParser::~RequestParser(void) {
-}
-
-void RequestParser::initHeaderStringToEnumMap(void) {
-    _headerStringToEnum["host"]              = HOST;
-    _headerStringToEnum["content-length"]    = CONTENT_LENGTH;
-    _headerStringToEnum["location"]          = LOCATION;
-    _headerStringToEnum["transfer-encoding"] = TRANSFER_ENCODING;
-    _headerStringToEnum["content-type"]      = CONTENT_TYPE;
-    _headerStringToEnum["connection"]        = CONNECTION;
-    _headerStringToEnum["accept"]            = ACCEPT;
 }
 
 ParserState RequestParser::getState(void) {
@@ -35,195 +21,10 @@ void RequestParser::setState(ParserState parserState) {
     _parserState = parserState;
 }
 
-// splits the line in three. Throws if less than two spaces found
-void RequestParser::splitRequestLine(std::vector<std::string>& split, std::string& line) {
-    size_t pos;
-
-    for (size_t i = 0; i < 2; i++) {
-        pos = line.find(' ');
-        if (pos == line.npos)
-            throw RequestParsingError("splitRequestLine(): found less than two spaces");
-        split.push_back(line.substr(0, pos));
-        line = line.substr(pos + 1);
-    }
-    split.push_back(line.substr(0));
-    return;
-}
-
-void RequestParser::parseRequestLine(Request& req) {
-    std::vector<std::string> split;
-    size_t                   queryPos;
-
-    /* split line */
-    splitRequestLine(split, _requestLine);
-
-    /* set method */
-    if (split[0].empty())
-        throw RequestParsingError("parseRequestLine(): method field is empty");
-
-    req.setMethod(split[0]);
-
-    /* set request-target path and query-string */
-    if (split[1].empty() || split[1].find_first_of(" \t\n\r\f\v") != std::string::npos)
-        throw RequestParsingError("parseRequestLine(): request-target is empty or contains whitespace");
-    queryPos = split[1].find("?");
-    if (queryPos != std::string::npos) {
-        req.setQueryString(split[1].substr(queryPos + 1));
-        split[1] = split[1].substr(0, queryPos);
-    }
-    req.setPath(split[1]);
-
-    /* set HTTP version */
-    if (split[2] != "HTTP/1.0" && split[2] != "HTTP/1.1" && split[2] != "HTTP/0.9" && split[2] != "HTTP/2" &&
-        split[2] != "HTTP/3") {
-        DEBUG_LOG("RequestParser: split[2]: " + split[2]);
-        throw RequestParsingError("parseRequestLine(): HTTP version not in the list");
-    }
-    req.setProtocolVersion(split[2]);
-}
-
-unsigned char RequestParser::toLowerChar(unsigned char c) {
-    return static_cast<unsigned char>(std::tolower(c));
-}
-
-// trims whitespace at the beginning and end of a std::string
-void RequestParser::trimWhitespace(std::string& headerField) {
-    std::string::const_iterator begin = headerField.begin();
-    std::string::const_iterator end   = headerField.end();
-
-    // move begin forward while it points to whitespace
-    while (begin != end && isSpace(static_cast<unsigned char>(*begin)))
-        ++begin;
-
-    // move end backward while it points to whitespace
-    if (begin != end) {
-        do {
-            --end;
-        } while (end != begin && isSpace(static_cast<unsigned char>(*end)));
-        ++end; // move back to one-past-last non-space
-    }
-    headerField = std::string(begin, end);
-}
-
-bool RequestParser::isCaseInsensitiveHeader(std::string& headerName) {
-    if (headerName == "host" || headerName == "content-length" || headerName == "transfer-encoding" ||
-        headerName == "content-type")
-        return true;
-    return false;
-}
-
-// splits the header line around ":" and performs syntax checks
-// throws on syntax error
-// returns a pair of strings: <headerName, headerField>
-std::pair<std::string, std::string> RequestParser::checkHeaderSyntax(std::string& header, Request& req) {
-    std::string::difference_type n;
-    int                          count;
-    size_t                       pos;
-    std::string::iterator        it;
-    std::string                  headerName;
-    std::string                  headerField;
-
-    DEBUG_LOG("checkHeaderSyntax – header is {" + header + "}");
-
-    // check header size
-    if (header.size() < MIN_HEADER_SIZE)
-        throw RequestParsingError("checkHeaderSyntax(): header < MIN_HEADER_SIZE");
-
-    if (header.size() > MAX_HEADER_SIZE) {
-        req.setStatusCode(CONTENT_TOO_LARGE);
-        DEBUG_LOG("checkHeaderSyntax: ");
-        throw RequestParsingError("checkHeaderSyntax(): header > MAX_HEADER_SIZE");
-    }
-
-    // split on colon
-    n     = std::count(header.begin(), header.end(), ':');
-    count = static_cast<int>(n);
-    if (count != 1) // not exactly one colon
-        throw RequestParsingError("checkHeaderSyntax(): header doesn't have exactly one colon (':')");
-
-    pos = header.find(":");
-    if (pos == 0 || pos == header.size() - 1) // colon is first or last character
-        throw RequestParsingError("checkHeaderSyntax(): colon (':') is first or last character");
-
-    headerName  = header.substr(0, pos);
-    headerField = header.substr(pos + 1); // skip the ":"
-    DEBUG_LOG("checkHeaderSyntax – headerName: {" + headerName + "}, headerField: {" + headerField + "}");
-
-    // check if whitespace before colon
-    it = std::find_if(headerName.begin(), headerName.end(), isSpace);
-    DEBUG_LOG("checkHeaderSyntax – headerName is {" + headerName + "}");
-    if (it != headerName.end()) {
-        DEBUG_LOG("*it: " + toString(*it));
-        throw RequestParsingError("checkHeaderSyntax(): whitespace found before colon (':')");
-    }
-
-    // format header name and field
-    headerName = tolower(headerName);
-    trimWhitespace(headerField);
-    if (isCaseInsensitiveHeader(headerName))
-        headerField = tolower(headerField);
-
-    return std::pair<std::string, std::string>(headerName, headerField);
-}
-
-// compare header name to supported header to see if there is a field value
-// 	=> if yes, append to existing value with ","
-// 	=> if no, append to existing (empty) value
-void RequestParser::fillHeadersMap(std::pair<std::string, std::string> const& header_pair, Request& req) {
-    std::string headerName  = header_pair.first;
-    std::string headerField = header_pair.second;
-    std::string existingHeader;
-
-    initHeaderStringToEnumMap();
-    if (_headerStringToEnum.find(headerName) == _headerStringToEnum.end()) {
-        DEBUG_LOG("headerName {" + headerName + "} not found in headers enum");
-        return;
-    }
-    existingHeader = req.getHeader(_headerStringToEnum[headerName]);
-    if (!existingHeader.empty())
-        headerField = "," + headerField; // add a comma if there is already a value for a given header
-    DEBUG_LOG("fillHeadersMap: headerField is {" + headerField + "}");
-    req.setHeader(_headerStringToEnum[headerName], headerField);
-#ifdef DEBUG_LOG
-    std::cout << "fillHeadersMap: header {" << headerName << "} now has value {"
-              << req.getHeader(_headerStringToEnum[headerName]) << "}" << std::endl;
-    std::cout << req.getHeaders() << std::endl;
-#endif
-}
-
-void RequestParser::parseHeader(std::string& header, Request& req) {
-    std::pair<std::string, std::string> header_pair;
-
-    DEBUG_LOG("*** parseHeader ***");
-    header_pair = checkHeaderSyntax(header, req);
-    fillHeadersMap(header_pair, req);
-}
-
-void RequestParser::parseHeaders(Request& req) {
-    size_t      pos;
-    std::string header;
-
-    // example: 'Host: example.com\r\nFoo:  bar \r\n\r\n'
-    pos = _headers.find(CRLF);
-    while (pos != std::string::npos) {
-        header   = _headers.substr(0, pos);
-        _headers = _headers.substr(pos + 2);
-        DEBUG_LOG("parseHeaders - header is {" + header + "}, and _headers is {" + _headers + "}");
-        parseHeader(header, req);
-        pos = _headers.find(CRLF);
-    }
-    if (_headers.size()) // last header
-        header = _headers.substr(0, pos);
-    DEBUG_LOG("parseHeaders - last header is {" + header + "}");
-    parseHeader(header, req);
-    _headers.clear();
-}
-
 void RequestParser::handleParseError(Request& req, std::queue<Request>& reqQueue) {
     DEBUG_LOG("Parse error");
     if (req.getStatusCode() == NO_STATUS)
         req.setStatusCode(BAD_REQUEST);
-    req.setValidity(INVALID_REQUEST);
     reqQueue.push(req);
     _parserState = REQ_PARSE_ERROR;
 }
@@ -236,7 +37,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
     while (!_accumulator.empty()) {
         /* 1. extract the content */
         switch (_parsingPhase) {
-            case PARSING_REQUEST_LINE:
+            case PARSING_START_LINE:
             case PARSING_HEADERS:
                 pos = _accumulator.find(CRLF + CRLF);
                 if (pos == std::string::npos) {
@@ -268,16 +69,16 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
 
         /* 2. parse the extracted content */
         try {
-            if (_parsingPhase == PARSING_REQUEST_LINE) // internal
+            if (_parsingPhase == PARSING_START_LINE) // internal
             {
                 pos = _firstSection.find(CRLF);
-                if (pos != std::string::npos) { // _firstSection has request-line + headers
-                    _requestLine  = _firstSection.substr(0, pos);
+                if (pos != std::string::npos) { // _firstSection has start-line + headers
+                    _startLine    = _firstSection.substr(0, pos);
                     _firstSection = _firstSection.substr(pos + 2);
-                    parseRequestLine(req);
+                    parseStartLine(req);
                     _parsingPhase = PARSING_HEADERS;
-                } else { // _firstSection is a pure request-line with no headers
-                    DEBUG_LOG("exiting at PARSING_REQUEST_LINE: no headers found");
+                } else { // _firstSection is a pure start-line with no headers
+                    DEBUG_LOG("exiting at PARSING_START_LINE: no headers found");
                     return handleParseError(req, reqQueue);
                 }
             }
@@ -298,7 +99,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
                 DEBUG_LOG("RequestParser::feed() parsed a request and added it to the queue:");
                 DEBUG_LOG(req);
                 req           = Request();
-                _parsingPhase = PARSING_REQUEST_LINE;
+                _parsingPhase = PARSING_START_LINE;
             }
         } catch (RequestParsingError& e) {
             DEBUG_LOG(e.what());

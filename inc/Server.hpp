@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <poll.h>
+
 #include "Config.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
@@ -12,6 +14,7 @@ class Response;
 #define MAX_EVENTS 64
 #define TIMEOUT 4000
 #define READ_SIZE 8000
+#define MAX_BODY_SIZE 10000000
 
 struct ClientContext {
     ClientContext(void);

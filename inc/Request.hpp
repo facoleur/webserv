@@ -3,8 +3,6 @@
 #pragma once
 
 #include <iostream>
-#include <map>
-#include <vector>
 
 #include "Enums.hpp"
 
@@ -16,17 +14,6 @@ class Request {
     // Constructors
     Request(void);
     ~Request(void);
-
-    // Semantic validation
-    requestValidity validateRequest(Response& res) const;
-    // performs all the static (not config based) checks to set the _validity
-
-    bool isValidMethod(void) const;
-    bool isValidTarget(void) const;
-    bool isValidQueryString(void) const;
-    bool isValidProtocolVersion(void) const;
-    bool isValidHeaders(Response&) const;
-    bool isValidBody(void) const;
 
     // Other functions
     bool hasHeader(requestHeaders); // whether a specific header is present
@@ -40,7 +27,6 @@ class Request {
     const headersMap&  getHeaders(void) const;
     const std::string  getHeader(requestHeaders) const;
     const std::string& getBody(void) const;
-    requestValidity    getValidity(void) const;
     statusCode         getStatusCode(void) const;
     void               resolveAbsolutePath(std::string& path);
     // setters
@@ -51,7 +37,6 @@ class Request {
     void setHeaders(const headersMap&);
     void setHeader(requestHeaders, const std::string&);
     void setBody(std::string const&);
-    void setValidity(requestValidity);
     void setStatusCode(statusCode);
 
   private:
@@ -61,10 +46,9 @@ class Request {
     std::string   _queryString;
     std::string   _protocolVersion;
 
-    headersMap      _headers;
-    std::string     _body;
-    statusCode      _statusCode;
-    requestValidity _validity;
+    headersMap  _headers;
+    std::string _body;
+    statusCode  _statusCode;
 };
 
 std::ostream& operator<<(std::ostream&, const Request&);
