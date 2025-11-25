@@ -1,10 +1,14 @@
 // RequestParserHeaders.cpp
 
 #include <algorithm>
+#include <cctype>
+#include <cstdio>
+#include <sstream>
 
 #include "Enums.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
+#include "Server.hpp"
 #include "Utils.hpp"
 #include "Webserv.hpp"
 
@@ -34,6 +38,7 @@ void RequestParser::parseHeader(std::string& header, Request& req) {
     DEBUG_LOG("*** parseHeader ***");
     header_pair = checkHeaderSyntax(header, req);
     fillHeadersMap(header_pair, req);
+    validateHeaders(req);
 }
 
 void RequestParser::initHeaderStringToEnumMap(void) {
@@ -132,6 +137,35 @@ void RequestParser::fillHeadersMap(std::pair<std::string, std::string> const& he
 #endif
 }
 
+void RequestParser::handleHeaderContentLength(Request& req, const headersMap& headers) const {
+    std::string contentLengthHeader = headers.at(CONTENT_LENGTH);
+
+    if (req.hasHeader(TRANSFER_ENCODING)) {
+        req.setStatusCode(BAD_REQUEST);
+        throw RequestParsingError(
+            "handleHeaderContentLength: a request cannot have both content-length and transfer-encoding headers");
+    }
+
+    if (contentLengthHeader.find(",") != std::string::npos) {
+        req.setStatusCode(BAD_REQUEST);
+        throw RequestParsingError("handleHeaderContentLength: header can only appear once in the request");
+    }
+
+    std::stringstream s(contentLengthHeader);
+    int               c;
+    while ((c = s.get()) != EOF) {
+        if (!std::isdigit(static_cast<unsigned char>(c)))
+            throw RequestParsingError("handleHeaderContentLength: header {" + contentLengthHeader +
+                                      "} contains non-digit characters");
+    }
+
+    std::istringstream iss(contentLengthHeader);
+    int                value;
+    iss >> value;
+    if (value > MAX_BODY_SIZE)
+        throw RequestParsingError("handleHeaderContentLength: exceeds MAX_BODY_SIZE (" + toString(MAX_BODY_SIZE) + ")");
+}
+
 void RequestParser::validateHeaders(Request& req) const {
     const headersMap headers = req.getHeaders();
 
@@ -141,20 +175,21 @@ void RequestParser::validateHeaders(Request& req) const {
         throw RequestParsingError("parseHeaders: request must have exactly one host header");
     }
 
-    if (req.hasHeader(CONTENT_LENGTH) && headers.at(CONTENT_LENGTH).find(",") != std::string::npos) {
-        req.setStatusCode(BAD_REQUEST);
-        throw RequestParsingError("parseHeaders: content-length header can only appear once in the request");
+    if ((req.getMethod() == GET || req.getMethod() == DELETE) &&
+        (req.hasHeader(CONTENT_LENGTH) || req.hasHeader(TRANSFER_ENCODING))) {
+        std::string error_msg;
+        error_msg += "parseHeaders: a request of type ";
+        error_msg += methodToString(req.getMethod());
+        error_msg += " cannot have a content-length header";
+        throw RequestParsingError(error_msg.c_str());
     }
+
+    if (req.hasHeader(CONTENT_LENGTH))
+        handleHeaderContentLength(req, headers);
 
     if (req.hasHeader(TRANSFER_ENCODING) &&
         headers.at(TRANSFER_ENCODING) != "chunked") { // the transfer-encoding header value must be "chunked"
         req.setStatusCode(NOT_IMPLEMENTED);
         throw RequestParsingError("parseHeaders: transfer-encoding can only have value 'chunked'");
-    }
-
-    if (req.hasHeader(CONTENT_LENGTH) && req.hasHeader(TRANSFER_ENCODING)) {
-        req.setStatusCode(BAD_REQUEST); // ?
-        throw RequestParsingError(
-            "parseHeaders: a request cannot have both content-length and transfer-encoding headers");
     }
 }

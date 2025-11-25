@@ -211,7 +211,10 @@ std::string generateUploadName() {
 }
 
 Response RequestRouter::handlePost(const Request& req, const std::string& path, const LocationConfig& config) {
+    DEBUG_LOG("handlePOST");
     if (toSizet(req.getHeader(CONTENT_LENGTH)) > config.client_max_body_size) {
+        DEBUG_LOG("toSizet(req.getHeader(CONTENT_LENGTH)):" + toString(toSizet(req.getHeader(CONTENT_LENGTH))) +
+                  " > config.client_max_body_size (" + toString(config.client_max_body_size) + ")");
         return makeErrorResponse(CONTENT_TOO_LARGE);
     }
 
@@ -416,11 +419,11 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
 Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     DEBUG_LOG("RequestRouter.route():");
 
-    // if (req.getStatusCode() != NO_STATUS) {
-    //     std::string reasonPhrase(ReasonPhrase::get(req.getStatusCode()));
-    //     DEBUG_LOG("RequestRouter.route(): status already set before to: " + reasonPhrase);
-    //     return makeErrorResponse(req.getStatusCode()); // can be 413 CONTENT_TOO_LARGE, for example
-    // }
+    if (req.getStatusCode() != NO_STATUS) {
+        std::string reasonPhrase(ReasonPhrase::get(req.getStatusCode()));
+        DEBUG_LOG("RequestRouter.route(): status already set before to: " + reasonPhrase);
+        return makeErrorResponse(req.getStatusCode()); // can be 413 CONTENT_TOO_LARGE, for example
+    }
 
     // dynamic/config-based checks
     const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
