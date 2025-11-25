@@ -30,12 +30,6 @@ Server::Server(const Config& cfg) : _config(cfg) {
 Server::~Server() {
 }
 
-void Server::new_connection() {
-}
-
-void Server::existing_connection() {
-}
-
 ClientContext::ClientContext(void) : close_after_responses(false) {
 }
 
@@ -146,9 +140,7 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
         context.write_buffer.append(res.serialize());
         context.requests.pop();
     }
-    RequestParser emptyParser;
-    context.req_parser = emptyParser;
-    pfd.events         = POLLOUT;
+    pfd.events = POLLOUT;
 }
 
 void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
@@ -175,7 +167,11 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
         return;
     } else { /* Parsing */
         tmp[len] = '\0';
-        ctx.req_parser.feed(tmp, ctx.requests);
+        // const std::vector<ServerConfig>& getServers() const
+        std::vector<ServerConfig>& configs     = _config.getServers();
+        size_t                     maxBodySize = configs[_listenerToServerIdx[listener]].client_max_body_size;
+        DEBUG_LOG("maxBodySize: " + toString(maxBodySize));
+        ctx.req_parser.feed(tmp, ctx.requests, maxBodySize);
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) { /* Need to parse more */
             DEBUG_LOG("Req partial");
             return;

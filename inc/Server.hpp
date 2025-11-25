@@ -14,7 +14,6 @@ class Response;
 #define MAX_EVENTS 64
 #define TIMEOUT 4000
 #define READ_SIZE 8000
-#define MAX_BODY_SIZE 10
 
 struct ClientContext {
     ClientContext(void);
@@ -40,8 +39,6 @@ class Server {
     Server(const Config& cfg);
     ~Server();
 
-    void new_connection();
-    void existing_connection();
     void run();
     void add_bad_request_to_queue(ClientContext& context);
     void handle_requests(ClientContext&, struct pollfd&);

@@ -23,8 +23,10 @@ class RequestParser {
     RequestParser(void);
     ~RequestParser(void);
 
+    void resetParser(void);
+
     // Main function
-    void feed(char*, std::queue<Request>&);
+    void feed(char*, std::queue<Request>&, size_t);
 
     // getters
     enum ParserState getState(void);
@@ -46,18 +48,19 @@ class RequestParser {
   private:
     // Main parsing functions
     void parseStartLine(Request&);
-    void parseHeaders(Request&);
-    void parseHeader(std::string&, Request&);
-    void parseBody(size_t contentLength);
+    void parseHeaders(Request&, size_t);
+    void parseHeader(std::string&, Request&, size_t);
+    void parseBody(Request&, size_t);
 
     // sub-parsing functions
     void parsePathAndQueryString(std::string&, Request&);
     void parseMethod(std::string&, Request&);
     void parseProtocolVersion(std::string&, Request&);
-    void handleHeaderContentLength(Request&, const headersMap&) const;
+    void handleHeaderContentLength(Request&, const headersMap&, size_t);
+    void extractStartLineFromFirstSection(void);
 
     // Validation
-    void validateHeaders(Request&) const;
+    void validateHeaders(Request&, size_t);
     bool isValidBody(Request&) const; // used ?
 
     // Helpers
@@ -69,17 +72,15 @@ class RequestParser {
 
     // Error handling
     void handleParseError(Request&, std::queue<Request>&);
-    void handleParsePartial(size_t);
 
     // attributes
     ParserState                           _parserState;
     ParsingPhase                          _parsingPhase;
-    statusCode                            _statusCode;
     size_t                                _contentLength;
     std::string                           _accumulator;
     std::string                           _firstSection; // request-line + headers
     std::string                           _startLine;
-    std::string                           _headers;
-    std::string                           _body;
+    std::string                           _headersBuffer;
+    std::string                           _bodyBuffer;
     std::map<std::string, requestHeaders> _headerStringToEnum;
 };
