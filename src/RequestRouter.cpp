@@ -211,7 +211,10 @@ std::string generateUploadName() {
 }
 
 Response RequestRouter::handlePost(const Request& req, const std::string& path, const LocationConfig& config) {
+    DEBUG_LOG("handlePOST");
     if (toSizet(req.getHeader(CONTENT_LENGTH)) > config.client_max_body_size) {
+        DEBUG_LOG("toSizet(req.getHeader(CONTENT_LENGTH)):" + toString(toSizet(req.getHeader(CONTENT_LENGTH))) +
+                  " > config.client_max_body_size (" + toString(config.client_max_body_size) + ")");
         return makeErrorResponse(CONTENT_TOO_LARGE);
     }
 

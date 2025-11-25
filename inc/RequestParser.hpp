@@ -54,6 +54,7 @@ class RequestParser {
     void parsePathAndQueryString(std::string&, Request&);
     void parseMethod(std::string&, Request&);
     void parseProtocolVersion(std::string&, Request&);
+    void handleHeaderContentLength(Request&, const headersMap&) const;
 
     // Validation
     void validateHeaders(Request&) const;

@@ -3,6 +3,7 @@
 #include "RequestParser.hpp"
 #include "Enums.hpp"
 #include "Request.hpp"
+#include "Utils.hpp"
 #include "Webserv.hpp"
 
 RequestParser::RequestParser(void)
@@ -96,13 +97,12 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
             }
             if (_parsingPhase == PARSING_COMPLETE) {
                 reqQueue.push(req);
-                DEBUG_LOG("RequestParser::feed() parsed a request and added it to the queue:");
-                DEBUG_LOG(req);
                 req           = Request();
                 _parsingPhase = PARSING_START_LINE;
             }
         } catch (RequestParsingError& e) {
-            DEBUG_LOG(e.what());
+            // DEBUG_LOG(e.what());
+            std::cerr << e.what() << std::endl; // REMOVE IN PROD
             return handleParseError(req, reqQueue);
         }
     }

@@ -14,7 +14,7 @@ class Response;
 #define MAX_EVENTS 64
 #define TIMEOUT 4000
 #define READ_SIZE 8000
-#define MAX_BODY_SIZE 10000000
+#define MAX_BODY_SIZE 10
 
 struct ClientContext {
     ClientContext(void);

@@ -2,11 +2,11 @@
 
 #include <arpa/inet.h>
 
-#include "Server.hpp"
 #include "Enums.hpp"
 #include "RequestParser.hpp"
 #include "RequestRouter.hpp"
 #include "Response.hpp"
+#include "Server.hpp"
 #include "Utils.hpp"
 #include "Webserv.hpp"
 
@@ -120,6 +120,7 @@ void Server::add_bad_request_to_queue(ClientContext& context) {
     context.requests.push(req);
 }
 
+#include "RequestParser.hpp"
 void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
     RequestRouter router;
 
@@ -133,8 +134,8 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
         Response            res    = router.route(req, config);
 
         if (res.isError()) {
-            std::string reasonPhrase(ReasonPhrase::get(res.getStatusCode()))
-                DEBUG_LOG("handle_requests() exiting with error: " + reasonPhrase);
+            std::string reasonPhrase(ReasonPhrase::get(res.getStatusCode()));
+            DEBUG_LOG("handle_requests() exiting with error: " + reasonPhrase);
             context.write_buffer.append(res.serialize());
             std::queue<Request> empty;
             std::swap(context.requests, empty);
@@ -145,7 +146,9 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
         context.write_buffer.append(res.serialize());
         context.requests.pop();
     }
-    pfd.events = POLLOUT;
+    RequestParser emptyParser;
+    context.req_parser = emptyParser;
+    pfd.events         = POLLOUT;
 }
 
 void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
