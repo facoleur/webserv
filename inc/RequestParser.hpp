@@ -71,7 +71,7 @@ class RequestParser {
     void                                initHeaderStringToEnumMap(void);
 
     // Error handling
-    void handleParseError(Request&, std::queue<Request>&);
+    void handleParseError(Request&, std::queue<Request>&, const char*);
 
     // attributes
     ParserState                           _parserState;

@@ -189,3 +189,15 @@ enum requestMethod toMethod(const std::string& s) {
         return DELETE;
     return UNKNOWN;
 }
+
+size_t digitCount(size_t num) {
+    size_t count = 0;
+
+    if (num == 0)
+        return 1;
+    while (num) {
+        count++;
+        num /= 10;
+    }
+    return count;
+}

@@ -32,8 +32,9 @@ void RequestParser::setState(ParserState parserState) {
     _parserState = parserState;
 }
 
-void RequestParser::handleParseError(Request& req, std::queue<Request>& reqQueue) {
-    DEBUG_LOG("Parse error");
+void RequestParser::handleParseError(Request& req, std::queue<Request>& reqQueue, const char* msg) {
+    DEBUG_LOG("Parse error: " + msg);
+    (void)msg;
     if (req.getStatusCode() == NO_STATUS)
         req.setStatusCode(BAD_REQUEST);
     reqQueue.push(req);
@@ -68,87 +69,111 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, size_t maxBod
                 if (pos == std::string::npos) {
                     _firstSection += _accumulator; // .substr(0, pos)
                     if (_firstSection.size() >= READ_BUF_SIZE)
-                        return handleParseError(req, reqQueue);
+                        return handleParseError(req, reqQueue, "first section (request-line + headers) too long");
                     _accumulator.clear();
                     _parserState = REQ_PARSE_PARTIAL;
                     return;
                 } else {
                     _firstSection += _accumulator.substr(0, pos);
                     if (_firstSection.size() >= READ_BUF_SIZE || _firstSection.size() < MIN_REQ_SIZE) {
-                        return handleParseError(req, reqQueue);
+                        return handleParseError(req, reqQueue,
+                                                "first section (request-line + headers) too long or too short");
                     }
                     _accumulator = _accumulator.substr(pos + 4);
                 }
                 break;
-            case PARSING_BODY: // if (REQ_PARSE_CHUNK) ? // if (REQ_PARSE_FULL_BODY) ?
-                // // reminder: maxBodySize is checked previously in PARSING_HEADERS
-                lenToAdd = _contentLength - _bodyBuffer.size(); // needed for _bodyBuffer.size() == _contentLength,
-                if (_accumulator.size() < lenToAdd) // if the accumulator doesn't have enough, we take what's there
-                    lenToAdd = _accumulator.size();
+            case PARSING_BODY:
+                if (REQ_PARSE_CHUNKED) {
+                    if (_accumulator.size() < 3) // less than X CR LF => read more
+                        return;
+                    pos = _accumulator.find(CRLF);
+                    // check if only digits => if not, handleParseError()
+                    if (pos == std::string::npos) {
+                        if (_accumulator.size() < digitCount(maxBodySize))
+                            return;
+                        else if (_accumulator.size() == digitCount(maxBodySize)) {
 
-                DEBUG_LOG("adding to {" + _accumulator.substr(0, lenToAdd) + "} to _bodyBuffer");
-                _bodyBuffer += _accumulator.substr(0, lenToAdd);
-                DEBUG_LOG("_bodyBuffer is now {" + _bodyBuffer + "}");
-                _accumulator = _accumulator.substr(lenToAdd);
-                DEBUG_LOG("and _accumulator is now {" + _accumulator + "}");
+                            else if (pos == std::string::npos && _accumulator.size() >= digitCount(maxBodySize))
 
-                if (_bodyBuffer.size() < _contentLength) {
-                    _parserState = REQ_PARSE_PARTIAL;
-                    return;
+                            {
+                                return handleParseError(
+                                    req, reqQueue,
+                                    std::string("chunk size: too long (max body size: " + toString(maxBodySize) + ")")
+                                        .c_str());
+                            }
+                        }
+                    }
                 }
-                break;
-            case PARSING_COMPLETE:
-                break;
-            default:
-                break;
         }
+        if (REQ_PARSE_FULL_BODY) {
+            // // reminder: maxBodySize is checked previously in PARSING_HEADERS
+            lenToAdd = _contentLength - _bodyBuffer.size(); // needed for _bodyBuffer.size() == _contentLength,
+            if (_accumulator.size() < lenToAdd) // if the accumulator doesn't have enough, we take what's there
+                lenToAdd = _accumulator.size();
 
-        /* 2. parse the extracted content */
-        try {
-            if (_parsingPhase == PARSING_START_LINE) // internal
-            {
-                extractStartLineFromFirstSection();
-                parseStartLine(req);
-                _parsingPhase = PARSING_HEADERS;
+            DEBUG_LOG("adding to {" + _accumulator.substr(0, lenToAdd) + "} to _bodyBuffer");
+            _bodyBuffer += _accumulator.substr(0, lenToAdd);
+            DEBUG_LOG("_bodyBuffer is now {" + _bodyBuffer + "}");
+            _accumulator = _accumulator.substr(lenToAdd);
+            DEBUG_LOG("and _accumulator is now {" + _accumulator + "}");
+
+            if (_bodyBuffer.size() < _contentLength) {
+                _parserState = REQ_PARSE_PARTIAL;
+                return;
             }
-            if (_parsingPhase == PARSING_HEADERS) {
-                _headersBuffer = _firstSection;
-                parseHeaders(req, maxBodySize);
-                DEBUG_LOG(req);
-                if (req.hasHeader(CONTENT_LENGTH) || req.hasHeader(TRANSFER_ENCODING)) {
-                    DEBUG_LOG("PARSING_HEADERS: found header Content-length or Transfer-encoding");
-                    _parsingPhase = PARSING_BODY;
-                    continue;
-                } else {
-                    DEBUG_LOG(
-                        "PARSING_HEADERS: didn't find header Content-length or Transfer-encoding, parsing complete");
-                    _parsingPhase = PARSING_COMPLETE;
-                }
-            }
-            if (_parsingPhase == PARSING_BODY) {
-                DEBUG_LOG("_bodyBuffer.size(): " + toString(_bodyBuffer.size()));
-                parseBody(req, maxBodySize);
-                DEBUG_LOG("PARSING_BODY");
+        }
+        break;
+        case PARSING_COMPLETE:
+            break;
+        default:
+            break;
+    }
+
+    /* 2. parse the extracted content */
+    try {
+        if (_parsingPhase == PARSING_START_LINE) // internal
+        {
+            extractStartLineFromFirstSection();
+            parseStartLine(req);
+            _parsingPhase = PARSING_HEADERS;
+        }
+        if (_parsingPhase == PARSING_HEADERS) {
+            _headersBuffer = _firstSection;
+            parseHeaders(req, maxBodySize);
+            DEBUG_LOG(req);
+            if (req.hasHeader(CONTENT_LENGTH) || req.hasHeader(TRANSFER_ENCODING)) {
+                DEBUG_LOG("PARSING_HEADERS: found header Content-length or Transfer-encoding");
+                _parsingPhase = PARSING_BODY;
+                continue;
+            } else {
+                DEBUG_LOG("PARSING_HEADERS: didn't find header Content-length or Transfer-encoding, parsing complete");
                 _parsingPhase = PARSING_COMPLETE;
             }
-            if (_parsingPhase == PARSING_COMPLETE) {
-                DEBUG_LOG("PARSING_COMPLETE");
-                if (_accumulator.empty())
-                    DEBUG_LOG("accumulator empty");
-                else
-                    DEBUG_LOG("accumulator not empty: {" + _accumulator + "}");
-                reqQueue.push(req);
-                req = Request();
-                this->resetParser();
-                _parsingPhase = PARSING_START_LINE;
-            }
-        } catch (RequestParsingError& e) {
-            DEBUG_LOG(e.what());
-            return handleParseError(req, reqQueue);
         }
+        if (_parsingPhase == PARSING_BODY) {
+            DEBUG_LOG("_bodyBuffer.size(): " + toString(_bodyBuffer.size()));
+            parseBody(req, maxBodySize);
+            DEBUG_LOG("PARSING_BODY");
+            _parsingPhase = PARSING_COMPLETE;
+        }
+        if (_parsingPhase == PARSING_COMPLETE) {
+            DEBUG_LOG("PARSING_COMPLETE");
+            if (_accumulator.empty())
+                DEBUG_LOG("accumulator empty");
+            else
+                DEBUG_LOG("accumulator not empty: {" + _accumulator + "}");
+            reqQueue.push(req);
+            req = Request();
+            this->resetParser();
+            _parsingPhase = PARSING_START_LINE;
+        }
+    } catch (RequestParsingError& e) {
+        DEBUG_LOG(e.what());
+        return handleParseError(req, reqQueue);
     }
-    DEBUG_LOG("end of feed()");
-    _parserState = REQ_PARSE_COMPLETE;
+}
+DEBUG_LOG("end of feed()");
+_parserState = REQ_PARSE_COMPLETE;
 }
 
 bool RequestParser::isValidBody(Request& req) const { // not called yet

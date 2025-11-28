@@ -25,6 +25,7 @@ std::string              readFile(const std::ifstream&);
 std::string              getParentDir(const std::string&);
 bool                     isSpace(int);
 bool                     isAcceptedHeader(std::string&);
+size_t                   digitCount(size_t);
 
 // OutstreamUtils.cpp
 std::ostream& operator<<(std::ostream&, const struct pollfd);
