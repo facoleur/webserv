@@ -179,8 +179,8 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
         tmp[len]           = '\0';
         size_t maxBodySize = serverConfig.client_max_body_size;
         ctx.req_parser.feed(tmp, ctx.requests, maxBodySize);
-        if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) { /* Need to parse more */
-            DEBUG_LOG("Req partial");
+        if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
+            DEBUG_LOG("parser needs more data");
             return;
         }
     }
