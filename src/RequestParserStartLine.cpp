@@ -42,7 +42,7 @@ void RequestParser::parseMethod(std::string& split0, Request& req) {
         throw RequestParsingError("parseMethod(): method field is empty");
 
     req.setMethod(split0);
-
+    DEBUG_LOG("parseMethod: setMethod() to " + split0);
     if (req.getMethod() != GET && req.getMethod() != POST && req.getMethod() != DELETE) {
         req.setStatusCode(NOT_IMPLEMENTED);
         throw RequestParsingError("parseMethod(): method not implemented");

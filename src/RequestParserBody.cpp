@@ -1,22 +1,15 @@
 // RequestParserBody.cpp
 
-#include "Enums.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
 #include "Utils.hpp"
+#include "Webserv.hpp"
 
-bool RequestParser::isValidBody(Request& req) const { // not called yet
-    // move validation of content length == body.size
-    if (req.getMethod() == POST && req.getBody().empty())
-        return false;
+// case CONTENT_LENGTH:
+// accumulator => parser _body buffer (under constraint maxBodySize) => request
 
-    if (req.getMethod() == GET && !req.getBody().empty())
-        return false;
-
-    if (req.getBody().size() != toSizet(req.getHeader(CONTENT_LENGTH))) {
-        DEBUG_LOG("req.getBody().size(): " + toString(req.getBody().size()) + " != content-length(" +
-                  toString(toSizet(req.getHeader(CONTENT_LENGTH))));
-        return false;
-    }
-    return true;
+void RequestParser::parseBody(Request& req, size_t maxBodySize) {
+    (void)maxBodySize; // maybe used for chunk parsing, to see later
+    req.setBody(_bodyBuffer);
+    DEBUG_LOG("parseBody set body to " + req.getBody());
 }

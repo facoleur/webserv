@@ -30,12 +30,6 @@ Server::Server(const Config& cfg) : _config(cfg) {
 Server::~Server() {
 }
 
-void Server::new_connection() {
-}
-
-void Server::existing_connection() {
-}
-
 ClientContext::ClientContext(void) : close_after_responses(false) {
 }
 
@@ -85,6 +79,7 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
                 continue;
             }
             setPollFd(pfds[nfds], listener, POLLIN, 0);
+            DEBUG_LOG("setting _listenerToServerIdx[" + toString(listener) + "] to " + toString(si));
             _listenerToServerIdx[listener] = si;
             listen_fds.push_back(listener);
             ++nfds;
@@ -97,30 +92,12 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
     return listen_fds;
 }
 
-// Handle incoming connections
-int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
-    DEBUG_LOG("handleNewConnection()");
-    int new_client_fd = accept(listener, NULL, NULL);
-    if (new_client_fd < 0) {
-        DEBUG_LOG("accept error");
-        return -1;
-    }
-    fcntl(new_client_fd, F_SETFL, O_NONBLOCK);
-    setPollFd(pfds[nfds], new_client_fd, POLLIN, 0);
-    context[new_client_fd]              = ClientContext();
-    context[new_client_fd].server_index = _listenerToServerIdx[listener];
-    nfds++;
-    DEBUG_LOG("new client connected on server index " + toString(context[new_client_fd].server_index));
-    return 0;
-}
-
 void Server::add_bad_request_to_queue(ClientContext& context) {
     Request req;
     req.setStatusCode(BAD_REQUEST);
     context.requests.push(req);
 }
 
-#include "RequestParser.hpp"
 void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
     RequestRouter router;
 
@@ -146,15 +123,40 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
         context.write_buffer.append(res.serialize());
         context.requests.pop();
     }
-    RequestParser emptyParser;
-    context.req_parser = emptyParser;
-    pfd.events         = POLLOUT;
+    pfd.events = POLLOUT;
+}
+
+// handles partial request i.e. unfinished request but no more POLLIN revents (see Server::run() loop)
+// this is a case of bad request
+void Server::handlePartialRequest(ClientContext& context, struct pollfd& pfd) {
+    add_bad_request_to_queue(context); // the request was partial and not in the queue
+    DEBUG_LOG("handlePartialRequest: added bad request to queue");
+    handle_requests(context, pfd);
+    context.req_parser.setState(REQ_PARSE_COMPLETE);
+}
+
+// Handle incoming connections
+int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
+    DEBUG_LOG("handleNewConnection()");
+    int new_client_fd = accept(listener, NULL, NULL);
+    if (new_client_fd < 0) {
+        DEBUG_LOG("accept error: errno is " + toString(errno));
+        return -1;
+    }
+    fcntl(new_client_fd, F_SETFL, O_NONBLOCK);
+    setPollFd(pfds[nfds], new_client_fd, POLLIN, 0);
+    context[new_client_fd]              = ClientContext();
+    context[new_client_fd].server_index = _listenerToServerIdx.at(listener);
+    nfds++;
+    DEBUG_LOG("new client connected on server index " + toString(context[new_client_fd].server_index));
+    return 0;
 }
 
 void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
-    char           tmp[READ_SIZE + 1];
-    int            len;
-    ClientContext& ctx = context[listener];
+    char                tmp[READ_SIZE + 1];
+    int                 len;
+    ClientContext&      ctx          = context[listener];
+    const ServerConfig& serverConfig = _config.getServers().at(ctx.server_index);
 
     DEBUG_LOG("handleRead()");
     len = read(listener, tmp, READ_SIZE);
@@ -174,8 +176,9 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
         disconnect_client(i, listener, pfds, nfds, context); // correct ?
         return;
     } else { /* Parsing */
-        tmp[len] = '\0';
-        ctx.req_parser.feed(tmp, ctx.requests);
+        tmp[len]           = '\0';
+        size_t maxBodySize = serverConfig.client_max_body_size;
+        ctx.req_parser.feed(tmp, ctx.requests, maxBodySize);
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) { /* Need to parse more */
             DEBUG_LOG("Req partial");
             return;
@@ -213,15 +216,6 @@ void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS
     return;
 }
 
-// handles partial request i.e. unfinished request but no more POLLIN revents (see Server::run() loop)
-// this is a case of bad request
-void Server::handlePartialRequest(ClientContext& context, struct pollfd& pfd) {
-    add_bad_request_to_queue(context); // the request was partial and not in the queue
-    DEBUG_LOG("handlePartialRequest: added bad request to queue");
-    handle_requests(context, pfd);
-    context.req_parser.setState(REQ_PARSE_COMPLETE);
-}
-
 void Server::run() {
     struct pollfd    pfds[MAX_EVENTS];
     int              nfds;
@@ -232,7 +226,7 @@ void Server::run() {
     listen_fds = initListenerSockets(pfds, nfds);
     if (listen_fds.empty()) {
         std::cerr << "error getting listening server sockets" << std::endl;
-        return; // ?
+        return;
     }
 
     while (1) {
@@ -248,6 +242,7 @@ void Server::run() {
         for (int i = 0; i < nfds; i++) {
             DEBUG_LOG("* for loop: i == " + toString(i) + " *");
             int listener = pfds[i].fd;
+            DEBUG_LOG("listener: " + toString(listener));
 
             if (pfds[i].revents & (POLLERR | POLLNVAL)) {
                 DEBUG_LOG("--- POLLERR | POLLNVAL ---");
