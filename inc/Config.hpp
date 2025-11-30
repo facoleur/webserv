@@ -41,6 +41,7 @@ struct LocationConfig {
 
 struct ServerConfig {
     std::string              host; // comme "127.0.0.1"
+    std::string              server_name;
     std::string              root;
     std::vector<std::string> index_files;
     std::set<requestMethod>  methods;

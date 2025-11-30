@@ -193,9 +193,10 @@ void ConfigParser::parseServer() {
         }
 
         // Server-only + common directives
-        if (parseDirectiveListen(srv) || parseDirectiveErrorPage(srv) || parseDirectiveAutoIndex(srv) ||
-            parseDirectiveClientMaxBodySize(srv) || parseDirectiveCgi(srv) || parseDirectiveRoot(srv) ||
-            parseDirectiveIndex(srv) || parseDirectiveMethods(srv) || parseDirectiveReturn(srv)) {
+        if (parseDirectiveListen(srv) || parseDirectiveServerName(srv) || parseDirectiveErrorPage(srv) ||
+            parseDirectiveAutoIndex(srv) || parseDirectiveClientMaxBodySize(srv) || parseDirectiveCgi(srv) ||
+            parseDirectiveRoot(srv) || parseDirectiveIndex(srv) || parseDirectiveMethods(srv) ||
+            parseDirectiveReturn(srv)) {
             continue;
         }
 
@@ -238,6 +239,17 @@ void ConfigParser::parseLocation(ServerConfig& srv) {
 }
 
 // -------- Reusable directive handlers (server + location) --------
+
+bool ConfigParser::parseDirectiveServerName(ServerConfig& srv) {
+    if (!accept("server_name"))
+        return false;
+
+    Token       p           = next();
+    std::string server_name = p.s;
+    srv.server_name         = server_name;
+    expect(";", "missing ';' after listen");
+    return true;
+}
 
 bool ConfigParser::parseDirectiveListen(ServerConfig& srv) {
     if (!accept("listen"))
