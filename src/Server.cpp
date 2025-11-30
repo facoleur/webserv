@@ -19,9 +19,9 @@
 #include "Webserv.hpp"
 
 void Server::disconnect_client(int& index, int& client_fd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
-                               ContextMap& context) {
+                               ContextMap& contextMap) {
 
-    context.erase(client_fd);
+    contextMap.erase(client_fd);
     pfds[index] = pfds[nfds - 1];
     index--;
     close(client_fd);
@@ -201,7 +201,7 @@ int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS],
     context[new_client_fd] = ClientContext();
     // context[new_client_fd].server_index     = _listenerToServerIdx.at(listener);
     context[new_client_fd].availableServers = _listenerToServers[listener];
-
+    context[new_client_fd].last_activity    = time(NULL);
     nfds++;
     DEBUG_LOG("new client connected on server index " + toString(context[new_client_fd].server_index));
     return 0;
@@ -214,8 +214,8 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
     // const ServerConfig& serverConfig = _config.getServers().at(ctx.server_index);
 
     DEBUG_LOG("handleRead()");
-    len = read(listener, tmp, READ_SIZE);
-
+    len               = read(listener, tmp, READ_SIZE);
+    ctx.last_activity = time(NULL);
     if (len == 0) { // client closed their send side (or POLLHUP ? unclear but it works)
         DEBUG_LOG("read returned 0 (client closed their send side)");
         ctx.close_after_responses = true;
@@ -236,9 +236,8 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
         size_t maxBodySize = 1024 * 1024; // temp value before choosing the correct serv
         // size_t maxBodySize = serverConfig.client_max_body_size;
         ctx.req_parser.feed(tmp, ctx.requests, maxBodySize);
-
-        if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) { /* Need to parse more */
-            DEBUG_LOG("Req partial");
+        if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
+            DEBUG_LOG("parser needs more data");
             return;
         }
     }
@@ -254,6 +253,7 @@ void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS
         DEBUG_LOG("written bytes: " + toString(sent));
         if (sent > 0) {
             buf.erase(0, sent);
+            context[listener].last_activity = time(NULL);
             break;
         }
         if (sent == -1) {
@@ -275,6 +275,31 @@ void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS
     return;
 }
 
+#include <sys/time.h>
+
+void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pfds)[MAX_EVENTS]) {
+    std::map<int, ClientContext>::iterator it;
+    long                                   currTime;
+
+    currTime = time(NULL);
+    if (currTime == -1)
+        return; // handleTimeError ?
+    it = contextMap.begin();
+    while (it != contextMap.end()) {
+        if ((currTime - it->second.last_activity) > CLIENT_TIMEOUT) {
+            int j         = 0;
+            int client_fd = it->first; // or it->second.pfd.fd
+            while (j < nfds && pfds[j].fd != client_fd)
+                j++;
+            ++it;
+            if (pfds[j].fd == client_fd)
+                disconnect_client(j, client_fd, pfds, nfds, contextMap);
+            continue;
+        }
+        ++it;
+    }
+}
+
 void Server::run() {
     struct pollfd    pfds[MAX_EVENTS];
     int              nfds;
@@ -292,10 +317,12 @@ void Server::run() {
         DEBUG_LOG("** while loop start **");
         DEBUG_LOG("{nfds}: " + toString(nfds) + " - {pfds[nfds].events}: " + toString(pfds[nfds].events));
         DEBUG_LOG("\n((((( POLL )))))");
-        if (poll(pfds, nfds, TIMEOUT) < 0) {
+        if (poll(pfds, nfds, POLL_TIMEOUT) < 0) {
             DEBUG_LOG("poll error");
             continue;
         }
+
+        checkTimeouts(contextMap, nfds, pfds);
 
         // handle events of each pollfd
         for (int i = 0; i < nfds; i++) {
@@ -304,12 +331,10 @@ void Server::run() {
             DEBUG_LOG("listener: " + toString(listener));
 
             if (pfds[i].revents & (POLLERR | POLLNVAL)) {
-                DEBUG_LOG("--- POLLERR | POLLNVAL ---");
-                DEBUG_LOG("disconnect 1");
+                DEBUG_LOG("--- POLLERR | POLLNVAL ---\n disconnect 1");
                 disconnect_client(i, listener, pfds, nfds, contextMap);
                 continue;
             }
-            DEBUG_LOG("passed POLLERR | POLLNVAL");
 
             if (pfds[i].revents & POLLIN) {
                 DEBUG_LOG("--- POLLIN ---");
@@ -321,14 +346,11 @@ void Server::run() {
                     handleRead(listener, i, pfds, nfds, contextMap); // Read client data
                 continue;
             }
-            DEBUG_LOG("passed POLLIN");
 
             if (pfds[i].revents & POLLOUT) {
                 sendResponses(listener, i, pfds, nfds, contextMap);
                 continue;
             }
-            DEBUG_LOG("passed POLLOUT");
-
             DEBUG_LOG("* end for loop *\n");
         }
         DEBUG_LOG("** end while loop **\n");
