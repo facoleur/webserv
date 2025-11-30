@@ -133,10 +133,11 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, size_t maxBod
             }
             if (_parsingPhase == PARSING_COMPLETE) {
                 DEBUG_LOG("PARSING_COMPLETE");
-                if (_accumulator.empty())
+                if (_accumulator.empty()) {
                     DEBUG_LOG("accumulator empty");
-                else
+                } else {
                     DEBUG_LOG("accumulator not empty: {" + _accumulator + "}");
+                }
                 reqQueue.push(req);
                 req = Request();
                 this->resetParser();

@@ -1,6 +1,7 @@
 // Server.cpp
 
 #include <arpa/inet.h>
+#include <cstring>
 
 #include "Enums.hpp"
 #include "RequestParser.hpp"
