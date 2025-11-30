@@ -170,21 +170,21 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
             return;
         }
     } else if (len < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) { // EAGAIN: No data is available to read,
-            DEBUG_LOG("EAGAIN - no more data");        //  or a write would block
+        if (errno == EAGAIN ||
+            errno == EWOULDBLOCK || // EAGAIN/EWOULDBLOCK: No data is available to read, or a write would block
+            errno == EINTR) {       // EINTR: read interrupted before any data arrived by the delivery of a signal
+            DEBUG_LOG("read returned < 0 and set errno to EAGAIN, EWOULDBLOCK or EINTR; continuing");
             return;
         }
         DEBUG_LOG("disconnect 3: read error");               // Real error
         disconnect_client(i, listener, pfds, nfds, context); // correct ?
         return;
-    } else { /* Parsing */
+    } else { // Parsing
         tmp[len]           = '\0';
         size_t maxBodySize = serverConfig.client_max_body_size;
         ctx.req_parser.feed(tmp, ctx.requests, maxBodySize);
-        if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
-            DEBUG_LOG("parser needs more data");
+        if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL)
             return;
-        }
     }
     handle_requests(ctx, pfds[i]);
 }
