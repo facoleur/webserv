@@ -11,7 +11,7 @@ int main(int argc, char const* argv[]) {
 #ifndef DEBUG_MODE
     system("clear");
 #endif
-    const char* path = (argc > 1) ? argv[1] : "config/default.conf";
+    const char* path = (argc > 1) ? argv[1] : "config/servername.conf";
     // Validate config path early
     std::string err;
     if (!ConfigFile::validateConfigPath(path, err)) {

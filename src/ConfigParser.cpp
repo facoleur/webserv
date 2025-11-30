@@ -1,9 +1,11 @@
 #include "ConfigParser.hpp"
+#include "Config.hpp"
 #include "Utils.hpp"
 #include <cctype>
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
+#include <string>
 
 ConfigParser::ConfigParser() : i_(0) {
 }

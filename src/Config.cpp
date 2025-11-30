@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
+#include <string>
 #include <unistd.h>
 
 #include "ConfigFile.hpp"
@@ -106,7 +107,6 @@ static void ensureUploadStore(const LocationConfig& loc, const std::string& root
     }
     if (type == PATH_ERROR) {
         std::string parent = parentDir(path);
-        std::cout << parent << std::endl;
         if (ConfigFile::checkFile(parent, W_OK | X_OK) != 0)
             throw std::runtime_error("Cannot create upload directory (permission "
                                      "denied): " +
@@ -169,4 +169,10 @@ void validateCompatibility(const Config& cfg) {
             std::cerr << "Config invalid: " << re.what() << std::endl;
         }
     }
+}
+
+bool ServerConfig::matchServerName(const std::string& hostHeader) const {
+    if (hostHeader.find(server_name) != std::string::npos)
+        return true;
+    return false;
 }
