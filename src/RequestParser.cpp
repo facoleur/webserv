@@ -187,6 +187,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, size_t maxBod
                         return;
                     if (ret == PARSE_MORE_CHUNKS)
                         continue;
+                    _parsingPhase = PARSING_BODY_FINISHED;
                     break;
                 case PARSING_COMPLETE:
                     break;
