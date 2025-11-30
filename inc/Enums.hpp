@@ -36,11 +36,15 @@ enum statusCode {
 
 typedef std::map<requestHeaders, std::string> headersMap;
 
-enum ParserState {
-    REQ_PARSE_START,
-    REQ_PARSE_PARTIAL,
-    REQ_PARSE_COMPLETE,
-    REQ_PARSE_ERROR
-};
+// externally-relevant state of the parser
+enum ParserState { REQ_PARSE_START, REQ_PARSE_PARTIAL, REQ_PARSE_COMPLETE, REQ_PARSE_ERROR };
 
-enum ParsingPhase { PARSING_START_LINE, PARSING_HEADERS, PARSING_FULL_BODY, PARSING_CHUNKED, PARSING_COMPLETE };
+// internal state of the parser
+enum ParsingPhase {
+    PARSING_START_LINE,
+    PARSING_HEADERS,
+    PARSING_BODY_CONTENT_LENGTH,
+    PARSING_BODY_CHUNKED,
+    PARSING_BODY_FINISHED,
+    PARSING_COMPLETE
+};

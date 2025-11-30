@@ -19,7 +19,13 @@ int main(int argc, char const* argv[]) {
         return 1;
     }
     ConfigParser parser;
-    Config       cfg = parser.parseFile(path);
+    Config       cfg;
+    try {
+        cfg = parser.parseFile(path);
+    } catch (ParseError& pe) {
+        std::cerr << pe.what() << std::endl << "aborting" << std::endl;
+        return -1;
+    }
     applyDefaults(cfg);
     validateCompatibility(cfg); // try catch => if catch, return
 

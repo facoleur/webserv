@@ -12,7 +12,8 @@
 class Response;
 
 #define MAX_EVENTS 64
-#define TIMEOUT 4000
+#define CLIENT_TIMEOUT 10000
+#define POLL_TIMEOUT 4000
 #define READ_SIZE 8000
 
 struct ClientContext {
@@ -24,6 +25,7 @@ struct ClientContext {
     std::string         write_buffer;
     bool                close_after_responses; // if bad request in the queue, set this to true
     size_t              server_index;          // which server accepted the client
+    int                 last_activity;
 };
 
 typedef std::map<int, struct ClientContext> ContextMap;
@@ -49,4 +51,5 @@ class Server {
     void handleRead(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
     void sendResponses(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
     void handlePartialRequest(ClientContext&, struct pollfd&);
+    void checkTimeouts(ContextMap&, int&, struct pollfd (&)[MAX_EVENTS]);
 };

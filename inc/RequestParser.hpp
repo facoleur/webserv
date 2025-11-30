@@ -7,16 +7,18 @@
 #include "Enums.hpp"
 
 #define READ_BUF_SIZE 8000
-#define MIN_REQ_SIZE 19      // shortest possible request without ending CRLFCRLF: "GET / HTTP/2\r\nHost:"
-#define MIN_HEADER_SIZE 3    // header name + field min length ("H:I")
-#define MAX_HEADER_SIZE 4000 // header name + field max length
-#define MAX_CHUNK_SIZE 268435456 // 16^7 => 7 hex digits
+#define MIN_REQ_SIZE 19            // shortest possible request without ending CRLFCRLF: "GET / HTTP/2\r\nHost:"
+#define MIN_HEADER_SIZE 3          // header name + field min length ("H:I")
+#define MAX_HEADER_SIZE 4000       // header name + field max length
+#define MAX_CHUNK_SIZE 268435456   // 16^7 => 7 hex digits
 #define MAX_CHUNK_SIZE_LINE_SIZE 7 // 7 hex digits
 #define CRLF std::string("\r\n")
 #define READ_MORE 1
-#define FULL_BODY_OK 2
+#define CONTENT_LENGTH_OK 2
 #define CHUNK_SIZE_OK 3
-#define FIRST_SECTION_OK 4
+#define PARSE_MORE_CHUNKS 4
+#define CHUNK_FINISHED 5
+#define FIRST_SECTION_OK 6
 
 class Request;
 
@@ -34,7 +36,7 @@ class RequestParser {
     void resetParser(void);
 
     // getters
-    enum ParserState getState(void);
+    enum ParserState getState(void) const;
     void             setState(enum ParserState);
 
     // parser error
@@ -56,12 +58,12 @@ class RequestParser {
     void parseStartLine(Request&);
     void parseHeaders(Request&, size_t);
     void parseHeader(std::string&, Request&, size_t);
-    void parseFullBody(Request&, size_t);
+    void parseFullBody(Request&);
 
     // sub-parsing functions
     int  extractFirstSection(void);
     void extractStartLineFromFirstSection(void);
-    int  extractFullBody(size_t);
+    int  extractFullBody(void);
     int  extractChunkSize(size_t);
     int  extractChunkData(void);
     void parsePathAndQueryString(std::string&, Request&);
@@ -86,13 +88,12 @@ class RequestParser {
     // attributes
     ParserState                           _parserState;
     ParsingPhase                          _parsingPhase;
-    size_t                                _contentLength;
     std::string                           _accumulator;
-    std::string                           _firstSection; // request-line + headers
+    std::string                           _firstSection; // start-line + headers
     std::string                           _startLine;
     std::string                           _headersBuffer;
     std::map<std::string, requestHeaders> _headerStringToEnum;
-    std::string                           _bodyBuffer;
+    size_t                                _contentLength;
     size_t                                _chunkSize;
-    std::string                           _chunkContent;
+    std::string                           _bodyBuffer;
 };
