@@ -7,6 +7,61 @@
 #include "RequestRouter.hpp"
 #include "Response.hpp"
 
+// not sure how to call this function ?
+void RequestRouter::handleCgiHeaders(std::string& output, std::string& responseBody,
+                                     std::map<std::string, std::string>& responseHeaders, int& statusCode,
+                                     std::string& statusMessage) const {
+
+    std::string::size_type headerEnd = output.find("\r\n\r\n");
+    size_t                 delimiter = 4;
+    if (headerEnd == std::string::npos) {
+        headerEnd = output.find("\n\n");
+        delimiter = 2;
+    }
+
+    std::string headersBlock;
+    if (headerEnd != std::string::npos) {
+        headersBlock = output.substr(0, headerEnd);
+        responseBody = output.substr(headerEnd + delimiter);
+    } else {
+        responseBody = output;
+    }
+
+    if (!headersBlock.empty()) {
+        std::istringstream iss(headersBlock);
+        std::string        line;
+        while (std::getline(iss, line)) {
+            if (!line.empty() && line[line.size() - 1] == '\r')
+                line.erase(line.size() - 1);
+            if (line.empty())
+                continue;
+            std::string::size_type sep = line.find(':');
+            if (sep == std::string::npos)
+                continue;
+            std::string headerName  = line.substr(0, sep);
+            std::string headerValue = trimString(line.substr(sep + 1));
+            std::string lowered     = toLower(headerName);
+            if (lowered == "status") {
+                std::istringstream statusStream(headerValue);
+                int                code = 0;
+                statusStream >> code;
+                if (statusStream && code >= 100 && code <= 599) {
+                    statusCode = code;
+                    std::string text;
+                    std::getline(statusStream, text);
+                    text = trimString(text);
+                    if (!text.empty())
+                        statusMessage = text;
+                    else
+                        statusMessage.clear();
+                }
+                continue;
+            }
+            responseHeaders[headerName] = headerValue;
+        }
+    }
+}
+
 int RequestRouter::executeCgi(const ServerConfig& serverConfig, const LocationConfig& locationConfig,
                               const Request& request, const std::string& scriptPath, const std::string& interpreter,
                               std::string& responseBody, std::map<std::string, std::string>& responseHeaders,
@@ -122,54 +177,7 @@ int RequestRouter::executeCgi(const ServerConfig& serverConfig, const LocationCo
     if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
         return -1;
 
-    std::string::size_type headerEnd = output.find("\r\n\r\n");
-    size_t                 delimiter = 4;
-    if (headerEnd == std::string::npos) {
-        headerEnd = output.find("\n\n");
-        delimiter = 2;
-    }
-
-    std::string headersBlock;
-    if (headerEnd != std::string::npos) {
-        headersBlock = output.substr(0, headerEnd);
-        responseBody = output.substr(headerEnd + delimiter);
-    } else {
-        responseBody = output;
-    }
-
-    if (!headersBlock.empty()) {
-        std::istringstream iss(headersBlock);
-        std::string        line;
-        while (std::getline(iss, line)) {
-            if (!line.empty() && line[line.size() - 1] == '\r')
-                line.erase(line.size() - 1);
-            if (line.empty())
-                continue;
-            std::string::size_type sep = line.find(':');
-            if (sep == std::string::npos)
-                continue;
-            std::string headerName  = line.substr(0, sep);
-            std::string headerValue = trimString(line.substr(sep + 1));
-            std::string lowered     = toLower(headerName);
-            if (lowered == "status") {
-                std::istringstream statusStream(headerValue);
-                int                code = 0;
-                statusStream >> code;
-                if (statusStream && code >= 100 && code <= 599) {
-                    statusCode = code;
-                    std::string text;
-                    std::getline(statusStream, text);
-                    text = trimString(text);
-                    if (!text.empty())
-                        statusMessage = text;
-                    else
-                        statusMessage.clear();
-                }
-                continue;
-            }
-            responseHeaders[headerName] = headerValue;
-        }
-    }
+    handleCgiHeaders(output, responseBody, responseHeaders, statusCode, statusMessage);
 
     return 0;
 }

@@ -16,6 +16,7 @@ class RequestRouter {
     bool        isMethodAllowed(const Request&, const LocationConfig&);
     bool        isCgiRequest(const std::string&, const LocationConfig&);
     std::string getCgiInterpreter(const std::string&, const LocationConfig&) const;
+    void handleCgiHeaders(std::string&, std::string&, std::map<std::string, std::string>&, int&, std::string&) const;
     Response    handleGet(const Request&, std::string&, const LocationConfig&);
     Response    handlePost(const Request&, const std::string&, const LocationConfig&);
     Response    handleDelete(const Request&, const std::string&, const LocationConfig&);
