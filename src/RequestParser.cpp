@@ -1,149 +1,251 @@
 // RequestParser.cpp
 
+#include <sstream>
+
+#include "Enums.hpp"
+#include "Request.hpp"
 #include "RequestParser.hpp"
-#include "Server.hpp"
+#include "Utils.hpp"
+#include "Webserv.hpp"
 
 RequestParser::RequestParser(void)
-    : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_REQUEST_LINE), _statusCode(NO_STATUS), _contentLength(0),
-      _accumulator(), _firstSection(), _requestLine(), _headers(), _body() {
+    : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_START_LINE), _accumulator(), _firstSection(), _startLine(),
+      _headersBuffer(), _contentLength(-1), _chunkSize(-1), _bodyBuffer() {
 }
 
 RequestParser::~RequestParser(void) {
 }
 
-enum ParserState RequestParser::getState(void) {
+void RequestParser::resetParser(void) {
+    _parserState   = REQ_PARSE_START;
+    _parsingPhase  = PARSING_START_LINE;
+    _contentLength = -1;
+    _firstSection.clear();
+    _startLine.clear();
+    _headersBuffer.clear();
+    _bodyBuffer.clear();
+    _chunkSize = -1;
+}
+
+ParserState RequestParser::getState(void) const {
     return _parserState;
 }
 
-void RequestParser::setState(enum ParserState parserState) {
+void RequestParser::setState(ParserState parserState) {
     _parserState = parserState;
 }
 
-// splits the line in three. Throws if less than two spaces found
-void RequestParser::splitRequestLine(std::vector<std::string>& split, std::string& line) {
-    size_t pos;
-
-    for (size_t i = 0; i < 2; i++) {
-        pos = line.find(' ');
-        if (pos == line.npos)
-            throw RequestParsingError();
-        split.push_back(line.substr(0, pos));
-        line = line.substr(pos + 1);
-    }
-    split.push_back(line.substr(0));
-    return;
-}
-
-void RequestParser::parseRequestLine(Request& req) {
-    std::vector<std::string> split;
-    size_t                   queryPos;
-
-    /* split line */
-    splitRequestLine(split, _requestLine);
-
-    /* set method */
-    if (split[0].empty())
-        throw RequestParsingError();
-
-    req.setMethod(split[0]);
-
-    /* set request-target path and query-string */
-    if (split[1].empty() || split[1].find_first_of(" \t\n\r\f\v") != std::string::npos)
-        throw RequestParsingError();
-    queryPos = split[1].find("?");
-    if (queryPos != std::string::npos) {
-        req.setQueryString(split[1].substr(queryPos + 1));
-        split[1] = split[1].substr(0, queryPos);
-    }
-    req.setPath(split[1]);
-
-    /* set HTTP version */
-    if (split[2] != "HTTP/1.0" && split[2] != "HTTP/1.1")
-        throw RequestParsingError();
-    req.setProtocolVersion(split[2]);
-}
-
-void RequestParser::handleParseError(Request& req, std::queue<Request>& reqQueue) {
-    DEBUG_LOG("Parse error");
-    req.setStatusCode(BAD_REQUEST);
-    req.setValidity(INVALID_REQUEST);
+void RequestParser::handleParseError(Request& req, std::queue<Request>& reqQueue, const char* msg) {
+    DEBUG_LOG("Parse error: " + std::string(msg));
+    (void)msg;
+    if (req.getStatusCode() == NO_STATUS)
+        req.setStatusCode(BAD_REQUEST);
     reqQueue.push(req);
     _parserState = REQ_PARSE_ERROR;
 }
 
-void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
-    size_t  pos;
+// extracts request-line and header from accumulator
+int RequestParser::extractFirstSection(void) {
+    size_t pos;
+    pos = _accumulator.find(CRLF + CRLF);
+    if (pos == std::string::npos) {
+        _firstSection += _accumulator; // .substr(0, pos)
+        if (_firstSection.size() >= READ_BUF_SIZE)
+            throw RequestParsingError("first section (request-line + headers) too long");
+        _accumulator.clear();
+        _parserState = REQ_PARSE_PARTIAL;
+        return READ_MORE;
+    } else {
+        _firstSection += _accumulator.substr(0, pos);
+        if (_firstSection.size() >= READ_BUF_SIZE || _firstSection.size() < MIN_REQ_SIZE)
+            throw RequestParsingError("first section (request-line + headers) too long or too short");
+        _accumulator = _accumulator.substr(pos + 4);
+    }
+    return FIRST_SECTION_OK;
+}
+
+void RequestParser::extractStartLineFromFirstSection(void) {
+    size_t pos;
+
+    pos = _firstSection.find(CRLF);
+    if (pos != std::string::npos) { // _firstSection has start-line + headers
+        _startLine    = _firstSection.substr(0, pos);
+        _firstSection = _firstSection.substr(pos + 2);
+    } else // _firstSection is a pure start-line with no headers
+        throw RequestParsingError("parsing start line: no headers found");
+}
+
+// reminder: maxBodySize is checked previously in PARSING_HEADERS => we use _contentLength
+int RequestParser::extractFullBody(void) {
+    size_t lenToAdd; // length to add to buffer
+
+    if (_accumulator.empty()) {
+        _parserState = REQ_PARSE_PARTIAL;
+        return READ_MORE;
+    }
+    if (_contentLength == -1)
+        throw RequestParsingError("extractFullBody: _contentLength was not set");
+    if (_contentLength == 0)
+        return CONTENT_LENGTH_OK;
+    if (static_cast<int>(_bodyBuffer.size()) > _contentLength)
+        throw RequestParsingError("body: request parser extracted more bytes than _contentLength from read() buffer");
+    lenToAdd = _contentLength -
+               _bodyBuffer.size(); // we try to take as much as possible so that _bodyBuffer.size() == _contentLength
+    if (_accumulator.size() < lenToAdd) // in case the accumulator doesn't have enough, we only take what's there
+        lenToAdd = _accumulator.size();
+
+    _bodyBuffer += _accumulator.substr(0, lenToAdd);
+    _accumulator = _accumulator.substr(lenToAdd);
+
+    if (static_cast<int>(_bodyBuffer.size()) < _contentLength) {
+        _parserState = REQ_PARSE_PARTIAL;
+        return READ_MORE;
+    }
+    return CONTENT_LENGTH_OK;
+}
+
+// extracts chunk size in hex and stores it in _chunkSize
+int RequestParser::extractChunkSize(size_t maxBodySize) {
+    size_t      pos;
+    size_t      chunkSize;
+    std::string chunkSizeStr;
+
+    pos          = _accumulator.find(CRLF);
+    chunkSizeStr = _accumulator.substr(0, pos);
+
+    // char *endp = 0;
+    // long size  = std::strtol(chunkSizeStr.c_str(), &endp, 16);
+
+    if (chunkSizeStr.size() > MAX_CHUNK_SIZE_LINE_SIZE)
+        throw RequestParsingError("chunked input: chunk size too big");
+    else if (chunkSizeStr.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos)
+        throw RequestParsingError("chunked input: chunk size contains non-numeric characters");
+    else if (pos == std::string::npos) {
+        _parserState = REQ_PARSE_PARTIAL;
+        return READ_MORE;
+    } else {
+        std::istringstream(chunkSizeStr) >> std::hex >> chunkSize;
+        if (chunkSize > MAX_CHUNK_SIZE)
+            throw RequestParsingError("chunked input: chunk size too big");
+        else if (_bodyBuffer.size() + chunkSize > maxBodySize)
+            throw RequestParsingError("chunked input: parsed body too large (> " + toString(maxBodySize) + " bytes)");
+        else {
+            _chunkSize   = chunkSize;
+            _accumulator = _accumulator.substr(pos + 2);
+        }
+    }
+    return CHUNK_SIZE_OK;
+}
+
+int RequestParser::extractChunkData(void) {
+    std::string chunkDataStr;
+
+    if (_chunkSize == 0) {
+        if (_accumulator[0] != '\r' || _accumulator[1] != '\n')
+            throw RequestParsingError("extractChunkData: 0CRLF isn't followed by CRLF");
+        _accumulator = _accumulator.substr(2);
+        return CHUNK_FINISHED;
+    }
+    if (static_cast<int>(_accumulator.size()) < _chunkSize + 2) {
+        _parserState = REQ_PARSE_PARTIAL;
+        return READ_MORE;
+    }
+    if (_accumulator[_chunkSize] != '\r' || _accumulator[_chunkSize + 1] != '\n')
+        throw RequestParsingError("chunk data isn't followed by CRLF");
+
+    chunkDataStr = _accumulator.substr(0, _chunkSize);
+    _accumulator = _accumulator.substr(_chunkSize + 2);
+    _bodyBuffer += chunkDataStr;
+    DEBUG_LOG("extractChunkData - chunkDataStr: {" + chunkDataStr + "}, accumulator: {" + _accumulator +
+              "}, bodyBuffer: {" + _bodyBuffer + "}");
+    return PARSE_MORE_CHUNKS;
+}
+
+void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, size_t maxBodySize) {
     Request req;
+    int     ret;
 
     _accumulator += buf;
-    while (!_accumulator.empty()) {
-        /* 1. extract the content */
-        switch (_parsingPhase) {
-            case PARSING_REQUEST_LINE:
-            case PARSING_HEADERS:
-                pos = _accumulator.find(CRLF + CRLF);
-                if (pos == std::string::npos) {
-                    _firstSection += _accumulator; // .substr(0, pos)
-                    if (_firstSection.size() >= READ_BUF_SIZE)
-                        return handleParseError(req, reqQueue);
-                    _accumulator.clear();
-                    _parserState = REQ_PARSE_PARTIAL;
-                    return;
-                } else {
-                    _firstSection += _accumulator.substr(0, pos);
-                    if (_firstSection.size() >= READ_BUF_SIZE)
-                        return handleParseError(req, reqQueue);
-                    _accumulator = _accumulator.substr(pos + 4);
-                }
-                break;
-            case PARSING_BODY:
-                // ...
-                break;
-            case PARSING_COMPLETE:
-                // ??
-                break;
-            default:
-                break;
-        }
 
-        /* 2. parse the extracted content */
-        try {
-            if (_parsingPhase == PARSING_REQUEST_LINE) // internal
-            {
-                pos = _firstSection.find(CRLF);
-                if (pos != std::string::npos) { // request-line + headers
-                    _requestLine  = _firstSection.substr(0, pos);
-                    _firstSection = _firstSection.substr(pos + 2);
-                    parseRequestLine(req);
-                    _parsingPhase = PARSING_HEADERS;
-                } else { // pure request-line, no headers
-                    _requestLine = _firstSection;
-                    _firstSection.clear();
-                    parseRequestLine(req);
-                    _parsingPhase = PARSING_COMPLETE;
-                }
+    try {
+        while (!_accumulator.empty()) {
+            // 1. extract content from the accumulator
+            switch (_parsingPhase) {
+                case PARSING_START_LINE:
+                case PARSING_HEADERS:
+                    ret = extractFirstSection();
+                    if (ret == READ_MORE)
+                        return;
+                    break;
+                case PARSING_BODY_CONTENT_LENGTH:
+                    ret = extractFullBody();
+                    if (ret == READ_MORE)
+                        return;
+                    _parsingPhase = PARSING_BODY_FINISHED;
+                    break;
+                case PARSING_BODY_CHUNKED:
+                    ret = extractChunkSize(maxBodySize);
+                    if (ret == CHUNK_SIZE_OK)
+                        ret = extractChunkData();
+                    if (ret == READ_MORE)
+                        return;
+                    if (ret == PARSE_MORE_CHUNKS)
+                        continue;
+                    _parsingPhase = PARSING_BODY_FINISHED;
+                    break;
+                case PARSING_COMPLETE:
+                    break;
+                default:
+                    break;
+            }
+
+            // 2. parse the extracted content
+            if (_parsingPhase == PARSING_START_LINE) {
+                extractStartLineFromFirstSection();
+                parseStartLine(req);
+                _parsingPhase = PARSING_HEADERS;
             }
             if (_parsingPhase == PARSING_HEADERS) {
-                // 	parseHeaders();
-                if (true) // has header content-length
-                    _parsingPhase = PARSING_BODY;
-                else
+                _headersBuffer = _firstSection;
+                parseHeaders(req, maxBodySize);
+                if (req.hasHeader(CONTENT_LENGTH)) {
+                    _parsingPhase = PARSING_BODY_CONTENT_LENGTH;
+                    continue;
+                }
+                if (req.hasHeader(TRANSFER_ENCODING)) {
+                    _parsingPhase = PARSING_BODY_CHUNKED;
+                    continue;
+                } else
                     _parsingPhase = PARSING_COMPLETE;
             }
-            if (_parsingPhase == PARSING_BODY) {
-                // 	parseBody();
+            if (_parsingPhase == PARSING_BODY_FINISHED) {
+                DEBUG_LOG("PARSING_BODY_FINISHED; _bodyBuffer.size(): " + toString(_bodyBuffer.size()));
+                req.setBody(_bodyBuffer);
                 _parsingPhase = PARSING_COMPLETE;
             }
             if (_parsingPhase == PARSING_COMPLETE) {
-                reqQueue.push(req);
-                DEBUG_LOG("RequestParser::feed() parsed a request:");
+                DEBUG_LOG("PARSING_COMPLETE");
+                if (_accumulator.empty()) {
+                    DEBUG_LOG("accumulator empty");
+                } else {
+                    DEBUG_LOG("accumulator not empty: {" + _accumulator + "}");
+                }
+                if (_accumulator.empty()) {
+                    DEBUG_LOG("accumulator empty: OK");
+                } else {
+                    DEBUG_LOG("PROBLEM: accumulator not empty: {" + _accumulator + "}" +
+                              " size: " + toString(_accumulator.size()));
+                }
                 DEBUG_LOG(req);
-                req           = Request();
-                _parsingPhase = PARSING_REQUEST_LINE;
+                reqQueue.push(req);
+                req = Request();
+                this->resetParser();
+                _parsingPhase = PARSING_START_LINE;
             }
-        } catch (RequestParsingError& e) {
-            return handleParseError(req, reqQueue);
         }
+    } catch (RequestParsingError& e) {
+        return handleParseError(req, reqQueue, e.what());
     }
+    DEBUG_LOG("end of feed()");
     _parserState = REQ_PARSE_COMPLETE;
 }

@@ -1,9 +1,14 @@
 #pragma once
 
-#include "Config.hpp"
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#include "Config.hpp"
+
+class Config;
+struct ServerConfig;
+struct LocationConfig;
 
 class ParseError : public std::runtime_error {
   public:
@@ -38,6 +43,7 @@ class ConfigParser {
     bool parseDirectiveReturn(ServerConfig& srv);
     bool parseDirectiveReturn(LocationConfig& loc);
     bool parseDirectiveListen(ServerConfig& srv);
+    bool parseDirectiveServerName(ServerConfig& srv);
     bool parseDirectiveErrorPage(ServerConfig& srv);
     bool parseDirectiveAutoIndex(ServerConfig& srv);
     bool parseDirectiveAutoIndex(LocationConfig& loc);

@@ -3,6 +3,9 @@
 #include "Utils.hpp"
 #include <dirent.h>
 #include <fstream>
+#include <iostream>
+#include <poll.h>
+#include <sstream>
 #include <string>
 #include <sys/stat.h>
 
@@ -18,18 +21,12 @@ size_t toSizet(const std::string& s) {
         n = n * 10 + (s[i] - '0');
     return n;
 }
+
 std::string tolower(const std::string& s) {
     std::string out = s;
     for (size_t i = 0; i < out.size(); i++)
         out[i] = std::tolower(static_cast<unsigned char>(out[i]));
     return out;
-}
-
-std::ostream& operator<<(std::ostream& os, struct pollfd pfd) {
-    os << "fd: " << pfd.fd << std::endl;
-    os << "events: " << pfd.events << std::endl;
-    os << "revents: " << pfd.revents << std::endl;
-    return os;
 }
 
 void replace(std::string& str, const std::string& from, const std::string& to) {
@@ -107,6 +104,22 @@ std::string getParentDir(const std::string& path) {
     return trimmed.substr(0, pos);
 }
 
+bool isSpace(int i) {
+    return (std::isspace(i));
+}
+
+std::string& replaceVariables(std::string& html, const std::string& variable, const std::string& value) {
+    if (html.find("{{" + variable + "}}") == std::string::npos)
+        return html;
+
+    size_t pos = html.find("{{" + variable + "}}");
+    html.replace(pos, variable.size() + 4, value);
+
+    replaceVariables(html, variable, value);
+
+    return html;
+}
+
 std::string methodToString(requestMethod method) {
     switch (method) {
         case GET:
@@ -120,14 +133,23 @@ std::string methodToString(requestMethod method) {
     }
 }
 
-std::string trimString(const std::string& value) {
-    size_t start = 0;
-    while (start < value.size() && (value[start] == ' ' || value[start] == '\t' || value[start] == '\r'))
-        ++start;
-    size_t end = value.size();
-    while (end > start && (value[end - 1] == ' ' || value[end - 1] == '\t' || value[end - 1] == '\r'))
-        --end;
-    return value.substr(start, end - start);
+// trims whitespace at the beginning and end of a std::string
+std::string trimString(const std::string& str) {
+    std::string::const_iterator begin = str.begin();
+    std::string::const_iterator end   = str.end();
+
+    // move begin forward while it points to whitespace
+    while (begin != end && isSpace(static_cast<unsigned char>(*begin)))
+        ++begin;
+
+    // move end backward while it points to whitespace
+    if (begin != end) {
+        do {
+            --end;
+        } while (end != begin && isSpace(static_cast<unsigned char>(*end)));
+        ++end; // move back to one-past-last non-space
+    }
+    return std::string(begin, end);
 }
 
 std::string toLower(const std::string& str) {
@@ -136,6 +158,10 @@ std::string toLower(const std::string& str) {
         lowered[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(lowered[i])));
     }
     return lowered;
+}
+
+unsigned char toLowerChar(unsigned char c) {
+    return static_cast<unsigned char>(std::tolower(c));
 }
 
 bool isSubPath(const std::string& root, const std::string& candidate) {
@@ -154,7 +180,7 @@ bool isSubPath(const std::string& root, const std::string& candidate) {
 }
 
 // Map a method string to the project's enum
-requestMethod toMethod(const std::string& s) {
+enum requestMethod toMethod(const std::string& s) {
     if (s == "GET")
         return GET;
     if (s == "POST")

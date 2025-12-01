@@ -2,7 +2,10 @@
 printf "GET /index.html HTTP/1.1\r\n\r\n" | nc localhost 8080
 printf "GET /index.html? HTTP/1.1\r\n\r\n" | nc localhost 8080
 printf "GET /index.html?blabla HTTP/1.1\r\n\r\n" | nc localhost 8080
-printf "POST /index.html?blabla HTTP/1.1\r\n\r\n" | nc localhost 8080
+printf "POST /index.html?blabla HTTP/1.1\r\n\r\nHost:example.com\r\n" | nc localhost 8080
+printf 'POST / HTTP/1.1\r\nHost:example.com\r\nTransfer-encoding:chunked\r\n\r\n5\r\nHello\r\n7\r\n\nWorld\n\r\n0\r\n\r\n' | nc localhost 8080
+printf 'POST /www?blabla HTTP/1.1\r\nHost:example.com\r\nTransfer-encoding:chunked\r\n\r\n5\r\nHello\r\n9\r\n, world!\n\r\n0\r\n\r\n' | nc localhost 8080
+printf 'POST /www?blabla HTTP/1.1\r\nHost:example.com\r\nTransfer-encoding:chunked\r\n\r\n5\r\nHello\r\nD\r\n, world!\nYay\n\r\n0\r\n\r\n' | nc localhost 8080
 
 **Parse errors**
 ***Spaces***
@@ -29,3 +32,9 @@ printf "GET /index.html HTTP/1.01\r\n\r\n" | nc localhost 8080
 
 ***Semantic errors***
 printf "POSTGET /index.html?blabla HTTP/1.1\r\n\r\n" | nc localhost 8080
+
+***Missing CRLF***
+- at end of headers:
+printf 'POST / HTTP/1.1\r\nHost:example.com\r\nTransfer-encoding:chunked\r\n5\r\nHello\r\n7\r\n\n
+World\n\r\n0\r\n\r\n' | nc localhost 8080
+

@@ -1,22 +1,38 @@
 // main.cpp
 
+#include <stdlib.h>
+
 #include "ConfigFile.hpp"
 #include "ConfigParser.hpp"
 #include "Server.hpp"
-#include "Webserv.hpp"
+#include <cstdlib>
 
 int main(int argc, char const* argv[]) {
-    const char* path = (argc > 1) ? argv[1] : "config/default.conf";
+#ifndef DEBUG_MODE
+    system("clear");
+#endif
+    const char* path = (argc > 1) ? argv[1] : "config/servername.conf";
     // Validate config path early
     std::string err;
     if (!ConfigFile::validateConfigPath(path, err)) {
+        std::cout << "printing err here" << std::endl;
         std::cerr << err << "\n";
         return 1;
     }
     ConfigParser parser;
-    Config       cfg = parser.parseFile(path);
+    Config       cfg;
+    try {
+        cfg = parser.parseFile(path);
+    } catch (ParseError& pe) {
+        std::cerr << pe.what() << std::endl << "aborting" << std::endl;
+        return -1;
+    }
     applyDefaults(cfg);
-    validateCompatibility(cfg); // try catch => if catch, return
+    try {
+        validateCompatibility(cfg); // try catch => if catch, return
+    } catch (std::runtime_error& re) {
+        std::cerr << "Config invalid: " << re.what() << std::endl;
+    }
 
     Server serv(cfg);
     serv.run();
