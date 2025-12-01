@@ -93,7 +93,7 @@ class RequestParser {
     std::string                           _startLine;
     std::string                           _headersBuffer;
     std::map<std::string, requestHeaders> _headerStringToEnum;
-    size_t                                _contentLength;
-    size_t                                _chunkSize;
+    int                                   _contentLength;
+    int                                   _chunkSize;
     std::string                           _bodyBuffer;
 };
