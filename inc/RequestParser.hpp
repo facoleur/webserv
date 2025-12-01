@@ -32,7 +32,7 @@ class RequestParser {
     ~RequestParser(void);
 
     // public functions
-    void feed(char*, std::queue<Request>&, size_t);
+    void feed(char*, std::queue<Request>&);
     void resetParser(void);
 
     // getters
@@ -56,24 +56,23 @@ class RequestParser {
   private:
     // Main parsing functions
     void parseStartLine(Request&);
-    void parseHeaders(Request&, size_t);
-    void parseHeader(std::string&, Request&, size_t);
+    void parseHeaders(Request&);
+    void parseHeader(std::string&, Request&);
     void parseFullBody(Request&);
 
     // sub-parsing functions
     int  extractFirstSection(void);
     void extractStartLineFromFirstSection(void);
     int  extractFullBody(void);
-    int  extractChunkSize(size_t);
+    int  extractChunkSize(void);
     int  extractChunkData(void);
     void parsePathAndQueryString(std::string&, Request&);
     void parseMethod(std::string&, Request&);
     void parseProtocolVersion(std::string&, Request&);
-    void handleHeaderContentLength(Request&, const headersMap&, size_t);
+    void handleHeaderContentLength(Request&, const headersMap&);
 
     // Validation
-    void validateHeaders(Request&, size_t);
-    bool isValidBody(Request&) const; // used ?
+    void validateHeaders(Request&);
 
     // Helpers
     void                                splitStartLine(std::vector<std::string>&, std::string&);
@@ -95,5 +94,6 @@ class RequestParser {
     std::map<std::string, requestHeaders> _headerStringToEnum;
     int                                   _contentLength;
     int                                   _chunkSize;
+    int                                   _maxBodySize;
     std::string                           _bodyBuffer;
 };

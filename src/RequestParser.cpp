@@ -10,7 +10,7 @@
 
 RequestParser::RequestParser(void)
     : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_START_LINE), _accumulator(), _firstSection(), _startLine(),
-      _headersBuffer(), _contentLength(-1), _chunkSize(-1), _bodyBuffer() {
+      _headersBuffer(), _contentLength(-1), _chunkSize(-1), _maxBodySize(-1), _bodyBuffer() {
 }
 
 RequestParser::~RequestParser(void) {
@@ -105,7 +105,7 @@ int RequestParser::extractFullBody(void) {
 }
 
 // extracts chunk size in hex and stores it in _chunkSize
-int RequestParser::extractChunkSize(size_t maxBodySize) {
+int RequestParser::extractChunkSize(void) {
     size_t      pos;
     size_t      chunkSize;
     std::string chunkSizeStr;
@@ -124,8 +124,8 @@ int RequestParser::extractChunkSize(size_t maxBodySize) {
         std::istringstream(chunkSizeStr) >> std::hex >> chunkSize;
         if (chunkSize > MAX_CHUNK_SIZE)
             throw RequestParsingError("chunked input: chunk size too big");
-        else if (_bodyBuffer.size() + chunkSize > maxBodySize)
-            throw RequestParsingError("chunked input: parsed body would be too large (> " + toString(maxBodySize) +
+        else if (_bodyBuffer.size() + chunkSize > static_cast<size_t>(_maxBodySize))
+            throw RequestParsingError("chunked input: parsed body would be too large (> " + toString(_maxBodySize) +
                                       " bytes).\n");
         else {
             _chunkSize   = chunkSize;
@@ -159,7 +159,7 @@ int RequestParser::extractChunkData(void) {
     return PARSE_MORE_CHUNKS;
 }
 
-void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, size_t maxBodySize) {
+void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
     Request req;
     int     ret;
 
@@ -182,7 +182,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, size_t maxBod
                     _parsingPhase = PARSING_BODY_FINISHED;
                     break;
                 case PARSING_BODY_CHUNKED:
-                    ret = extractChunkSize(maxBodySize);
+                    ret = extractChunkSize();
                     if (ret == CHUNK_SIZE_OK)
                         ret = extractChunkData();
                     if (ret == READ_MORE)
@@ -205,7 +205,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, size_t maxBod
             }
             if (_parsingPhase == PARSING_HEADERS) {
                 _headersBuffer = _firstSection;
-                parseHeaders(req, maxBodySize);
+                parseHeaders(req);
                 if (req.hasHeader(CONTENT_LENGTH) && _contentLength != 0) {
                     _parsingPhase = PARSING_BODY_CONTENT_LENGTH;
                     continue;

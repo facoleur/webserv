@@ -211,7 +211,6 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
     char           tmp[READ_SIZE + 1];
     int            len;
     ClientContext& ctx = context[listener];
-    // const ServerConfig& serverConfig = _config.getServers().at(ctx.server_index);
 
     DEBUG_LOG("handleRead()");
     len               = read(listener, tmp, READ_SIZE);
@@ -234,10 +233,8 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
         disconnect_client(i, listener, pfds, nfds, context); // correct ?
         return;
     } else { // Parsing
-        tmp[len]           = '\0';
-        size_t maxBodySize = pow(16, 6); // temp value before choosing the correct serv
-        // size_t maxBodySize = serverConfig.client_max_body_size;
-        ctx.req_parser.feed(tmp, ctx.requests, maxBodySize);
+        tmp[len] = '\0';
+        ctx.req_parser.feed(tmp, ctx.requests);
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL)
             return;
     }

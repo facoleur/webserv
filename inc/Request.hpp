@@ -17,7 +17,6 @@ class Request {
 
     // Other functions
     bool hasHeader(requestHeaders); // whether a specific header is present
-    bool hasBody(void);
 
     // getters
     requestMethod      getMethod(void) const;
