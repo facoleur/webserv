@@ -101,9 +101,6 @@ int RequestParser::extractFullBody(void) {
         _parserState = REQ_PARSE_PARTIAL;
         return READ_MORE;
     }
-
-    // any error cases to handle ?
-
     return CONTENT_LENGTH_OK;
 }
 
@@ -131,8 +128,7 @@ int RequestParser::extractChunkSize(size_t maxBodySize) {
         if (chunkSize > MAX_CHUNK_SIZE)
             throw RequestParsingError("chunked input: chunk size too big");
         else if (_bodyBuffer.size() + chunkSize > maxBodySize)
-            throw RequestParsingError("chunked transfer encoding: body too large (> " + toString(maxBodySize) +
-                                      " bytes)");
+            throw RequestParsingError("chunked input: parsed body too large (> " + toString(maxBodySize) + " bytes)");
         else {
             _chunkSize   = chunkSize;
             _accumulator = _accumulator.substr(pos + 2);
@@ -173,7 +169,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, size_t maxBod
 
     try {
         while (!_accumulator.empty()) {
-            // 1. extract the content from the accumulator
+            // 1. extract content from the accumulator
             switch (_parsingPhase) {
                 case PARSING_START_LINE:
                 case PARSING_HEADERS:
