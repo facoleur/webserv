@@ -28,7 +28,11 @@ int main(int argc, char const* argv[]) {
         return -1;
     }
     applyDefaults(cfg);
-    validateCompatibility(cfg); // try catch => if catch, return
+    try {
+        validateCompatibility(cfg); // try catch => if catch, return
+    } catch (std::runtime_error& re) {
+        std::cerr << "Config invalid: " << re.what() << std::endl;
+    }
 
     Server serv(cfg);
     serv.run();

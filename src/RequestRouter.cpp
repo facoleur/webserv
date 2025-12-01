@@ -144,7 +144,7 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
     (void)req;
     Response res;
 
-    std::cout << "HANDLING GET" << std::endl;
+    DEBUG_LOG("HANDLING GET");
 
     if (isDirectory(path)) {
 
@@ -153,7 +153,7 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
             res.setHeader(LOCATION, path + "/");
             res.setBody("");
             res.setHeader(CONTENT_LENGTH, "0");
-            std::cout << "GET DONE redirect" << std::endl;
+            DEBUG_LOG("GET DONE redirect");
 
             return res;
         }
@@ -171,28 +171,28 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
             res.setHeader(CONTENT_TYPE, getMimeType(indexPath));
             res.setHeader(CONTENT_LENGTH, toString(body.size()));
             res.setBody(body);
-            std::cout << "GET DONE inedxfile" << std::endl;
+            DEBUG_LOG("GET DONE inedxfile");
 
             return res;
         }
 
         if (config.autoindex) {
-            std::cout << "GET DONE autoindex" << std::endl;
+            DEBUG_LOG("GET DONE autoindex");
             return makeAutoindexResponse(path, config.path);
         } else {
-            std::cout << "GET DONE 403 no autoindex" << std::endl;
+            DEBUG_LOG("GET DONE 403 no autoindex");
             return makeErrorResponse(FORBIDDEN);
         }
     }
 
     if (!resourceExists(path, req)) {
-        std::cout << "GET DONE 404" << std::endl;
+        DEBUG_LOG("GET DONE 404");
         return makeErrorResponse(NOT_FOUND);
     }
 
     std::ifstream file(path.c_str());
     if (!file.is_open()) {
-        std::cout << "GET DONE cant open fine" << std::endl;
+        DEBUG_LOG("GET DONE cant open fine");
         return makeErrorResponse(NOT_FOUND);
     }
 
@@ -200,7 +200,7 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
     res.setHeader(CONTENT_TYPE, getMimeType(path));
     res.setHeader(CONTENT_LENGTH, toString(res.getBody().size()));
 
-    std::cout << "GET DONE good" << std::endl;
+    DEBUG_LOG("GET DONE good");
 
     return res;
 }
@@ -215,7 +215,6 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
     DEBUG_LOG("handlePOST");
 
     if (config.upload_enable == false) {
-        // std::cout << "ici" << std::endl;
         return makeErrorResponse(FORBIDDEN);
     }
 

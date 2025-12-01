@@ -288,7 +288,7 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
     while (it != contextMap.end()) {
         if ((currTime - it->second.last_activity) > CLIENT_TIMEOUT) {
             int j         = 0;
-            int client_fd = it->first; // or it->second.pfd.fd
+            int client_fd = it->first;
             while (j < nfds && pfds[j].fd != client_fd)
                 j++;
             ++it;
