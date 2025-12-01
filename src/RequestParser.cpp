@@ -113,9 +113,6 @@ int RequestParser::extractChunkSize(size_t maxBodySize) {
     pos          = _accumulator.find(CRLF);
     chunkSizeStr = _accumulator.substr(0, pos);
 
-    // char *endp = 0;
-    // long size  = std::strtol(chunkSizeStr.c_str(), &endp, 16);
-
     if (chunkSizeStr.size() > MAX_CHUNK_SIZE_LINE_SIZE)
         throw RequestParsingError("chunked input: chunk size too big");
     else if (chunkSizeStr.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos)
@@ -128,7 +125,8 @@ int RequestParser::extractChunkSize(size_t maxBodySize) {
         if (chunkSize > MAX_CHUNK_SIZE)
             throw RequestParsingError("chunked input: chunk size too big");
         else if (_bodyBuffer.size() + chunkSize > maxBodySize)
-            throw RequestParsingError("chunked input: parsed body too large (> " + toString(maxBodySize) + " bytes)");
+            throw RequestParsingError("chunked input: parsed body would be too large (> " + toString(maxBodySize) +
+                                      " bytes).\n");
         else {
             _chunkSize   = chunkSize;
             _accumulator = _accumulator.substr(pos + 2);
@@ -208,7 +206,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, size_t maxBod
             if (_parsingPhase == PARSING_HEADERS) {
                 _headersBuffer = _firstSection;
                 parseHeaders(req, maxBodySize);
-                if (req.hasHeader(CONTENT_LENGTH)) {
+                if (req.hasHeader(CONTENT_LENGTH) && _contentLength != 0) {
                     _parsingPhase = PARSING_BODY_CONTENT_LENGTH;
                     continue;
                 }
@@ -225,11 +223,6 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, size_t maxBod
             }
             if (_parsingPhase == PARSING_COMPLETE) {
                 DEBUG_LOG("PARSING_COMPLETE");
-                if (_accumulator.empty()) {
-                    DEBUG_LOG("accumulator empty");
-                } else {
-                    DEBUG_LOG("accumulator not empty: {" + _accumulator + "}");
-                }
                 if (_accumulator.empty()) {
                     DEBUG_LOG("accumulator empty: OK");
                 } else {

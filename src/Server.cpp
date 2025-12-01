@@ -203,7 +203,7 @@ int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS],
     context[new_client_fd].availableServers = _listenerToServers[listener];
     context[new_client_fd].last_activity    = time(NULL);
     nfds++;
-    DEBUG_LOG("new client connected on server index " + toString(context[new_client_fd].server_index));
+    // DEBUG_LOG("new client connected on server index " + toString(context[new_client_fd].server_index));
     return 0;
 }
 
@@ -235,7 +235,7 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
         return;
     } else { // Parsing
         tmp[len]           = '\0';
-        size_t maxBodySize = 1024 * 1024; // temp value before choosing the correct serv
+        size_t maxBodySize = pow(16, 6); // temp value before choosing the correct serv
         // size_t maxBodySize = serverConfig.client_max_body_size;
         ctx.req_parser.feed(tmp, ctx.requests, maxBodySize);
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL)

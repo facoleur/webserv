@@ -10,8 +10,8 @@
 #define MIN_REQ_SIZE 19            // shortest possible request without ending CRLFCRLF: "GET / HTTP/2\r\nHost:"
 #define MIN_HEADER_SIZE 3          // header name + field min length ("H:I")
 #define MAX_HEADER_SIZE 4000       // header name + field max length
-#define MAX_CHUNK_SIZE 268435456   // 16^7 => 7 hex digits
-#define MAX_CHUNK_SIZE_LINE_SIZE 7 // 7 hex digits
+#define MAX_CHUNK_SIZE 16777216    // 16^6 => 6 hex digits (FFFFFF)
+#define MAX_CHUNK_SIZE_LINE_SIZE 6 // 6 hex digits
 #define CRLF std::string("\r\n")
 #define READ_MORE 1
 #define CONTENT_LENGTH_OK 2

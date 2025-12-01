@@ -6,6 +6,12 @@ printf "POST /index.html?blabla HTTP/1.1\r\n\r\nHost:example.com\r\n" | nc local
 printf 'POST / HTTP/1.1\r\nHost:example.com\r\nTransfer-encoding:chunked\r\n\r\n5\r\nHello\r\n7\r\n\nWorld\n\r\n0\r\n\r\n' | nc localhost 8080
 printf 'POST /www?blabla HTTP/1.1\r\nHost:example.com\r\nTransfer-encoding:chunked\r\n\r\n5\r\nHello\r\n9\r\n, world!\n\r\n0\r\n\r\n' | nc localhost 8080
 printf 'POST /www?blabla HTTP/1.1\r\nHost:example.com\r\nTransfer-encoding:chunked\r\n\r\n5\r\nHello\r\nD\r\n, world!\nYay\n\r\n0\r\n\r\n' | nc localhost 8080
+printf 'POST /www?blabla HTTP/1.1\r\nHost:example.com\r\nContent-length:0\r\n\r\n' | nc localhost 8080
+
+***Not sure if correct***
+- With servername.conf, the request:
+printf 'POST /www?blabla HTTP/1.1\r\nHost:example.com\r\nTransfer-encoding:chunked\r\n\r\n5\r\nHello\r\nD\r\n, world!\nYay\n\r\n0\r\n\r\n' | nc localhost 8080
+=> 404 not found
 
 **Parse errors**
 ***Spaces***
@@ -38,3 +44,7 @@ printf "POSTGET /index.html?blabla HTTP/1.1\r\n\r\n" | nc localhost 8080
 printf 'POST / HTTP/1.1\r\nHost:example.com\r\nTransfer-encoding:chunked\r\n5\r\nHello\r\n7\r\n\n
 World\n\r\n0\r\n\r\n' | nc localhost 8080
 
+***Chunked***
+- chunkSize too long:
+printf 'POST /www?blabla HTTP/1.1\r\nHost:example.com\r\nTransfer-encoding:chunked\r\n\r\n5\r\nHello\r\nDDDDDDDDDDD\r\n, world!\nYay\n\r\n0\r\n\r\n' | nc localhost 8080
+printf 'POST /www?blabla HTTP/1.1\r\nHost:example.com\r\nTransfer-encoding:chunked\r\n\r\n5\r\nHello\r\nD\r\n, world!\nYay\n\r\n0\r\n\r\n' | nc localhost 8080
