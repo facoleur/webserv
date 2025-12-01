@@ -41,6 +41,7 @@ struct LocationConfig {
 
 struct ServerConfig {
     std::string              host; // comme "127.0.0.1"
+    std::string              server_name;
     std::string              root;
     std::vector<std::string> index_files;
     std::set<requestMethod>  methods;
@@ -56,6 +57,8 @@ struct ServerConfig {
         : host(), root(), index_files(), methods(), redirect(), listen_ports(), error_pages(), autoindex(false),
           client_max_body_size(0), cgi_map(), locations() {
     }
+
+    bool matchServerName(const std::string& hostHeader) const;
 };
 
 class Config {

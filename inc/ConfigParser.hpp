@@ -43,6 +43,7 @@ class ConfigParser {
     bool parseDirectiveReturn(ServerConfig& srv);
     bool parseDirectiveReturn(LocationConfig& loc);
     bool parseDirectiveListen(ServerConfig& srv);
+    bool parseDirectiveServerName(ServerConfig& srv);
     bool parseDirectiveErrorPage(ServerConfig& srv);
     bool parseDirectiveAutoIndex(ServerConfig& srv);
     bool parseDirectiveAutoIndex(LocationConfig& loc);

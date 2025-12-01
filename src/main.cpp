@@ -5,12 +5,13 @@
 #include "ConfigFile.hpp"
 #include "ConfigParser.hpp"
 #include "Server.hpp"
+#include <cstdlib>
 
 int main(int argc, char const* argv[]) {
 #ifndef DEBUG_MODE
     system("clear");
 #endif
-    const char* path = (argc > 1) ? argv[1] : "config/default.conf";
+    const char* path = (argc > 1) ? argv[1] : "config/servername.conf";
     // Validate config path early
     std::string err;
     if (!ConfigFile::validateConfigPath(path, err)) {
@@ -27,7 +28,11 @@ int main(int argc, char const* argv[]) {
         return -1;
     }
     applyDefaults(cfg);
-    validateCompatibility(cfg); // try catch => if catch, return
+    try {
+        validateCompatibility(cfg); // try catch => if catch, return
+    } catch (std::runtime_error& re) {
+        std::cerr << "Config invalid: " << re.what() << std::endl;
+    }
 
     Server serv(cfg);
     serv.run();

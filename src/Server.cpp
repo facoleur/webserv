@@ -1,7 +1,15 @@
 // Server.cpp
 
 #include <arpa/inet.h>
+#include <cstddef>
+#include <cstring>
+#include <iostream>
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
 
+#include "Config.hpp"
 #include "Enums.hpp"
 #include "RequestParser.hpp"
 #include "RequestRouter.hpp"
@@ -30,7 +38,7 @@ Server::Server(const Config& cfg) : _config(cfg) {
 Server::~Server() {
 }
 
-ClientContext::ClientContext(void) : close_after_responses(false) {
+ClientContext::ClientContext(void) : close_after_responses(false), selectedServer(-1) {
 }
 
 void Server::setPollFd(struct pollfd& pfd, int socketFd, short events, short revents) {
@@ -43,52 +51,70 @@ void Server::setPollFd(struct pollfd& pfd, int socketFd, short events, short rev
 std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
     std::vector<int>                 listen_fds;
     int                              listener;
-    int                              port;
     struct sockaddr_in               addr;
-    in_addr_t                        ip;
     in_addr                          a;
     int                              opt;
     const std::vector<ServerConfig>& servers = _config.getServers();
 
-    for (size_t si = 0; si < servers.size(); ++si) {
+    std::map<std::pair<std::string, int>, std::vector<int> > listenMap;
+
+    for (size_t si = 0; si < servers.size(); si++) {
         const ServerConfig& srv = servers[si];
-        for (size_t pi = 0; pi < srv.listen_ports.size(); ++pi) {
-            port     = srv.listen_ports[pi];
-            listener = socket(AF_INET, SOCK_STREAM, 0);
-            if (listener < 0)
-                continue;
-            opt = 1;
-            setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-            fcntl(listener, F_SETFL, O_NONBLOCK);
-            fcntl(listener, F_SETFD, FD_CLOEXEC);
+        for (size_t pi = 0; pi < srv.listen_ports.size(); pi++) {
+            int         port = srv.listen_ports[pi];
+            std::string ip   = srv.host.empty() ? "0.0.0.0" : srv.host;
 
-            memset(&addr, 0, sizeof(addr));
-            addr.sin_family = AF_INET;
-            addr.sin_port   = htons(port);
-            ip              = INADDR_ANY;
-            if (!srv.host.empty() && inet_aton(srv.host.c_str(), &a))
-                ip = a.s_addr;
-            addr.sin_addr.s_addr = ip;
-
-            if (bind(listener, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-                close(listener);
-                continue;
-            }
-            if (listen(listener, SOMAXCONN) < 0) {
-                close(listener);
-                continue;
-            }
-            setPollFd(pfds[nfds], listener, POLLIN, 0);
-            DEBUG_LOG("setting _listenerToServerIdx[" + toString(listener) + "] to " + toString(si));
-            _listenerToServerIdx[listener] = si;
-            listen_fds.push_back(listener);
-            ++nfds;
-            if (nfds >= MAX_EVENTS)
-                break;
+            listenMap[std::make_pair(ip, port)].push_back(si);
         }
+    }
+
+    for (std::map<std::pair<std::string, int>, std::vector<int> >::iterator it = listenMap.begin();
+         it != listenMap.end(); ++it) {
+
+        const std::string&      ipStr         = it->first.first;
+        int                     port          = it->first.second;
+        const std::vector<int>& serverIndices = it->second;
+
+        listener = socket(AF_INET, SOCK_STREAM, 0);
+        if (listener < 0)
+            continue;
+        opt = 1;
+        setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+        fcntl(listener, F_SETFL, O_NONBLOCK);
+        fcntl(listener, F_SETFD, FD_CLOEXEC);
+
+        memset(&addr, 0, sizeof(addr));
+        addr.sin_family = AF_INET;
+        addr.sin_port   = htons(port);
+
+        // ip              = INADDR_ANY;
+        // if (!srv.host.empty() && inet_aton(srv.host.c_str(), &a))
+        //     ip = a.s_addr;
+        // addr.sin_addr.s_addr = ip;
+
+        if (inet_aton(ipStr.c_str(), &a))
+            addr.sin_addr = a;
+        else
+            addr.sin_addr.s_addr = INADDR_ANY;
+
+        if (bind(listener, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+            close(listener);
+            continue;
+        }
+        if (listen(listener, SOMAXCONN) < 0) {
+            close(listener);
+            continue;
+        }
+        setPollFd(pfds[nfds], listener, POLLIN, 0);
+        // DEBUG_LOG("setting _listenerToServerIdx[" + toString(listener) + "] to " + toString(si));
+        // _listenerToServerIdx[listener] = si;
+        _listenerToServers[listener] = serverIndices;
+        listen_fds.push_back(listener);
+        ++nfds;
         if (nfds >= MAX_EVENTS)
             break;
     }
+
     return listen_fds;
 }
 
@@ -99,6 +125,7 @@ void Server::add_bad_request_to_queue(ClientContext& context) {
 }
 
 void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
+
     RequestRouter router;
 
     DEBUG_LOG("handle_requests: " + toString(context.requests.size()) + " requests in queue");
@@ -107,8 +134,34 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
         Request& req = context.requests.front();
         DEBUG_LOG("- handling request:");
         DEBUG_LOG(req);
-        const ServerConfig& config = _config.getServers()[context.server_index];
-        Response            res    = router.route(req, config);
+
+        std::string hostHeader = req.getHeader(HOST);
+
+        int chosenConfig = -1;
+
+        const std::vector<ServerConfig>& serverConfigs = _config.getServers();
+
+        for (size_t j = 0; j < context.availableServers.size(); j++) {
+            int index = context.availableServers[j];
+            std::cout << index << std::endl;
+            if (serverConfigs[index].matchServerName(hostHeader)) {
+                chosenConfig = index;
+                break;
+            }
+        }
+
+        if (chosenConfig == -1)
+            chosenConfig = context.availableServers[0];
+
+        ServerConfig& config = _config.getServers().at(chosenConfig);
+
+        std::cout << "servername: " << config.server_name << std::endl;
+        std::cout << "host header: " << req.getHeader(HOST) << std::endl;
+
+        // std::cout << req << std::endl;
+
+        // const ServerConfig& config = _config.getServers()[context.server_index];
+        Response res = router.route(req, config);
 
         if (res.isError()) {
             std::string reasonPhrase(ReasonPhrase::get(res.getStatusCode()));
@@ -145,26 +198,27 @@ int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS],
     }
     fcntl(new_client_fd, F_SETFL, O_NONBLOCK);
     setPollFd(pfds[nfds], new_client_fd, POLLIN, 0);
-    context[new_client_fd]               = ClientContext();
-    context[new_client_fd].server_index  = _listenerToServerIdx.at(listener);
-    context[new_client_fd].last_activity = time(NULL);
+    context[new_client_fd] = ClientContext();
+    // context[new_client_fd].server_index     = _listenerToServerIdx.at(listener);
+    context[new_client_fd].availableServers = _listenerToServers[listener];
+    context[new_client_fd].last_activity    = time(NULL);
     nfds++;
     DEBUG_LOG("new client connected on server index " + toString(context[new_client_fd].server_index));
     return 0;
 }
 
 void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
-    char                tmp[READ_SIZE + 1];
-    int                 len;
-    ClientContext&      ctx          = context[listener];
-    const ServerConfig& serverConfig = _config.getServers().at(ctx.server_index);
+    char           tmp[READ_SIZE + 1];
+    int            len;
+    ClientContext& ctx = context[listener];
+    // const ServerConfig& serverConfig = _config.getServers().at(ctx.server_index);
 
     DEBUG_LOG("handleRead()");
     len               = read(listener, tmp, READ_SIZE);
     ctx.last_activity = time(NULL);
     if (len == 0) { // client closed their send side (or POLLHUP ? unclear but it works)
         DEBUG_LOG("read returned 0 (client closed their send side)");
-        context[listener].close_after_responses = true;
+        ctx.close_after_responses = true;
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
             handlePartialRequest(context[listener], pfds[i]);
             return;
@@ -181,11 +235,13 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
         return;
     } else { // Parsing
         tmp[len]           = '\0';
-        size_t maxBodySize = serverConfig.client_max_body_size;
+        size_t maxBodySize = 1024 * 1024; // temp value before choosing the correct serv
+        // size_t maxBodySize = serverConfig.client_max_body_size;
         ctx.req_parser.feed(tmp, ctx.requests, maxBodySize);
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL)
             return;
     }
+
     handle_requests(ctx, pfds[i]);
 }
 
@@ -232,7 +288,7 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
     while (it != contextMap.end()) {
         if ((currTime - it->second.last_activity) > CLIENT_TIMEOUT) {
             int j         = 0;
-            int client_fd = it->first; // or it->second.pfd.fd
+            int client_fd = it->first;
             while (j < nfds && pfds[j].fd != client_fd)
                 j++;
             ++it;
@@ -282,7 +338,9 @@ void Server::run() {
 
             if (pfds[i].revents & POLLIN) {
                 DEBUG_LOG("--- POLLIN ---");
-                if (_listenerToServerIdx.count(listener)) // Accept on any listening socket
+
+                // if (_listenerToServerIdx.count(listener)) // Accept on any listening socket
+                if (_listenerToServers.count(listener))
                     handleNewConnection(listener, pfds, nfds, contextMap);
                 else
                     handleRead(listener, i, pfds, nfds, contextMap); // Read client data

@@ -3,6 +3,7 @@
 #pragma once
 
 #include <poll.h>
+#include <vector>
 
 #include "Config.hpp"
 #include "Request.hpp"
@@ -24,17 +25,20 @@ struct ClientContext {
     struct pollfd       pfd;
     std::string         write_buffer;
     bool                close_after_responses; // if bad request in the queue, set this to true
-    size_t              server_index;          // which server accepted the client
-    int                 last_activity;
+    // size_t              server_index;          // which server accepted the client
+    int              selectedServer;
+    std::vector<int> availableServers;
+    int              last_activity;
 };
 
 typedef std::map<int, struct ClientContext> ContextMap;
 
 class Server {
   private:
-    Config                _config;
-    struct ClientContext  _state;
-    std::map<int, size_t> _listenerToServerIdx; // listen fd -> server index
+    Config                           _config;
+    struct ClientContext             _state;
+    std::map<int, std::vector<int> > _listenerToServers;
+    // std::map<int, size_t>            _listenerToServerIdx; // listen fd -> server index
 
   public:
     Server();

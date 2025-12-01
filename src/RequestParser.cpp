@@ -225,11 +225,17 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, size_t maxBod
             }
             if (_parsingPhase == PARSING_COMPLETE) {
                 DEBUG_LOG("PARSING_COMPLETE");
-                if (_accumulator.empty())
+                if (_accumulator.empty()) {
+                    DEBUG_LOG("accumulator empty");
+                } else {
+                    DEBUG_LOG("accumulator not empty: {" + _accumulator + "}");
+                }
+                if (_accumulator.empty()) {
                     DEBUG_LOG("accumulator empty: OK");
-                else
+                } else {
                     DEBUG_LOG("PROBLEM: accumulator not empty: {" + _accumulator + "}" +
                               " size: " + toString(_accumulator.size()));
+                }
                 DEBUG_LOG(req);
                 reqQueue.push(req);
                 req = Request();
