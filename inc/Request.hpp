@@ -40,6 +40,7 @@ class Request {
 
   private:
     // Attributes
+	requestState  _state;
     requestMethod _method;
     std::string   _path;
     std::string   _queryString;

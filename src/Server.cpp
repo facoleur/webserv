@@ -345,6 +345,9 @@ void Server::run() {
             }
 
             if (pfds[i].revents & POLLOUT) {
+                // if isCGIWriteFD(pfds[i], ....); => need a lookup table (e.g., std::map<int, CgiPipeRole>)
+                //     writeToCGIChild();
+                // else
                 sendResponses(listener, i, pfds, nfds, contextMap);
                 continue;
             }

@@ -1,6 +1,7 @@
 // CGI.cpp
 
 #include <sstream>
+#include <sys/fcntl.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -104,11 +105,14 @@ int RequestRouter::executeCgi(const ServerConfig& serverConfig, const LocationCo
     int stdoutPipe[2];
     if (pipe(stdinPipe) == -1)
         return -1;
+    fcntl(stdinPipe[], F_SETFL, O_NONBLOCK);
+
     if (pipe(stdoutPipe) == -1) {
         close(stdinPipe[0]);
         close(stdinPipe[1]);
         return -1;
     }
+    fcntl(stdinPipe[], F_SETFL, O_NONBLOCK);
 
     pid_t pid = fork();
     if (pid == -1) {

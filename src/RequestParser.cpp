@@ -49,7 +49,7 @@ int RequestParser::extractFirstSection(void) {
     size_t pos;
     pos = _accumulator.find(CRLF + CRLF);
     if (pos == std::string::npos) {
-        _firstSection += _accumulator; // .substr(0, pos)
+        _firstSection += _accumulator;
         if (_firstSection.size() >= READ_BUF_SIZE)
             throw RequestParsingError("first section (request-line + headers) too long");
         _accumulator.clear();
