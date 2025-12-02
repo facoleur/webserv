@@ -1,0 +1,78 @@
+==== GET /index.html ====
+Webserv: 200 (expected 200)
+Nginx:   200 (expected 200)
+
+Body diff:
+
+==== GET /does_not_exist ====
+Webserv: 404 (expected 404)
+Nginx:   404 (expected 404)
+
+==== GET / ====
+Webserv: 200 (expected 200)
+Nginx:   200 (expected 200)
+
+Body diff:
+
+==== GET /html/ ====
+Webserv: 404 (expected 403)
+Nginx:   404 (expected 403)
+
+==== POST /upload ====
+Webserv: 201 (expected 204)
+Nginx:   301 (expected 204)
+
+==== POST /upload ====
+Webserv: 201 (expected 204)
+Nginx:   301 (expected 204)
+
+==== POST /upload ====
+Webserv: 201 (expected 204)
+Nginx:   301 (expected 204)
+
+==== DELETE /delete/a ====
+Webserv: 204 (expected 204)
+Nginx:   404 (expected 404)
+
+==== DELETE /delete/a ====
+Webserv: 404 (expected 404)
+Nginx:   404 (expected 404)
+
+==== DELETE /delete/nope ====
+Webserv: 404 (expected 404)
+Nginx:   404 (expected 404)
+
+==== GET /cgi/noexist.py ====
+Webserv: 404 (expected 404)
+Nginx:   404 (expected 404)
+
+==== GET /cgi/error.py ====
+Webserv: 502 (expected 500)
+Nginx:   502 (expected 403)
+
+Body diff:
+--- /tmp/tmp.yrVJ2osXZs	2025-12-02 12:33:55.339035667 +0100
++++ /tmp/tmp.2NwvUjRIJ1	2025-12-02 12:33:55.380972027 +0100
+@@ -1,10 +1,7 @@
+-<html>
+-  <head>
+-    <title>502 502</title>
+-  </head>
+-  <body>
+-    <center><h1>502 502</h1></center>
+-    <hr />
+-    <center>webserv</center>
+-  </body>
+-</html>
++<html>
++<head><title>502 Bad Gateway</title></head>
++<body>
++<center><h1>502 Bad Gateway</h1></center>
++<hr><center>nginx/1.28.0</center>
++</body>
++</html>
+
+==== POST /index.html ====
+Webserv: 405 (expected 405)
+Nginx:   405 (expected 405)
+
