@@ -4,6 +4,7 @@
 
 #include <iostream>
 
+#include "CGI.hpp"
 #include "Enums.hpp"
 
 class Response;
@@ -15,10 +16,13 @@ class Request {
     Request(void);
     ~Request(void);
 
+    CgiInfo cgiInfo;
+
     // Other functions
     bool hasHeader(requestHeaders); // whether a specific header is present
 
     // getters
+    requestState       getState(void) const;
     requestMethod      getMethod(void) const;
     const std::string& getPath(void) const;
     const std::string& getQueryString(void) const;
@@ -28,7 +32,9 @@ class Request {
     const std::string& getBody(void) const;
     statusCode         getStatusCode(void) const;
     void               resolveAbsolutePath(std::string& path);
+
     // setters
+    void setState(requestState);
     void setMethod(const std::string&);
     void setPath(std::string const&);
     void setQueryString(std::string const&);
@@ -40,7 +46,7 @@ class Request {
 
   private:
     // Attributes
-	requestState  _state;
+    requestState  _state;
     requestMethod _method;
     std::string   _path;
     std::string   _queryString;

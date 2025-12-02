@@ -124,23 +124,33 @@ void Server::add_bad_request_to_queue(ClientContext& context) {
     context.requests.push(req);
 }
 
-void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
+void Server::handleInvalidRequest(ClientContext& context, Response& res) {
+    std::string reasonPhrase(ReasonPhrase::get(res.getStatusCode()));
+    DEBUG_LOG("handle_requests() exiting with error: " + reasonPhrase);
+
+    context.write_buffer.append(res.serialize());
+    std::queue<Request> empty;
+    std::swap(context.requests, empty);
+    context.close_after_responses = true;
+}
+
+void Server::handle_requests(ClientContext& context, struct pollfd& pfd, int& nfds) {
 
     RequestRouter router;
+    (void)nfds;
 
     DEBUG_LOG("handle_requests: " + toString(context.requests.size()) + " requests in queue");
 
     while (!context.requests.empty()) {
-        Request& req = context.requests.front();
+        Request&                         req           = context.requests.front();
+        std::string                      hostHeader    = req.getHeader(HOST);
+        int                              chosenConfig  = -1;
+        const std::vector<ServerConfig>& serverConfigs = _config.getServers();
+
         DEBUG_LOG("- handling request:");
         DEBUG_LOG(req);
 
-        std::string hostHeader = req.getHeader(HOST);
-
-        int chosenConfig = -1;
-
-        const std::vector<ServerConfig>& serverConfigs = _config.getServers();
-
+        // obtain the right config based on Host header
         for (size_t j = 0; j < context.availableServers.size(); j++) {
             int index = context.availableServers[j];
             std::cout << index << std::endl;
@@ -149,42 +159,58 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
                 break;
             }
         }
-
         if (chosenConfig == -1)
             chosenConfig = context.availableServers[0];
-
         ServerConfig& config = _config.getServers().at(chosenConfig);
-
         std::cout << "servername: " << config.server_name << std::endl;
         std::cout << "host header: " << req.getHeader(HOST) << std::endl;
 
-        // std::cout << req << std::endl;
+        // process the request
+        Response res;
+        if (req.getState() == PENDING) {
+            res = router.route(req, config);
+            if (res.isError()) {
+                handleInvalidRequest(context, res);
+                break;
+            }
+            if (res.getMustLaunchCgi())
+                req.setState(CGI_START);
+            else
+                req.setState(DONE);
+        }
+        if (req.getState() == CGI_START) {
+            if (launchCgi(req) != 0) {
+                return makeErrorResponse(BAD_GATEWAY);
+            }
 
-        // const ServerConfig& config = _config.getServers()[context.server_index];
-        Response res = router.route(req, config);
+            // generate response headers from CGI output
+            generateResponseFromCgiOutput(res, req.cgiInfo.getOutput());
 
-        if (res.isError()) {
-            std::string reasonPhrase(ReasonPhrase::get(res.getStatusCode()));
-            DEBUG_LOG("handle_requests() exiting with error: " + reasonPhrase);
-            context.write_buffer.append(res.serialize());
-            std::queue<Request> empty;
-            std::swap(context.requests, empty);
-            context.close_after_responses = true;
+            return response;
             break;
         }
+        if (req.getState() == CGI_STREAMING) {
 
-        context.write_buffer.append(res.serialize());
-        context.requests.pop();
+            // anything to do ?
+            break;
+        }
+        if (req.getState() == DONE) {
+
+            // any additional steps for CGI requests ?
+            context.write_buffer.append(res.serialize());
+            context.requests.pop();
+            break;
+        }
     }
     pfd.events = POLLOUT;
 }
 
 // handles partial request i.e. unfinished request but no more POLLIN revents (see Server::run() loop)
 // this is a case of bad request
-void Server::handlePartialRequest(ClientContext& context, struct pollfd& pfd) {
+void Server::handlePartialRequest(ClientContext& context, struct pollfd& pfd, int& nfds) {
     add_bad_request_to_queue(context); // the request was partial and not in the queue
     DEBUG_LOG("handlePartialRequest: added bad request to queue");
-    handle_requests(context, pfd);
+    handle_requests(context, pfd, nfds);
     context.req_parser.setState(REQ_PARSE_COMPLETE);
 }
 
@@ -201,7 +227,7 @@ int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS],
     context[new_client_fd] = ClientContext();
     // context[new_client_fd].server_index     = _listenerToServerIdx.at(listener);
     context[new_client_fd].availableServers = _listenerToServers[listener];
-    context[new_client_fd].last_activity    = time(NULL);
+    context[new_client_fd].lastActive       = time(NULL);
     nfds++;
     // DEBUG_LOG("new client connected on server index " + toString(context[new_client_fd].server_index));
     return 0;
@@ -213,13 +239,13 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
     ClientContext& ctx = context[listener];
 
     DEBUG_LOG("handleRead()");
-    len               = read(listener, tmp, READ_SIZE);
-    ctx.last_activity = time(NULL);
+    len            = read(listener, tmp, READ_SIZE);
+    ctx.lastActive = time(NULL);
     if (len == 0) { // client closed their send side (or POLLHUP ? unclear but it works)
         DEBUG_LOG("read returned 0 (client closed their send side)");
         ctx.close_after_responses = true;
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
-            handlePartialRequest(context[listener], pfds[i]);
+            handlePartialRequest(context[listener], pfds[i], nfds);
             return;
         }
     } else if (len < 0) {
@@ -239,7 +265,7 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
             return;
     }
 
-    handle_requests(ctx, pfds[i]);
+    handle_requests(ctx, pfds[i], nfds);
 }
 
 void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
@@ -250,7 +276,7 @@ void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS
         DEBUG_LOG("written bytes: " + toString(sent));
         if (sent > 0) {
             buf.erase(0, sent);
-            context[listener].last_activity = time(NULL);
+            context[listener].lastActive = time(NULL);
             break;
         }
         if (sent == -1) {
@@ -283,7 +309,7 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
         return; // handleTimeError ?
     it = contextMap.begin();
     while (it != contextMap.end()) {
-        if ((currTime - it->second.last_activity) > CLIENT_TIMEOUT) {
+        if ((currTime - it->second.lastActive) > CLIENT_TIMEOUT) {
             int j         = 0;
             int client_fd = it->first;
             while (j < nfds && pfds[j].fd != client_fd)
@@ -302,6 +328,7 @@ void Server::run() {
     int              nfds;
     std::vector<int> listen_fds;
     ContextMap       contextMap;
+    CgiMap           cgiMap;
 
     nfds       = 0;
     listen_fds = initListenerSockets(pfds, nfds);
@@ -336,7 +363,6 @@ void Server::run() {
             if (pfds[i].revents & POLLIN) {
                 DEBUG_LOG("--- POLLIN ---");
 
-                // if (_listenerToServerIdx.count(listener)) // Accept on any listening socket
                 if (_listenerToServers.count(listener))
                     handleNewConnection(listener, pfds, nfds, contextMap);
                 else

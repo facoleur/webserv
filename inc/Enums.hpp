@@ -50,3 +50,5 @@ enum ParsingPhase {
     PARSING_BODY_FINISHED,
     PARSING_COMPLETE
 };
+
+enum CgiPipeRole { CGI_STDIN, CGI_STDOUT };

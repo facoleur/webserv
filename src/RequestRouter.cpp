@@ -411,7 +411,7 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
     return res;
 }
 
-Response RequestRouter::route(const Request& req, const ServerConfig& config) {
+Response RequestRouter::route(Request& req, const ServerConfig& config) {
     DEBUG_LOG("RequestRouter.route():");
 
     if (req.getStatusCode() != NO_STATUS) {
@@ -447,7 +447,7 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     }
 
     if (isCgiRequest(resolvedPath, resolvedConfig))
-        return handleCgi(req, resolvedPath, config, resolvedConfig);
+        return prepareCgi(req, resolvedPath, config, resolvedConfig);
 
     switch (req.getMethod()) {
         case GET:

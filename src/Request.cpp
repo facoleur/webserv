@@ -7,7 +7,7 @@
 #include "Utils.hpp"
 
 Request::Request(void)
-    : _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _body(), _statusCode(NO_STATUS) {
+    : _state(PENDING), _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _body(), _statusCode(NO_STATUS) {
 }
 
 Request::~Request(void) {
@@ -25,6 +25,10 @@ std::ostream& operator<<(std::ostream& os, const Request& req) {
     os << "Status code:      " << req.getStatusCode() << std::endl;
     os << "--------------------------------" << std::endl;
     return os;
+}
+
+enum requestState Request::getState(void) const {
+    return _state;
 }
 
 enum requestMethod Request::getMethod(void) const {
@@ -73,6 +77,10 @@ void Request::setMethod(const std::string& method) {
         _method = DELETE;
     else
         _method = UNKNOWN;
+}
+
+void Request::setState(requestState state) {
+    _state = state;
 }
 
 void Request::setPath(std::string const& path) {

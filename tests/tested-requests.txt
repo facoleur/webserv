@@ -48,3 +48,7 @@ World\n\r\n0\r\n\r\n' | nc localhost 8080
 - chunkSize too long:
 printf 'POST /www?blabla HTTP/1.1\r\nHost:example.com\r\nTransfer-encoding:chunked\r\n\r\n5\r\nHello\r\nDDDDDDDDDDD\r\n, world!\nYay\n\r\n0\r\n\r\n' | nc localhost 8080
 printf 'POST /www?blabla HTTP/1.1\r\nHost:example.com\r\nTransfer-encoding:chunked\r\n\r\n5\r\nHello\r\nD\r\n, world!\nYay\n\r\n0\r\n\r\n' | nc localhost 8080
+
+
+***To test***
+http://127.0.0.1/cgi-bin/echo.py
