@@ -51,7 +51,9 @@ class ConfigParser {
     bool parseDirectiveClientMaxBodySize(LocationConfig& loc);
     bool parseDirectiveCgi(ServerConfig& srv);
     bool parseDirectiveCgi(LocationConfig& loc);
+    bool parseDirectiveUploadEnable(ServerConfig& srv);
     bool parseDirectiveUploadEnable(LocationConfig& loc);
+    bool parseDirectiveUploadStore(ServerConfig& srv);
     bool parseDirectiveUploadStore(LocationConfig& loc);
 
     bool         accept(const std::string& kw);

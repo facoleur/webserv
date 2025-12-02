@@ -140,6 +140,36 @@ std::string RequestRouter::getMimeType(const std::string& path) {
     return mime[extension];
 }
 
+static std::string stripLeadingSlashes(const std::string& s) {
+    size_t pos = 0;
+    while (pos < s.size() && s[pos] == '/')
+        ++pos;
+    return s.substr(pos);
+}
+
+static std::string appendPath(const std::string& base, const std::string& segment) {
+    if (segment.empty())
+        return base;
+    if (base.empty())
+        return segment;
+    if (base[base.size() - 1] == '/')
+        return base + segment;
+    return base + "/" + segment;
+}
+
+static std::string computeUploadDir(const LocationConfig& config) {
+    if (config.upload_store.empty())
+        return "";
+    if (config.upload_store[0] == '/')
+        return config.upload_store;
+    std::string base = config.root;
+    std::string loc  = stripLeadingSlashes(config.path);
+    if (!loc.empty())
+        base = appendPath(base, loc);
+    std::string store = stripLeadingSlashes(config.upload_store);
+    return appendPath(base, store);
+}
+
 Response RequestRouter::handleGet(const Request& req, std::string& path, const LocationConfig& config) {
     (void)req;
     Response res;
@@ -218,19 +248,9 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
         return makeErrorResponse(FORBIDDEN);
     }
 
-    std::string basename = path;
-    size_t      pos      = path.find_last_of('/');
-    if (pos != std::string::npos)
-        basename = path.substr(pos + 1);
-
-    std::string uploadPath;
-    std::string filename = generateUploadName();
-    if (!config.upload_store.empty())
-        uploadPath = config.root + "/" + config.upload_store + "/" + filename;
-
-    while (uploadPath.find("//") != std::string::npos) {
-        replace(uploadPath, "//", "/");
-    }
+    std::string filename   = generateUploadName();
+    std::string uploadDir  = computeUploadDir(config);
+    std::string uploadPath = uploadDir.empty() ? filename : appendPath(uploadDir, filename);
 
     std::cout << "uploadPath: " << uploadPath << std::endl;
     std::ofstream out(uploadPath.c_str(), std::ios::binary);
@@ -242,7 +262,7 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
     out.write(req.getBody().c_str(), req.getBody().size());
 
     Response res;
-    res.setHeader(LOCATION, uploadPath);
+    res.setHeader(LOCATION, req.getPath());
     res.setStatusCode(CREATED);
     res.setBody(generateHtml("Upload success!"));
     res.setHeader(CONTENT_LENGTH, toString(res.getBody().size()));
@@ -398,6 +418,10 @@ const LocationConfig resolveConfig(const ServerConfig& server, const LocationCon
     if (resolved.cgi_map.empty()) {
         resolved.cgi_map = server.cgi_map;
     }
+    if (!resolved.upload_enable_set)
+        resolved.upload_enable = server.upload_enable;
+    if (!resolved.upload_store_set && !server.upload_store.empty())
+        resolved.upload_store = server.upload_store;
 
     return resolved;
 }

@@ -197,8 +197,8 @@ void ConfigParser::parseServer() {
         // Server-only + common directives
         if (parseDirectiveListen(srv) || parseDirectiveServerName(srv) || parseDirectiveErrorPage(srv) ||
             parseDirectiveAutoIndex(srv) || parseDirectiveClientMaxBodySize(srv) || parseDirectiveCgi(srv) ||
-            parseDirectiveRoot(srv) || parseDirectiveIndex(srv) || parseDirectiveMethods(srv) ||
-            parseDirectiveReturn(srv)) {
+            parseDirectiveUploadEnable(srv) || parseDirectiveUploadStore(srv) || parseDirectiveRoot(srv) ||
+            parseDirectiveIndex(srv) || parseDirectiveMethods(srv) || parseDirectiveReturn(srv)) {
             continue;
         }
 
@@ -355,6 +355,20 @@ bool ConfigParser::parseDirectiveCgi(LocationConfig& loc) {
     return true;
 }
 
+bool ConfigParser::parseDirectiveUploadEnable(ServerConfig& srv) {
+    if (!accept("upload_enable"))
+        return false;
+    Token v = next();
+    if (v.s == "on")
+        srv.upload_enable = true;
+    else if (v.s == "off")
+        srv.upload_enable = false;
+    else
+        throw ParseError("invalid upload_enable value (use on|off)");
+    expect(";", "missing ';' after upload_enable");
+    return true;
+}
+
 bool ConfigParser::parseDirectiveUploadEnable(LocationConfig& loc) {
     if (!accept("upload_enable"))
         return false;
@@ -365,7 +379,19 @@ bool ConfigParser::parseDirectiveUploadEnable(LocationConfig& loc) {
         loc.upload_enable = false;
     else
         throw ParseError("invalid upload_enable value (use on|off)");
+    loc.upload_enable_set = true;
     expect(";", "missing ';' after upload_enable");
+    return true;
+}
+
+bool ConfigParser::parseDirectiveUploadStore(ServerConfig& srv) {
+    if (!accept("upload_store"))
+        return false;
+    Token p = next();
+    if (p.s.empty() || p.s == ";" || p.s == "{" || p.s == "}")
+        throw ParseError("invalid upload_store path");
+    srv.upload_store = p.s;
+    expect(";", "missing ';' after upload_store");
     return true;
 }
 
@@ -376,6 +402,7 @@ bool ConfigParser::parseDirectiveUploadStore(LocationConfig& loc) {
     if (p.s.empty() || p.s == ";" || p.s == "{" || p.s == "}")
         throw ParseError("invalid upload_store path");
     loc.upload_store = p.s;
+    loc.upload_store_set = true;
     expect(";", "missing ';' after upload_store");
     return true;
 }

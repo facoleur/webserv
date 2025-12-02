@@ -31,11 +31,13 @@ struct LocationConfig {
     std::map<std::string, std::string> cgi_map;              // ext -> interpreter
     bool                               upload_enable;        // default false
     std::string                        upload_store;         // empty if not set
+    bool                               upload_enable_set;    // track explicit setting
+    bool                               upload_store_set;     // track explicit path
     // Internal flag to distinguish explicit autoindex vs inherit
     bool autoindex_set;
     LocationConfig()
         : path(), root(), index_files(), methods(), redirect(), autoindex(false), client_max_body_size(0), cgi_map(),
-          upload_enable(false), upload_store(), autoindex_set(false) {
+          upload_enable(false), upload_store(), upload_enable_set(false), upload_store_set(false), autoindex_set(false) {
     }
 };
 
@@ -52,10 +54,12 @@ struct ServerConfig {
     bool                               autoindex;
     size_t                             client_max_body_size; // 0 means apply default
     std::map<std::string, std::string> cgi_map;              // ext -> interpreter
+    bool                               upload_enable;
+    std::string                        upload_store;
     std::vector<LocationConfig>        locations;
     ServerConfig()
         : host(), root(), index_files(), methods(), redirect(), listen_ports(), error_pages(), autoindex(false),
-          client_max_body_size(0), cgi_map(), locations() {
+          client_max_body_size(0), cgi_map(), upload_enable(false), upload_store(), locations() {
     }
 
     bool matchServerName(const std::string& hostHeader) const;

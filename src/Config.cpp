@@ -42,6 +42,10 @@ void applyDefaults(Config& cfg) {
                 if (loc.cgi_map.find(it->first) == loc.cgi_map.end())
                     loc.cgi_map[it->first] = it->second;
             }
+            if (!loc.upload_enable_set)
+                loc.upload_enable = srv.upload_enable;
+            if (!loc.upload_store_set && !srv.upload_store.empty())
+                loc.upload_store = srv.upload_store;
         }
     }
 }
@@ -56,6 +60,27 @@ static std::string joinPaths(const std::string& root, const std::string& child) 
     if (root[root.size() - 1] == '/')
         return root + child;
     return root + "/" + child;
+}
+
+static std::string stripLeadingSlashes(const std::string& s) {
+    size_t pos = 0;
+    while (pos < s.size() && s[pos] == '/')
+        ++pos;
+    return s.substr(pos);
+}
+
+static std::string resolveUploadDir(const std::string& root, const std::string& locationPath,
+                                    const std::string& upload_store) {
+    if (upload_store.empty())
+        return "";
+    if (!upload_store.empty() && upload_store[0] == '/')
+        return upload_store;
+    std::string base = root;
+    std::string loc  = stripLeadingSlashes(locationPath);
+    if (!loc.empty())
+        base = joinPaths(base, loc);
+    std::string store = stripLeadingSlashes(upload_store);
+    return joinPaths(base, store);
 }
 
 static void ensureDirectory(const std::string& path, const std::string& context) {
@@ -93,27 +118,26 @@ static std::string parentDir(const std::string& path) {
     return path.substr(0, pos);
 }
 
-static void ensureUploadStore(const LocationConfig& loc, const std::string& root) {
-    if (!loc.upload_enable)
+static void ensureUploadStore(bool upload_enable, const std::string& upload_store, const std::string& context) {
+    if (!upload_enable)
         return;
-    if (loc.upload_store.empty())
-        throw std::runtime_error("upload_store required when upload_enable is on");
-    std::string path = loc.root.empty() ? root + "/" + loc.upload_store : loc.root + "/" + loc.upload_store;
-    PathType    type = ConfigFile::getTypePath(loc.root + "/" + loc.upload_store);
+    if (upload_store.empty())
+        throw std::runtime_error(context + ": upload_store required when upload_enable is on");
+    PathType type = ConfigFile::getTypePath(upload_store);
     if (type == PATH_DIR) {
-        if (ConfigFile::checkFile(path, W_OK | X_OK) != 0)
-            throw std::runtime_error("Upload directory not writable: " + loc.upload_store);
+        if (ConfigFile::checkFile(upload_store, W_OK | X_OK) != 0)
+            throw std::runtime_error("Upload directory not writable: " + upload_store);
         return;
     }
     if (type == PATH_ERROR) {
-        std::string parent = parentDir(path);
+        std::string parent = parentDir(upload_store);
         if (ConfigFile::checkFile(parent, W_OK | X_OK) != 0)
             throw std::runtime_error("Cannot create upload directory (permission "
                                      "denied): " +
-                                     path);
+                                     upload_store);
         return;
     }
-    throw std::runtime_error("Upload store must be a directory: " + path);
+    throw std::runtime_error("Upload store must be a directory: " + upload_store);
 }
 
 void validateCompatibility(const Config& cfg) {
@@ -141,6 +165,8 @@ void validateCompatibility(const Config& cfg) {
         ensureDirectory(srv.root, "server root");
         ensureIndexFiles(srv.root, srv.index_files);
         ensureCgiMap(srv.cgi_map);
+        std::string server_upload_dir = resolveUploadDir(srv.root, "", srv.upload_store);
+        ensureUploadStore(srv.upload_enable, server_upload_dir, "server");
         for (size_t j = 0; j < srv.locations.size(); ++j) {
             const LocationConfig& loc = srv.locations[j];
             // if (loc.methods.count(POST) && loc.redirect.status == 0 && loc.root.find("upload") ==
@@ -156,12 +182,13 @@ void validateCompatibility(const Config& cfg) {
             }
             if (loc.client_max_body_size == 0)
                 throw std::runtime_error("invalid location client_max_body_size (must be > 0)");
-            if (loc.upload_enable && loc.upload_store.empty())
-                throw std::runtime_error("upload enabled but upload_store not set in location");
             ensureDirectory(loc.root, "location root");
             ensureIndexFiles(loc.root, loc.index_files);
             ensureCgiMap(loc.cgi_map);
-            ensureUploadStore(loc, srv.root);
+            bool        upload_enabled = loc.upload_enable_set ? loc.upload_enable : srv.upload_enable;
+            std::string upload_store   = loc.upload_store_set ? loc.upload_store : srv.upload_store;
+            std::string upload_dir     = resolveUploadDir(loc.root, loc.path, upload_store);
+            ensureUploadStore(upload_enabled, upload_dir, "location " + loc.path);
         }
     }
 }
