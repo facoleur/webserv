@@ -189,19 +189,19 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd, int& nf
 
             // generate response headers from CGI output
             router.generateResponseFromCgiOutput(res, req.cgiInfo.getOutput());
-            break;
+            // ?
         }
         if (req.getState() == CGI_STREAMING) {
 
             // anything to do ?
-            break;
         }
         if (req.getState() == DONE) {
-
+            if (req.cgiInfo.exists)
+                router.generateResponseFromCgiOutput(
+                    res, req.cgiInfo.getOutput()); // idea; this could be managed elsewhere also
             // any additional steps for CGI requests ?
             context.write_buffer.append(res.serialize());
             context.requests.pop();
-            break;
         }
     }
     pfd.events = POLLOUT;
@@ -226,12 +226,10 @@ int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS],
     }
     fcntl(new_client_fd, F_SETFL, O_NONBLOCK);
     setPollFd(pfds[nfds], new_client_fd, POLLIN, 0);
-    context[new_client_fd] = ClientContext();
-    // context[new_client_fd].server_index     = _listenerToServerIdx.at(listener);
+    context[new_client_fd]                  = ClientContext();
     context[new_client_fd].availableServers = _listenerToServers[listener];
     context[new_client_fd].lastActive       = time(NULL);
     nfds++;
-    // DEBUG_LOG("new client connected on server index " + toString(context[new_client_fd].server_index));
     return 0;
 }
 
@@ -328,6 +326,9 @@ void Server::run() {
     }
 
     while (1) {
+
+        checkTimeouts(contextMap, nfds, pfds);
+
         DEBUG_LOG("** while loop start **");
         DEBUG_LOG("{nfds}: " + toString(nfds) + " - {pfds[nfds].events}: " + toString(pfds[nfds].events));
         DEBUG_LOG("\n((((( POLL )))))");
@@ -335,8 +336,6 @@ void Server::run() {
             DEBUG_LOG("poll error");
             continue;
         }
-
-        checkTimeouts(contextMap, nfds, pfds);
 
         // handle events of each pollfd
         for (int i = 0; i < nfds; i++) {
@@ -353,7 +352,9 @@ void Server::run() {
             if (pfds[i].revents & POLLIN) {
                 DEBUG_LOG("--- POLLIN ---");
 
-                if (_listenerToServers.count(listener))
+                if (isCGIReadFD(pfds[i], ....)) // => check CgiMap
+                    readFromCGIChild();
+                else if (_listenerToServers.count(listener))
                     handleNewConnection(listener, pfds, nfds, contextMap);
                 else
                     handleRead(listener, i, pfds, nfds, contextMap); // Read client data
