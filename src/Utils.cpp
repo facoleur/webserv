@@ -10,13 +10,13 @@
 #include <string>
 #include <sys/stat.h>
 
-std::string getCurrentDatetime() {
+std::string getCurrentDatetime(const std::string& format) {
     std::time_t now       = std::time(NULL);
     std::tm*    localTime = std::localtime(&now);
 
     char buffer[64];
 
-    std::strftime(buffer, sizeof(buffer), "%a, %d %h %G %H:%M:%S %Z", localTime);
+    std::strftime(buffer, sizeof(buffer), format.c_str(), localTime);
 
     return std::string(buffer);
 }

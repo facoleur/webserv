@@ -1,11 +1,14 @@
+#pragma once
+
 #include "Enums.hpp"
 #include <iostream>
+#include <string>
 #include <sys/stat.h>
 #include <vector>
 
 class ConfigParser;
 
-std::string              getCurrentDatetime();
+std::string              getCurrentDatetime(const std::string& format = "%a, %d %h %G %H:%M:%S %Z");
 std::string&             replaceVariables(std::string&, const std::string&, const std::string&);
 std::string              methodToString(requestMethod);
 std::string              trimString(const std::string&);

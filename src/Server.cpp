@@ -11,6 +11,7 @@
 
 #include "Config.hpp"
 #include "Enums.hpp"
+#include "Logger.hpp"
 #include "RequestParser.hpp"
 #include "RequestRouter.hpp"
 #include "Response.hpp"
@@ -26,7 +27,7 @@ void Server::disconnect_client(int& index, int& client_fd, struct pollfd (&pfds)
     index--;
     close(client_fd);
     nfds--;
-    std::cout << "client disconnected" << std::endl;
+    LOG_INFO("Client " + toString(client_fd) + " disconnected")
 }
 
 Server::Server() {
@@ -133,7 +134,8 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
     while (!context.requests.empty()) {
         Request& req = context.requests.front();
         DEBUG_LOG("- handling request:");
-        DEBUG_LOG(req);
+        LOG_INFO("Request:  " + methodToString(req.getMethod()) + " " + req.getPath());
+        // DEBUG_LOG(req);
 
         std::string hostHeader = req.getHeader(HOST);
 
@@ -143,7 +145,6 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
 
         for (size_t j = 0; j < context.availableServers.size(); j++) {
             int index = context.availableServers[j];
-            std::cout << index << std::endl;
             if (serverConfigs[index].matchServerName(hostHeader)) {
                 chosenConfig = index;
                 break;
@@ -154,14 +155,7 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
             chosenConfig = context.availableServers[0];
 
         ServerConfig& config = _config.getServers().at(chosenConfig);
-
-        std::cout << "servername: " << config.server_name << std::endl;
-        std::cout << "host header: " << req.getHeader(HOST) << std::endl;
-
-        // std::cout << req << std::endl;
-
-        // const ServerConfig& config = _config.getServers()[context.server_index];
-        Response res = router.route(req, config);
+        Response      res    = router.route(req, config);
 
         if (res.isError()) {
             std::string reasonPhrase(ReasonPhrase::get(res.getStatusCode()));
