@@ -1,24 +1,35 @@
-#include "Server.hpp"
+#include "Enums.hpp"
 #include <iostream>
-#include <sstream>
 #include <sys/stat.h>
 #include <vector>
-#include "ConfigParser.hpp"
 
-std::ostream& operator<<(std::ostream& os, struct pollfd pfd);
-std::string              toString(long long n);
-size_t                   toSizet(const std::string& s);
-std::string              tolower(const std::string& s);
-void                     replace(std::string& str, const std::string& from, const std::string& to);
-std::vector<std::string> split(const std::string& s, char delimiter);
-bool                     startsWith(const std::string& str, const std::string& prefix);
-bool                     endsWith(const std::string& str, const std::string& prefix);
-std::string              join(const std::vector<std::string>& parts, char delim);
-bool                     isDirectory(const std::string& path);
-std::string              readFile(const std::ifstream& file);
-std::string              getParentDir(const std::string& path);
-std::string				methodToString(requestMethod method);
-std::string				trimString(const std::string& value);
-std::string				toLower(const std::string& str);
-bool					isSubPath(const std::string& root, const std::string& candidate);
-requestMethod			toMethod(const std::string& s);
+class ConfigParser;
+
+std::string              getCurrentDatetime();
+std::string&             replaceVariables(std::string&, const std::string&, const std::string&);
+std::string              methodToString(requestMethod);
+std::string              trimString(const std::string&);
+std::string              toLower(const std::string&);
+bool                     isSubPath(const std::string&, const std::string&);
+requestMethod            toMethod(const std::string&);
+std::string              toString(long long);
+size_t                   toSizet(const std::string&);
+std::string              tolower(const std::string&);
+unsigned char            toLowerChar(unsigned char);
+void                     replace(std::string&, const std::string&, const std::string&);
+std::vector<std::string> split(const std::string&, char);
+bool                     startsWith(const std::string&, const std::string&);
+bool                     endsWith(const std::string&, const std::string&);
+std::string              join(const std::vector<std::string>&, char);
+bool                     isDirectory(const std::string&);
+std::string              readFile(const std::ifstream&);
+std::string              getParentDir(const std::string&);
+bool                     isSpace(int);
+bool                     isAcceptedHeader(std::string&);
+
+// OutstreamUtils.cpp
+std::ostream& operator<<(std::ostream&, const struct pollfd);
+std::ostream& operator<<(std::ostream&, const headersMap&);
+std::ostream& operator<<(std::ostream&, requestHeaders);
+std::ostream& operator<<(std::ostream&, requestMethod);
+std::ostream& operator<<(std::ostream&, statusCode);

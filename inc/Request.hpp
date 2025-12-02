@@ -2,14 +2,11 @@
 
 #pragma once
 
-#include "Response.hpp"
-#include "Webserv.hpp"
-#include <map>
-#include <vector>
+#include <iostream>
 
-enum requestMethod { GET, POST, DELETE, UNKNOWN };
-enum requestHeaders { HOST, CONTENT_LENGTH, LOCATION, TRANSFER_ENCODING, CONTENT_TYPE, CONNECTION, ACCEPT };
-enum requestValidity { INVALID_REQUEST, VALID_REQUEST };
+#include "Enums.hpp"
+
+class Response;
 
 // stores and validates (semantically) an HTTP request
 class Request {
@@ -18,49 +15,29 @@ class Request {
     Request(void);
     ~Request(void);
 
-    // Semantic validation
-    enum requestValidity validateRequest(Response& res) const;
-    // performs all the static (not config based) checks to set the _validity
-
-    bool validateMethod(void) const;
-    bool validateTarget(void) const;
-    bool validateQueryString(void) const;
-    bool validateProtocolVersion(void) const;
-    bool validateHeaders(void) const;
-    bool validateBody(void) const;
-
     // Other functions
-    bool hasHeader(std::string const&); // whether a specific header is present
+    bool hasHeader(requestHeaders); // whether a specific header is present
     bool hasBody(void);
-    void printRequest(void) const;
 
     // getters
-    requestMethod                                getMethod(void) const;
-    const std::string&                           getPath(void) const;
-    const std::string&                           getQueryString(void) const;
-    const std::string&                           getProtocolVersion(void) const;
-    const std::vector<std::string, std::string>& getHeaders(void) const;
-    const std::string                            getHeader(enum requestHeaders) const;
-    const std::string&                           getBody(void) const;
-    requestValidity                              getValidity(void) const;
-    statusCode                                   getStatusCode(void) const;
-
+    requestMethod      getMethod(void) const;
+    const std::string& getPath(void) const;
+    const std::string& getQueryString(void) const;
+    const std::string& getProtocolVersion(void) const;
+    const headersMap&  getHeaders(void) const;
+    const std::string  getHeader(requestHeaders) const;
+    const std::string& getBody(void) const;
+    statusCode         getStatusCode(void) const;
+    void               resolveAbsolutePath(std::string& path);
     // setters
     void setMethod(const std::string&);
     void setPath(std::string const&);
     void setQueryString(std::string const&);
-    void setProtocolVersion(std::string&);
-    void setHeaders(const std::map<enum requestHeaders, std::string>&);
-    void setHeader(enum requestHeaders, const std::string&);
+    void setProtocolVersion(const std::string&);
+    void setHeaders(const headersMap&);
+    void setHeader(requestHeaders, const std::string&);
     void setBody(std::string const&);
-    void setValidity(requestValidity);
     void setStatusCode(statusCode);
-
-    friend std::ostream& operator<<(std::ostream&, requestMethod);
-    friend std::ostream& operator<<(std::ostream&, requestValidity);
-    friend std::ostream& operator<<(std::ostream&, statusCode);
-    friend std::ostream& operator<<(std::ostream&, Request&);
-    void                 printHeaders(std::ostream&);
 
   private:
     // Attributes
@@ -69,10 +46,9 @@ class Request {
     std::string   _queryString;
     std::string   _protocolVersion;
 
-    std::map<enum requestHeaders, std::string> _headers;
-    std::string                                _body;
-    statusCode                                 _statusCode;
-    requestValidity                            _validity;
+    headersMap  _headers;
+    std::string _body;
+    statusCode  _statusCode;
 };
 
-std::ostream& operator<<(std::ostream& os, Request& req);
+std::ostream& operator<<(std::ostream&, const Request&);

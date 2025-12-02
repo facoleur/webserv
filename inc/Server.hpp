@@ -2,29 +2,19 @@
 
 #pragma once
 
-#include <cstring>
-#include <fcntl.h>
-#include <netinet/in.h>
 #include <poll.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
-#include <iostream>
-#include <map>
-#include <queue>
 #include <vector>
 
 #include "Config.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
-#include "Response.hpp"
 #include "Utils.hpp"
-#include "Webserv.hpp"
 
 class Response;
 
 #define MAX_EVENTS 64
-#define TIMEOUT 4000
+#define CLIENT_TIMEOUT 10000
+#define POLL_TIMEOUT 4000
 #define READ_SIZE 8000
 
 struct ClientContext {
@@ -35,24 +25,26 @@ struct ClientContext {
     struct pollfd       pfd;
     std::string         write_buffer;
     bool                close_after_responses; // if bad request in the queue, set this to true
-    size_t              server_index;          // which server accepted the client
+    // size_t              server_index;          // which server accepted the client
+    int              selectedServer;
+    std::vector<int> availableServers;
+    int              last_activity;
 };
 
 typedef std::map<int, struct ClientContext> ContextMap;
 
 class Server {
   private:
-    const Config          _cfg; // not owning pointer
-    struct ClientContext  _state;
-    std::map<int, size_t> _listenerToServerIdx; // listen fd -> server index
+    Config                           _config;
+    struct ClientContext             _state;
+    std::map<int, std::vector<int> > _listenerToServers;
+    // std::map<int, size_t>            _listenerToServerIdx; // listen fd -> server index
 
   public:
     Server();
     Server(const Config& cfg);
     ~Server();
 
-    void new_connection();
-    void existing_connection();
     void run();
     void add_bad_request_to_queue(ClientContext& context);
     void handle_requests(ClientContext&, struct pollfd&);
@@ -63,4 +55,5 @@ class Server {
     void handleRead(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
     void sendResponses(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
     void handlePartialRequest(ClientContext&, struct pollfd&);
+    void checkTimeouts(ContextMap&, int&, struct pollfd (&)[MAX_EVENTS]);
 };
