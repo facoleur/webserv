@@ -5,6 +5,7 @@
 
 class ConfigParser;
 
+std::string              getCurrentDatetime();
 std::string&             replaceVariables(std::string&, const std::string&, const std::string&);
 std::string              methodToString(requestMethod);
 std::string              trimString(const std::string&);

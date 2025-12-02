@@ -4,8 +4,11 @@
 #include "Enums.hpp"
 #include "Request.hpp"
 #include "Utils.hpp"
+#include "Webserv.hpp"
 
 Response::Response() : _statusCode(OK) {
+    setHeader(SERVER, WEBSERV_VERSION);
+    setHeader(DATE, getCurrentDatetime());
 }
 
 Response::Response(statusCode statusCode) : _statusCode(statusCode) {

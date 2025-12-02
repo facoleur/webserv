@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <vector>
 
+#include "Config.hpp"
 #include "Enums.hpp"
 #include "Request.hpp"
 #include "RequestRouter.hpp"
@@ -143,7 +144,7 @@ std::string RequestRouter::getMimeType(const std::string& path) {
 Response RequestRouter::handleGet(const Request& req, std::string& path, const LocationConfig& config) {
     (void)req;
     Response res;
-
+`
     DEBUG_LOG("HANDLING GET");
 
     if (isDirectory(path)) {
@@ -175,6 +176,8 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
 
             return res;
         }
+
+        std::cout << "autoindex: " << config.autoindex << std::endl;
 
         if (config.autoindex) {
             DEBUG_LOG("GET DONE autoindex");
@@ -312,6 +315,7 @@ std::string RequestRouter::generateHtml(const std::string& message) {
 Response RequestRouter::makeErrorResponse(enum statusCode statusCode) {
     Response res;
     res.setBody(generateErrorHtml(statusCode));
+    res.setHeader(CONTENT_LENGTH, toString(res.getBody().size()));
     res.setStatusCode(statusCode);
 
     return res;
@@ -414,6 +418,8 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
 Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     DEBUG_LOG("RequestRouter.route():");
 
+    std::cout << req << std::endl;
+
     if (req.getStatusCode() != NO_STATUS) {
         std::string reasonPhrase(ReasonPhrase::get(req.getStatusCode()));
         DEBUG_LOG("RequestRouter.route(): status already set before to: " + reasonPhrase);
@@ -426,6 +432,8 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     std::string           locationPath;
     const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig, locationPath);
 
+    _config = resolvedConfig;
+
     if (resolvedConfig.redirect.status) {
         return makeRedirectResponse(resolvedConfig.redirect.target);
     }
@@ -437,6 +445,8 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     } catch (std::exception&) {
         return makeErrorResponse(BAD_REQUEST);
     }
+
+    std::cout << "path:  " << resolvedPath << std::endl;
 
     if (!resourceExists(resolvedPath, req)) {
         return makeErrorResponse(NOT_FOUND);

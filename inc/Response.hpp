@@ -14,6 +14,8 @@ class Headers {
 
     static void init() {
         _headersMap[HOST]              = "Host";
+        _headersMap[SERVER]            = "Server";
+        _headersMap[DATE]              = "Date";
         _headersMap[CONTENT_LENGTH]    = "Content-Length";
         _headersMap[LOCATION]          = "Location";
         _headersMap[TRANSFER_ENCODING] = "Transfer-Encoding";

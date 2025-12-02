@@ -5,7 +5,17 @@
 #include <map>
 #include <string>
 
-enum requestHeaders { HOST, CONTENT_LENGTH, LOCATION, TRANSFER_ENCODING, CONTENT_TYPE, CONNECTION, ACCEPT };
+enum requestHeaders {
+    SERVER,
+    DATE,
+    HOST,
+    CONTENT_LENGTH,
+    LOCATION,
+    TRANSFER_ENCODING,
+    CONTENT_TYPE,
+    CONNECTION,
+    ACCEPT
+};
 
 enum requestMethod { GET, POST, DELETE, UNKNOWN };
 

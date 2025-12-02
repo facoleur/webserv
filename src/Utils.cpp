@@ -1,6 +1,7 @@
 // Utils.cpp
 
 #include "Utils.hpp"
+#include <ctime>
 #include <dirent.h>
 #include <fstream>
 #include <iostream>
@@ -8,6 +9,17 @@
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
+
+std::string getCurrentDatetime() {
+    std::time_t now       = std::time(NULL);
+    std::tm*    localTime = std::localtime(&now);
+
+    char buffer[64];
+
+    std::strftime(buffer, sizeof(buffer), "%a, %d %h %G %H:%M:%S %Z", localTime);
+
+    return std::string(buffer);
+}
 
 std::string toString(long long n) {
 
