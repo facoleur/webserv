@@ -80,18 +80,8 @@ void RequestRouter::resolveAbsolutePath(std::string& path) {
 }
 
 std::string RequestRouter::resolvePath(const Request& req, const std::string& root, const std::string& location) {
-    (void)req;
     std::string path = req.getPath();
-    // std::cout << "path: " << path << std::endl;
-    // std::cout << "location: " << location << std::endl;
-
-    path = "/" + path.substr(location.size());
-
-    // if (startsWith(path, "http://"))
-    //     resolveAbsolutePath(path);
-    // else if (!startsWith(path, "/")) {
-    //     throw std::runtime_error("Relative path doesn't start with /");
-    // }
+    (void)location;
 
     if (path.empty())
         path = "/";
@@ -144,7 +134,7 @@ std::string RequestRouter::getMimeType(const std::string& path) {
 Response RequestRouter::handleGet(const Request& req, std::string& path, const LocationConfig& config) {
     (void)req;
     Response res;
-`
+
     DEBUG_LOG("HANDLING GET");
 
     if (isDirectory(path)) {
@@ -176,8 +166,6 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
 
             return res;
         }
-
-        std::cout << "autoindex: " << config.autoindex << std::endl;
 
         if (config.autoindex) {
             DEBUG_LOG("GET DONE autoindex");
@@ -235,10 +223,8 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
         replace(uploadPath, "//", "/");
     }
 
-    std::cout << "uploadPath: " << uploadPath << std::endl;
     std::ofstream out(uploadPath.c_str(), std::ios::binary);
     if (!out.is_open()) {
-        std::cout << "500 ici" << std::endl;
         return makeErrorResponse(INTERNAL_SERVER_ERROR);
     }
 
@@ -418,8 +404,6 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
 Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     DEBUG_LOG("RequestRouter.route():");
 
-    std::cout << req << std::endl;
-
     if (req.getStatusCode() != NO_STATUS) {
         std::string reasonPhrase(ReasonPhrase::get(req.getStatusCode()));
         DEBUG_LOG("RequestRouter.route(): status already set before to: " + reasonPhrase);
@@ -445,8 +429,6 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     } catch (std::exception&) {
         return makeErrorResponse(BAD_REQUEST);
     }
-
-    std::cout << "path:  " << resolvedPath << std::endl;
 
     if (!resourceExists(resolvedPath, req)) {
         return makeErrorResponse(NOT_FOUND);

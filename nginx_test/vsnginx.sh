@@ -114,7 +114,7 @@ EOF
 
 ### --- Static File Tests ---
 test_static() {
-    compare GET /index.html 200 200 1
+    compare GET /html/index.html 200 200 1
     compare GET /does_not_exist 404 404 0
     compare GET / 200 200 1
 }
@@ -125,12 +125,17 @@ test_directory() {
     compare GET /noautoindex/ 403 403 0
 }
 
-
 ### --- Upload (POST) ---
 test_upload() {
-    compare POST /upload "204" "204" 0
-    compare POST /upload "204" "204" 0
-    compare POST /upload "204" "204" 0
+    before=$(ls -1 upload | wc -l)
+
+    compare POST /upload "201" "201" 0
+
+    after=$(ls -1 upload | wc -l)
+
+    if [ "$((after - before))" -eq 1 ]; then
+        echo "upload count OK"
+    fi
 }
 
 ### --- DELETE (DAV-like) ---
@@ -149,8 +154,9 @@ test_delete_dav() {
 
 ### --- CGI Tests ---
 test_cgi() {
-    compare GET "/cgi/noexist.py" 404 404 0
-    compare GET "/cgi/error.py" 500 403 1
+    compare GET "/cgi-bin/noexist.py" 404 404 0
+    compare GET "/cgi-bin/error.py" 502 502 1
+    compare GET "/cgi-bin/script.py" 200 200 1
     # compare GET "/cgi/script.py?x=1&y=2" 200 200 1
     # compare POST /cgi/echo.py 200 200 1
     # compare POST /cgi/echo.py 200 200 1
@@ -158,7 +164,7 @@ test_cgi() {
 
 ### --- Error Pages ---
 test_errors() {
-    compare POST /index.html 405 405 0
+    compare POST /html/index.html 405 405 0
 }
 
 # ============ Execute ============
