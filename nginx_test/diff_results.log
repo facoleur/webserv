@@ -1,58 +1,59 @@
-==== GET /index.html ====
-Webserv: 200 (expected 200)
-Nginx:   200 (expected 200)
+==== GET /html/index.html ====
+Webserv: 200 (expect 200)
+Nginx:   200 (expect 200)
 
-Body diff:
 
 ==== GET /does_not_exist ====
-Webserv: 404 (expected 404)
-Nginx:   404 (expected 404)
+Webserv: 404 (expect 404)
+Nginx:   404 (expect 404)
+
 
 ==== GET / ====
-Webserv: 200 (expected 200)
-Nginx:   200 (expected 200)
+Webserv: 200 (expect 200)
+Nginx:   200 (expect 200)
 
-Body diff:
 
-==== GET /html/ ====
-Webserv: 404 (expected 403)
-Nginx:   404 (expected 403)
+==== GET /autoindex ====
+Webserv: 301 (expect 301)
+Nginx:   301 (expect 301)
 
-==== POST /upload ====
-Webserv: 201 (expected 204)
-Nginx:   301 (expected 204)
 
-==== POST /upload ====
-Webserv: 201 (expected 204)
-Nginx:   301 (expected 204)
+==== GET /noautoindex/ ====
+Webserv: 403 (expect 403)
+Nginx:   403 (expect 403)
+
 
 ==== POST /upload ====
-Webserv: 201 (expected 204)
-Nginx:   301 (expected 204)
+Webserv: 201 (expect 201)
+Nginx:   201 (expect 201)
+
 
 ==== DELETE /delete/a ====
-Webserv: 204 (expected 204)
-Nginx:   404 (expected 404)
+Webserv: 204 (expect 204)
+Nginx:   404 (expect 404)
+
 
 ==== DELETE /delete/a ====
-Webserv: 404 (expected 404)
-Nginx:   404 (expected 404)
+Webserv: 404 (expect 404)
+Nginx:   404 (expect 404)
+
 
 ==== DELETE /delete/nope ====
-Webserv: 404 (expected 404)
-Nginx:   404 (expected 404)
+Webserv: 404 (expect 404)
+Nginx:   404 (expect 404)
 
-==== GET /cgi/noexist.py ====
-Webserv: 404 (expected 404)
-Nginx:   404 (expected 404)
 
-==== GET /cgi/error.py ====
-Webserv: 502 (expected 500)
-Nginx:   502 (expected 403)
+==== GET /cgi-bin/noexist.py ====
+Webserv: 404 (expect 404)
+Nginx:   404 (expect 404)
 
-Body diff:
---- /tmp/tmp.yrVJ2osXZs	2025-12-02 12:33:55.339035667 +0100
-+++ /tmp/tmp.2NwvUjRIJ1	2025-12-02 12:33:55.380972027 +0100
+
+==== GET /cgi-bin/error.py ====
+Webserv: 502 (expect 502)
+Nginx:   502 (expect 502)
+
+--- /tmp/tmp.zZa4r2VC7o	2025-12-02 14:50:14.847207780 +0100
++++ /tmp/tmp.XGrUEps9sQ	2025-12-02 14:50:14.891493103 +0100
 @@ -1,10 +1,7 @@
 -<html>
 -  <head>
@@ -72,7 +73,13 @@ Body diff:
 +</body>
 +</html>
 
-==== POST /index.html ====
-Webserv: 405 (expected 405)
-Nginx:   405 (expected 405)
+==== GET /cgi-bin/script.py ====
+Webserv: 200 (expect 200)
+Nginx:   200 (expect 200)
+
+
+==== POST /html/index.html ====
+Webserv: 405 (expect 405)
+Nginx:   405 (expect 405)
+
 
