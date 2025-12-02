@@ -35,7 +35,6 @@ class RequestRouter {
     std::vector<std::string> storeCgiEnv(const Request& request, const LocationConfig& locationConfig,
                                          const ServerConfig& serverConfig, const std::string& scriptPath) const;
     Response                 prepareCgi(Request&, const std::string&, const ServerConfig&, const LocationConfig&);
-    void                     generateResponseFromCgiOutput(Response&, std::string);
 
   public:
     Response makeAutoindexResponse(const std::string&, const std::string&);
@@ -44,6 +43,7 @@ class RequestRouter {
 
     std::string resolvePath(const Request&, const std::string&, const std::string&);
     Response    route(Request&, const ServerConfig&);
+    void        generateResponseFromCgiOutput(Response&, std::string);
 };
 
 const LocationConfig* findLocationConfig(const std::string& path, const ServerConfig& config);

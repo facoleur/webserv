@@ -6,6 +6,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <sys/time.h>
 #include <utility>
 #include <vector>
 
@@ -180,13 +181,14 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd, int& nf
         }
         if (req.getState() == CGI_START) {
             if (launchCgi(req) != 0) {
-                return makeErrorResponse(BAD_GATEWAY);
+                req.setStatusCode(BAD_GATEWAY);
+                res = router.route(req, config);
+                handleInvalidRequest(context, res);
+                break;
             }
 
             // generate response headers from CGI output
-            generateResponseFromCgiOutput(res, req.cgiInfo.getOutput());
-
-            return res;
+            router.generateResponseFromCgiOutput(res, req.cgiInfo.getOutput());
             break;
         }
         if (req.getState() == CGI_STREAMING) {
@@ -249,14 +251,8 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
             return;
         }
     } else if (len < 0) {
-        if (errno == EAGAIN ||
-            errno == EWOULDBLOCK || // EAGAIN/EWOULDBLOCK: No data is available to read, or a write would block
-            errno == EINTR) {       // EINTR: read interrupted before any data arrived by the delivery of a signal
-            DEBUG_LOG("read returned < 0 and set errno to EAGAIN, EWOULDBLOCK or EINTR; continuing");
-            return;
-        }
-        DEBUG_LOG("disconnect 3: read error");               // Real error
-        disconnect_client(i, listener, pfds, nfds, context); // correct ?
+        DEBUG_LOG("disconnect 3: read error");
+        disconnect_client(i, listener, pfds, nfds, context);
         return;
     } else { // Parsing
         tmp[len] = '\0';
@@ -279,14 +275,10 @@ void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS
             context[listener].lastActive = time(NULL);
             break;
         }
-        if (sent == -1) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) // socket buffer full, wait for next POLLOUT
-                return;
-            else { // error or connection closed: (sent == 0 ?)
-                DEBUG_LOG("disconnect 4: error or connection closed while sending back response");
-                disconnect_client(i, listener, pfds, nfds, context);
-                return;
-            }
+        if (sent == -1) { // error or connection closed: (sent == 0 ?)
+            DEBUG_LOG("disconnect 4: error or connection closed while sending back response");
+            disconnect_client(i, listener, pfds, nfds, context);
+            return;
         }
     }
     if (context[listener].close_after_responses) {
@@ -297,8 +289,6 @@ void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS
     pfds[i].events = POLLIN;
     return;
 }
-
-#include <sys/time.h>
 
 void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pfds)[MAX_EVENTS]) {
     std::map<int, ClientContext>::iterator it;
@@ -371,7 +361,7 @@ void Server::run() {
             }
 
             if (pfds[i].revents & POLLOUT) {
-                // if isCGIWriteFD(pfds[i], ....); => need a lookup table (e.g., std::map<int, CgiPipeRole>)
+                // if isCGIWriteFD(pfds[i], ....); => check CgiMap
                 //     writeToCGIChild();
                 // else
                 sendResponses(listener, i, pfds, nfds, contextMap);

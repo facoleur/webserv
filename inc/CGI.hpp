@@ -57,6 +57,16 @@ class CgiInfo {
     std::string _output;
 };
 
+// BODY REFERENCE
+// The “body reference” is just a pointer/offset into the original HTTP request body so you know how much of it has
+// already been written to the child. Instead of copying the body into a new buffer, store either a reference to
+// Request::getBody() plus an index (bytesWrittenToCgi) or a lightweight span structure; then each time the CGI stdin
+// pipe is writable you write from body.begin() + bytesWritten onward until everything is sent. This is the info CgiInfo
+// must keep so the streaming logic knows what remains to transfer. Intuition recap: route() sets up the plan,
+// launchCgi() spawns and registers the child, the poll loop advances read/write/waitpid, and only after the child
+// finishes do you construct the HTTP response using the buffers tracked inside CgiInfo; the “body reference” is simply
+// a way to remember which portion of the original request body still needs to be fed into the CGI stdin.
+
 // A usable CGIState should hold at least:
 // child PID,
 // stdin/out pipe FDs,
