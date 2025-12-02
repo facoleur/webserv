@@ -60,12 +60,11 @@ class Server {
     void checkTimeouts(ContextMap&, int&, struct pollfd (&)[MAX_EVENTS]);
 
     // CGI
-    int  launchCgi(Request&);
-    int  setupCgiPipes(int (&)[2], int (&)[2]);
-    int  writeToCgi(int (&)[2], int (&)[2], Request&);
-    int  readFromCgi(int (&)[2], Request&);
-    int  waitForCgiTermination(pid_t, Request&);
-    void generateCgiResponseHeaders(std::string, std::string&, std::map<std::string, std::string>&, int&, std::string&);
+    int launchCgi(Request&);
+    int setupCgiPipes(int (&)[2], int (&)[2]);
+    int writeToCgi(int (&)[2], int (&)[2], Request&);
+    int readFromCgi(int (&)[2], Request&);
+    int waitForCgiTermination(pid_t, Request&);
 };
 
 // CGI fd lookup:

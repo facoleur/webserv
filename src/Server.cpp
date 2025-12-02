@@ -186,7 +186,7 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd, int& nf
             // generate response headers from CGI output
             generateResponseFromCgiOutput(res, req.cgiInfo.getOutput());
 
-            return response;
+            return res;
             break;
         }
         if (req.getState() == CGI_STREAMING) {

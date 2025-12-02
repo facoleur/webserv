@@ -14,6 +14,14 @@ std::string CgiInfo::getInterpreter(void) const {
     return _interpreter;
 }
 
+std::string CgiInfo::getScriptPath(void) const {
+    return _scriptPath;
+}
+
+std::vector<std::string> CgiInfo::getEnvStorage(void) const {
+    return _envStorage;
+}
+
 pid_t CgiInfo::getCgiPID(void) const {
     return _CgiPID;
 }
@@ -39,8 +47,16 @@ std::string CgiInfo::getOutput(void) const {
 }
 
 // setters
-void CgiInfo::setInterpreter(std::string& interpreter) {
+void CgiInfo::setInterpreter(const std::string& interpreter) {
     _interpreter = interpreter;
+}
+
+void CgiInfo::setScriptPath(const std::string& scriptPath) {
+    _scriptPath = scriptPath;
+}
+
+void CgiInfo::setEnvStorage(const std::vector<std::string>& envStorage) {
+    _envStorage = envStorage;
 }
 
 void CgiInfo::setCgiPID(pid_t CgiPID) {
@@ -63,6 +79,6 @@ void CgiInfo::setBytesWrittenToCgi(int bytesWrittenToCgi) {
     _bytesWrittenToCgi = bytesWrittenToCgi;
 }
 
-void CgiInfo::appendToOutput(std::string& output) {
-    _output = output;
+void CgiInfo::appendToOutput(std::string& content) {
+    _output += content;
 }

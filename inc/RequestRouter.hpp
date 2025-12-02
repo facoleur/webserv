@@ -29,12 +29,13 @@ class RequestRouter {
     std::string generateHtml(const std::string&);
     // std::string generateHtml(const std::string&, const std::map<std::string, std::string>&);
 
-    // CGI preparation
+    // CGI preparation and response generation (CGI launch and handling in class Server)
     bool                     isCgiRequest(const std::string&, const LocationConfig&);
     std::string              getCgiInterpreter(const std::string&, const LocationConfig&) const;
     std::vector<std::string> storeCgiEnv(const Request& request, const LocationConfig& locationConfig,
                                          const ServerConfig& serverConfig, const std::string& scriptPath) const;
     Response                 prepareCgi(Request&, const std::string&, const ServerConfig&, const LocationConfig&);
+    void                     generateResponseFromCgiOutput(Response&, std::string);
 
   public:
     Response makeAutoindexResponse(const std::string&, const std::string&);

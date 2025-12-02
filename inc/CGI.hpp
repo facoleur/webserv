@@ -29,9 +29,9 @@ class CgiInfo {
     std::string              getOutput(void) const;
 
     // setters
-    void setInterpreter(std::string&);
-    void setScriptPath(std::string&);
-    void setEnvStorage(std::vector<std::string>&);
+    void setInterpreter(const std::string&);
+    void setScriptPath(const std::string&);
+    void setEnvStorage(const std::vector<std::string>&);
     void setCgiPID(pid_t);
     void setLastActive(int);
     void setWriteFd(int);
