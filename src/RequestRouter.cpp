@@ -377,8 +377,11 @@ const LocationConfig resolveConfig(const ServerConfig& server, const LocationCon
     LocationConfig resolved;
 
     if (location) {
-        locationPath = location->path;
-        resolved     = *location;
+        locationPath       = location->path;
+        resolved           = *location;
+        resolved.autoindex = location->autoindex;
+    } else {
+        resolved.autoindex = server.autoindex;
     }
 
     if (resolved.methods.empty()) {
