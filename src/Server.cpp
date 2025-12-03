@@ -19,17 +19,6 @@
 #include "Utils.hpp"
 #include "Webserv.hpp"
 
-void Server::disconnect_client(int& index, int& client_fd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
-                               ContextMap& contextMap) {
-
-    contextMap.erase(client_fd);
-    pfds[index] = pfds[nfds - 1];
-    index--;
-    close(client_fd);
-    nfds--;
-    std::cout << "client disconnected" << std::endl;
-}
-
 Server::Server() {
 }
 
@@ -42,178 +31,27 @@ Server::~Server() {
 ClientContext::ClientContext(void) : close_after_responses(false), selectedServer(-1) {
 }
 
-void Server::setPollFd(struct pollfd& pfd, int socketFd, short events, short revents) {
-    pfd.fd      = socketFd;
-    pfd.events  = events;
-    pfd.revents = revents;
-}
+void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pfds)[MAX_EVENTS]) {
+    std::map<int, ClientContext>::iterator it;
+    long                                   currTime;
 
-// Create one listening socket per server:port
-std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
-    std::vector<int>                 listen_fds;
-    int                              listener;
-    struct sockaddr_in               addr;
-    in_addr                          a;
-    int                              opt;
-    const std::vector<ServerConfig>& servers = _config.getServers();
-
-    std::map<std::pair<std::string, int>, std::vector<int> > listenMap;
-
-    for (size_t si = 0; si < servers.size(); si++) {
-        const ServerConfig& srv = servers[si];
-        for (size_t pi = 0; pi < srv.listen_ports.size(); pi++) {
-            int         port = srv.listen_ports[pi];
-            std::string ip   = srv.host.empty() ? "0.0.0.0" : srv.host;
-
-            listenMap[std::make_pair(ip, port)].push_back(si);
-        }
-    }
-
-    for (std::map<std::pair<std::string, int>, std::vector<int> >::iterator it = listenMap.begin();
-         it != listenMap.end(); ++it) {
-
-        const std::string&      ipStr         = it->first.first;
-        int                     port          = it->first.second;
-        const std::vector<int>& serverIndices = it->second;
-
-        listener = socket(AF_INET, SOCK_STREAM, 0);
-        if (listener < 0)
-            continue;
-        opt = 1;
-        setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-        fcntl(listener, F_SETFL, O_NONBLOCK);
-        fcntl(listener, F_SETFD, FD_CLOEXEC);
-
-        memset(&addr, 0, sizeof(addr));
-        addr.sin_family = AF_INET;
-        addr.sin_port   = htons(port);
-
-        // ip              = INADDR_ANY;
-        // if (!srv.host.empty() && inet_aton(srv.host.c_str(), &a))
-        //     ip = a.s_addr;
-        // addr.sin_addr.s_addr = ip;
-
-        if (inet_aton(ipStr.c_str(), &a))
-            addr.sin_addr = a;
-        else
-            addr.sin_addr.s_addr = INADDR_ANY;
-
-        if (bind(listener, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-            close(listener);
+    currTime = time(NULL);
+    if (currTime == -1)
+        return; // handleTimeError ?
+    it = contextMap.begin();
+    while (it != contextMap.end()) {
+        if ((currTime - it->second.lastActive) > CLIENT_TIMEOUT) {
+            int j         = 0;
+            int client_fd = it->first;
+            while (j < nfds && pfds[j].fd != client_fd)
+                j++;
+            ++it;
+            if (pfds[j].fd == client_fd)
+                disconnect_client(j, client_fd, pfds, nfds, contextMap);
             continue;
         }
-        if (listen(listener, SOMAXCONN) < 0) {
-            close(listener);
-            continue;
-        }
-        setPollFd(pfds[nfds], listener, POLLIN, 0);
-        // DEBUG_LOG("setting _listenerToServerIdx[" + toString(listener) + "] to " + toString(si));
-        // _listenerToServerIdx[listener] = si;
-        _listenerToServers[listener] = serverIndices;
-        listen_fds.push_back(listener);
-        ++nfds;
-        if (nfds >= MAX_EVENTS)
-            break;
+        ++it;
     }
-
-    return listen_fds;
-}
-
-void Server::add_bad_request_to_queue(ClientContext& context) {
-    Request req;
-    req.setStatusCode(BAD_REQUEST);
-    context.requests.push(req);
-}
-
-void Server::handleInvalidRequest(ClientContext& context, Response& res) {
-    std::string reasonPhrase(ReasonPhrase::get(res.getStatusCode()));
-    DEBUG_LOG("handle_requests() exiting with error: " + reasonPhrase);
-
-    context.write_buffer.append(res.serialize());
-    std::queue<Request> empty;
-    std::swap(context.requests, empty);
-    context.close_after_responses = true;
-}
-
-void Server::handle_requests(ClientContext& context, struct pollfd& pfd, int& nfds) {
-
-    RequestRouter router;
-    (void)nfds;
-
-    DEBUG_LOG("handle_requests: " + toString(context.requests.size()) + " requests in queue");
-
-    while (!context.requests.empty()) {
-        Request&                         req           = context.requests.front();
-        std::string                      hostHeader    = req.getHeader(HOST);
-        int                              chosenConfig  = -1;
-        const std::vector<ServerConfig>& serverConfigs = _config.getServers();
-
-        DEBUG_LOG("- handling request:");
-        DEBUG_LOG(req);
-
-        // obtain the right config based on Host header
-        for (size_t j = 0; j < context.availableServers.size(); j++) {
-            int index = context.availableServers[j];
-            std::cout << index << std::endl;
-            if (serverConfigs[index].matchServerName(hostHeader)) {
-                chosenConfig = index;
-                break;
-            }
-        }
-        if (chosenConfig == -1)
-            chosenConfig = context.availableServers[0];
-        ServerConfig& config = _config.getServers().at(chosenConfig);
-        std::cout << "servername: " << config.server_name << std::endl;
-        std::cout << "host header: " << req.getHeader(HOST) << std::endl;
-
-        // process the request
-        Response res;
-        if (req.getState() == PENDING) {
-            res = router.route(req, config);
-            if (res.isError()) {
-                handleInvalidRequest(context, res);
-                break;
-            }
-            if (res.getMustLaunchCgi())
-                req.setState(CGI_START);
-            else
-                req.setState(DONE);
-        }
-        if (req.getState() == CGI_START) {
-            if (launchCgi(req) != 0) {
-                req.setStatusCode(BAD_GATEWAY);
-                res = router.route(req, config);
-                handleInvalidRequest(context, res);
-                break;
-            }
-
-            // generate response headers from CGI output
-            router.generateResponseFromCgiOutput(res, req.cgiInfo.getOutput());
-            // ?
-        }
-        if (req.getState() == CGI_STREAMING) {
-
-            // anything to do ?
-        }
-        if (req.getState() == DONE) {
-            if (req.cgiInfo.exists)
-                router.generateResponseFromCgiOutput(
-                    res, req.cgiInfo.getOutput()); // idea; this could be managed elsewhere also
-            // any additional steps for CGI requests ?
-            context.write_buffer.append(res.serialize());
-            context.requests.pop();
-        }
-    }
-    pfd.events = POLLOUT;
-}
-
-// handles partial request i.e. unfinished request but no more POLLIN revents (see Server::run() loop)
-// this is a case of bad request
-void Server::handlePartialRequest(ClientContext& context, struct pollfd& pfd, int& nfds) {
-    add_bad_request_to_queue(context); // the request was partial and not in the queue
-    DEBUG_LOG("handlePartialRequest: added bad request to queue");
-    handle_requests(context, pfd, nfds);
-    context.req_parser.setState(REQ_PARSE_COMPLETE);
 }
 
 // Handle incoming connections
@@ -259,7 +97,7 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
             return;
     }
 
-    handle_requests(ctx, pfds[i], nfds);
+    handle_requests(ctx, pfds, i, nfds);
 }
 
 void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
@@ -288,35 +126,12 @@ void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS
     return;
 }
 
-void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pfds)[MAX_EVENTS]) {
-    std::map<int, ClientContext>::iterator it;
-    long                                   currTime;
-
-    currTime = time(NULL);
-    if (currTime == -1)
-        return; // handleTimeError ?
-    it = contextMap.begin();
-    while (it != contextMap.end()) {
-        if ((currTime - it->second.lastActive) > CLIENT_TIMEOUT) {
-            int j         = 0;
-            int client_fd = it->first;
-            while (j < nfds && pfds[j].fd != client_fd)
-                j++;
-            ++it;
-            if (pfds[j].fd == client_fd)
-                disconnect_client(j, client_fd, pfds, nfds, contextMap);
-            continue;
-        }
-        ++it;
-    }
-}
-
 void Server::run() {
     struct pollfd    pfds[MAX_EVENTS];
     int              nfds;
     std::vector<int> listen_fds;
     ContextMap       contextMap;
-    CgiMap           cgiMap;
+    CgiFdMap         cgiFdMap;
 
     nfds       = 0;
     listen_fds = initListenerSockets(pfds, nfds);
@@ -345,16 +160,30 @@ void Server::run() {
 
             if (pfds[i].revents & (POLLERR | POLLNVAL)) {
                 DEBUG_LOG("--- POLLERR | POLLNVAL ---\n disconnect 1");
-                disconnect_client(i, listener, pfds, nfds, contextMap);
+                if (isCgiPipe(listener))
+                    cleanUpCgiFds(listener, pfds, nfds);
+                else
+                    disconnect_client(i, listener, pfds, nfds, contextMap);
+                continue;
+            }
+
+            if (isCgiPipe(listener)) {
+                if (waitForCgiTermination(pid_t, Request&) == -1) {
+                    cleanUpCgiFds(listener, pfds, nfds);
+                    disconnect_client(i, listener, pfds, nfds, contextMap);
+                }
                 continue;
             }
 
             if (pfds[i].revents & POLLIN) {
                 DEBUG_LOG("--- POLLIN ---");
 
-                if (isCGIReadFD(pfds[i], ....)) // => check CgiMap
-                    readFromCGIChild();
-                else if (_listenerToServers.count(listener))
+                // if (isCGIReadFD(pfds[i], ....)) // => check CgiFdMap
+                //     readFromCGIChild();
+                // if (readFromCgi(stdoutPipe, request) == -1)
+                //     return -1;
+                // else
+                if (_listenerToServers.count(listener))
                     handleNewConnection(listener, pfds, nfds, contextMap);
                 else
                     handleRead(listener, i, pfds, nfds, contextMap); // Read client data
@@ -362,8 +191,10 @@ void Server::run() {
             }
 
             if (pfds[i].revents & POLLOUT) {
-                // if isCGIWriteFD(pfds[i], ....); => check CgiMap
+                // if isCGIWriteFD(pfds[i], ....); => check CgiFdMap
                 //     writeToCGIChild();
+                // if (writeToCgi(stdinPipe, stdoutPipe, request) == -1)
+                //     return -1;
                 // else
                 sendResponses(listener, i, pfds, nfds, contextMap);
                 continue;

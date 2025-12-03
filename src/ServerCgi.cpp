@@ -1,6 +1,5 @@
 // ServerCgi.cpp
 
-#include <sstream>
 #include <sys/fcntl.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -9,8 +8,13 @@
 #include "Enums.hpp"
 #include "Request.hpp"
 #include "RequestRouter.hpp"
-#include "Response.hpp"
 #include "Server.hpp"
+
+bool Server::isCgiPipe(int listener) const {
+    if (_cgiFdMap.find(listener) == _cgiFdMap.end())
+        return false;
+    return true;
+}
 
 int Server::setupCgiPipes(int (&stdinPipe)[2], int (&stdoutPipe)[2]) {
     if (pipe(stdinPipe) == -1)
@@ -77,12 +81,67 @@ int Server::readFromCgi(int (&stdoutPipe)[2], Request& request) {
         waitpid(pid, NULL, 0);
         return -1;
     }
+    return 0;
 }
 
+// add CGI pipeFds to pfds, to CgiInfo and to CgiMap
+void Server::storeCgiPipeFds(const int stdinPipe[2], const int stdoutPipe[2], Request& request,
+                             struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
 
-int Server::launchCgi(Request& request) {
+    int writeCgiPipeFd = stdinPipe[1];
+    int readCgiPipeFd  = stdoutPipe[0];
+    request.cgiInfo.setWriteFd(writeCgiPipeFd);
+    request.cgiInfo.setReadFd(readCgiPipeFd);
 
-    // get prepared CGI info
+    setPollFd(pfds[nfds], writeCgiPipeFd, POLLOUT, 0);
+    ++nfds;
+    setPollFd(pfds[nfds], readCgiPipeFd, POLLIN, 0);
+    ++nfds;
+
+    CgiPipeInfo readPipeFdInfo;
+    readPipeFdInfo.cgiInfo   = &request.cgiInfo;
+    readPipeFdInfo.role      = CGI_STDIN;
+    _cgiFdMap[readCgiPipeFd] = readPipeFdInfo;
+
+    CgiPipeInfo writePipeFdInfo;
+    writePipeFdInfo.cgiInfo   = &request.cgiInfo;
+    writePipeFdInfo.role      = CGI_STDOUT;
+    _cgiFdMap[writeCgiPipeFd] = writePipeFdInfo;
+
+    // do we have to do something like this ?
+    context[new_client_fd].availableServers = _listenerToServers[listener];
+}
+
+void Server::cleanUpCgiFds(const int firedFd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) { // alternative (b)
+    CgiFdMap::iterator it = _cgiFdMap.find(firedFd);
+    if (it == _cgiFdMap.end() || it->second.cgiInfo == NULL)
+        return;
+
+    CgiInfo* info    = it->second.cgiInfo;
+    int      writeFd = info->getWriteFd();
+    int      readFd  = info->getReadFd();
+
+    if (writeFd >= 0) {
+        close(writeFd);
+        removePollEntry(writeFd, pfds, nfds);
+        _cgiFdMap.erase(writeFd);
+        info->setWriteFd(-1);
+    }
+    if (readFd >= 0) {
+        close(readFd);
+        removePollEntry(readFd, pfds, nfds);
+        _cgiFdMap.erase(readFd);
+        info->setReadFd(-1);
+    }
+    info->exists = false;
+}
+
+int Server::launchCgi(Request& request, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
+
+    if (nfds > MAX_EVENTS - 2)
+        return -1;
+
+    // get the prepared CGI info
     const std::string              scriptPath  = request.cgiInfo.getScriptPath();
     const std::string              interpreter = request.cgiInfo.getInterpreter();
     const std::vector<std::string> envStorage  = request.cgiInfo.getEnvStorage();
@@ -92,8 +151,9 @@ int Server::launchCgi(Request& request) {
     int stdoutPipe[2];
     if (setupCgiPipes(stdinPipe, stdoutPipe) == -1)
         return -1;
-    request.cgiInfo.setWriteFd(stdinPipe[1]);
-    request.cgiInfo.setReadFd(stdoutPipe[0]);
+
+    // add CGI pipes to all relevant structs
+    storeCgiPipeFds(stdinPipe, stdoutPipe, request, pfds, nfds);
 
     // fork
     pid_t pid = fork();
@@ -130,21 +190,8 @@ int Server::launchCgi(Request& request) {
     } else
         request.cgiInfo.setCgiPID(pid);
 
-    // write body to CGI
-    if (writeToCgi(stdinPipe, stdoutPipe, request) == -1)
-        return -1;
-
-    // read output from CGI
-    if (readFromCgi(stdoutPipe, request) == -1)
-        return -1;
-
-    // wait for CGI termination
-    if (waitForCgiTermination(pid, request) == -1)
-        return -1;
-
     return 0;
 }
-
 
 int Server::waitForCgiTermination(pid_t pid, Request& req) {
     (void)req;
