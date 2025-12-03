@@ -115,7 +115,7 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
         DEBUG_LOG("read returned 0 (client closed their send side)");
         ctx.close_after_responses = true;
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
-            handlePartialRequest(context[listener], pfds, nfds);
+            handlePartialRequest(context[listener], i, pfds, nfds);
             return;
         }
     } else if (len < 0) {
@@ -129,7 +129,7 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
             return;
     }
 
-    handle_requests(ctx, pfds, nfds);
+    handle_requests(ctx, i, pfds, nfds);
 }
 
 void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {

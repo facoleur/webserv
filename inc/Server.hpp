@@ -58,7 +58,7 @@ class Server {
 
     void             run();
     void             add_bad_request_to_queue(ClientContext&);
-    void             handle_requests(ClientContext&, struct pollfd (&)[MAX_EVENTS], int&);
+    void             handle_requests(ClientContext&, int, struct pollfd (&)[MAX_EVENTS], int&);
     void             handleInvalidRequest(ClientContext&, Response&);
     void             disconnect_client(int&, int&, struct pollfd (&)[MAX_EVENTS], int&, std::map<int, ClientContext>&);
     void             setPollFd(struct pollfd&, int, short, short);
@@ -67,7 +67,7 @@ class Server {
     int  handleNewConnection(int, struct pollfd (&)[MAX_EVENTS], int&, std::map<int, struct ClientContext>&);
     void handleRead(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
     void sendResponses(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
-    void handlePartialRequest(ClientContext&, struct pollfd (&)[MAX_EVENTS], int&);
+    void handlePartialRequest(ClientContext&, int, struct pollfd (&)[MAX_EVENTS], int&);
     void checkTimeouts(ContextMap&, int&, struct pollfd (&)[MAX_EVENTS]);
 
     // CGI

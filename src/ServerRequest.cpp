@@ -22,7 +22,7 @@ void Server::handleInvalidRequest(ClientContext& context, Response& res) {
     context.close_after_responses = true;
 }
 
-void Server::handle_requests(ClientContext& context, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
+void Server::handle_requests(ClientContext& context, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
 
     RequestRouter router;
 
@@ -103,14 +103,14 @@ void Server::handle_requests(ClientContext& context, struct pollfd (&pfds)[MAX_E
             context.requests.pop();
         }
     }
-    context.pfd.events = POLLOUT;
+    pfds[i].events = POLLOUT;
 }
 
 // handles partial request i.e. unfinished request but no more POLLIN revents (see Server::run() loop)
 // this is a case of bad request
-void Server::handlePartialRequest(ClientContext& context, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
+void Server::handlePartialRequest(ClientContext& context, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
     add_bad_request_to_queue(context); // the request was partial and not in the queue
     DEBUG_LOG("handlePartialRequest: added bad request to queue");
-    handle_requests(context, pfds, nfds);
+    handle_requests(context, i, pfds, nfds);
     context.req_parser.setState(REQ_PARSE_COMPLETE);
 }
