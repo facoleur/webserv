@@ -169,7 +169,7 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
 
         if (config.autoindex) {
             DEBUG_LOG("GET DONE autoindex");
-            return makeAutoindexResponse(path, config.path);
+            return makeAutoindexResponse(req.getPath(), path);
         } else {
             DEBUG_LOG("GET DONE 403 no autoindex");
             return makeErrorResponse(FORBIDDEN);
@@ -307,42 +307,47 @@ Response RequestRouter::makeErrorResponse(enum statusCode statusCode) {
     return res;
 }
 
-Response RequestRouter::makeAutoindexResponse(const std::string& path, const std::string& location) {
-    DIR* dirstream = opendir(path.c_str());
+Response RequestRouter::makeAutoindexResponse(const std::string& uri, const std::string& path) {
+    DIR* dir = opendir(path.c_str());
+    if (!dir)
+        return makeErrorResponse(NOT_FOUND);
 
-    std::string loc = location;
-    if (loc[loc.size() - 1] != '/')
-        loc.push_back('/');
+    std::vector<AutoIndexItem> entries;
 
-    std::vector<AutoIndexItem> files;
-    files.push_back(AutoIndexItem(getParentDir(path), "../", 0, T_DIR, ""));
-
-    while (dirent* f = readdir(dirstream)) {
-
-        if (std::string(f->d_name) == "." || std::string(f->d_name) == "..")
-            continue;
-
-        std::string name(f->d_name);
-        std::string fileloc = location + "/" + f->d_name;
-
-        std::string fullpath = path + "/" + f->d_name;
-        struct stat st;
-        stat(fullpath.c_str(), &st);
-
-        time_t     lastModified = st.st_mtime;
-        char       lastModifedReadable[64];
-        struct tm* tm = localtime(&lastModified);
-        strftime(lastModifedReadable, sizeof(lastModifedReadable), "%Y-%m-%d %H:%M:%S", tm);
-
-        enum autoIndexType type = T_FILE;
-        if (f->d_type == DT_DIR) {
-            type = T_DIR;
-            name.push_back('/');
-        }
-        files.push_back(AutoIndexItem(fileloc, name, st.st_size, type, lastModifedReadable));
+    if (uri != "/") {
+        std::string parent = getParent(uri);
+        entries.push_back(AutoIndexItem(parent, "../", 0, T_DIR, ""));
     }
 
-    std::string html = AutoIndex::fillTemplate(loc, files);
+    while (dirent* entry = readdir(dir)) {
+
+        std::string name(entry->d_name);
+
+        if (name == "." || name == "..")
+            continue;
+
+        std::string entryFsPath = path + "/" + entry->d_name;
+
+        struct stat st;
+        stat(entryFsPath.c_str(), &st);
+
+        char timestamp[64];
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&st.st_mtime));
+
+        std::string entryUrl = uri + "/" + entry->d_name;
+        removeDoubleSlash(entryUrl);
+
+        bool isDir = false;
+        if (entry->d_type == DT_DIR) {
+            isDir = true;
+            entryUrl.push_back('/');
+            name.push_back('/');
+        }
+
+        entries.push_back(AutoIndexItem(entryUrl, name, st.st_size, isDir ? T_DIR : T_FILE, timestamp));
+    }
+
+    std::string html = AutoIndex::fillTemplate(uri, entries);
 
     Response res;
     res.setStatusCode(OK);
@@ -426,6 +431,7 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
 
     try {
         resolvedPath = resolvePath(req, resolvedConfig.root, locationPath);
+
     } catch (std::exception&) {
         return makeErrorResponse(BAD_REQUEST);
     }
