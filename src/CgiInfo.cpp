@@ -4,7 +4,7 @@
 
 CgiInfo::CgiInfo()
     : exists(false), _request(NULL), _interpreter(), _scriptPath(), _envStorage(), _CgiPID(-1), _lastActive(-1),
-      _writeFd(-1), _readFd(-1), _bytesWrittenToCgi(0), _output() {
+      _writeFd(-1), _readFd(-1), _bytesWritten(0), _output() {
 }
 
 CgiInfo::~CgiInfo() {
@@ -43,8 +43,8 @@ int CgiInfo::getReadFd(void) const {
     return _readFd;
 }
 
-int CgiInfo::getBytesWrittenToCgi(void) const {
-    return _bytesWrittenToCgi;
+int CgiInfo::getBytesWritten(void) const {
+    return _bytesWritten;
 }
 
 std::string CgiInfo::getOutput(void) const {
@@ -84,8 +84,8 @@ void CgiInfo::setReadFd(int readFd) {
     _readFd = readFd;
 }
 
-void CgiInfo::setBytesWrittenToCgi(int bytesWrittenToCgi) {
-    _bytesWrittenToCgi = bytesWrittenToCgi;
+void CgiInfo::setBytesWritten(int bytesWritten) {
+    _bytesWritten = bytesWritten;
 }
 
 void CgiInfo::appendToOutput(std::string& content) {

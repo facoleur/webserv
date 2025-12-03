@@ -8,6 +8,7 @@
 #include "RequestRouter.hpp"
 #include "Response.hpp"
 #include "Utils.hpp"
+#include "Webserv.hpp"
 
 bool RequestRouter::isCgiRequest(const std::string& path, const LocationConfig& config) {
     return !getCgiInterpreter(path, config).empty();
@@ -108,12 +109,19 @@ Response RequestRouter::prepareCgi(Request& req, const std::string& path, const 
     return response;
 }
 
-void RequestRouter::generateResponseFromCgiOutput(Response& response, std::string output) {
+Response RequestRouter::generateResponseFromCgiOutput(Request& req, Response& response, std::string output) {
 
     std::string                        responseBody;
     std::map<std::string, std::string> responseHeaders;
     int                                statusCode    = 200;
     std::string                        statusMessage = "OK";
+
+    // check if there was an error
+    if (req.getStatusCode() != NO_STATUS) {
+        std::string reasonPhrase(ReasonPhrase::get(req.getStatusCode()));
+        DEBUG_LOG("RequestRouter::generateResponseFromCgiOutput(): status already set before to: " + reasonPhrase);
+        return makeErrorResponse(req.getStatusCode());
+    }
 
     // preparing the response
     response.setStatusCode(
@@ -193,4 +201,5 @@ void RequestRouter::generateResponseFromCgiOutput(Response& response, std::strin
         // else
         //     response.addHeader(headerIt->first, headerIt->second);
     }
+    return response;
 }

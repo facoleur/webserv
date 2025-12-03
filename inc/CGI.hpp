@@ -28,7 +28,7 @@ class CgiInfo {
     int                      getLastActive(void) const;
     int                      getWriteFd(void) const;
     int                      getReadFd(void) const;
-    int                      getBytesWrittenToCgi(void) const;
+    int                      getBytesWritten(void) const;
     std::string              getOutput(void) const;
 
     // setters
@@ -40,7 +40,7 @@ class CgiInfo {
     void setLastActive(int);
     void setWriteFd(int);
     void setReadFd(int);
-    void setBytesWrittenToCgi(int);
+    void setBytesWritten(int);
     void appendToOutput(std::string&);
 
   private:
@@ -49,23 +49,20 @@ class CgiInfo {
     std::string              _interpreter;
     std::string              _scriptPath;
     std::vector<std::string> _envStorage;
-    // std::string*             _bodyReference;
-    // ServerConfig*            _srvConfigPtr;
-    // LocationConfig*          _locConfigPtr;
 
     // run variables
     pid_t       _CgiPID;
     int         _lastActive;
     int         _writeFd;
     int         _readFd;
-    int         _bytesWrittenToCgi;
+    int         _bytesWritten;
     std::string _output;
 };
 
 // BODY REFERENCE
 // The “body reference” is just a pointer/offset into the original HTTP request body so you know how much of it has
 // already been written to the child. Instead of copying the body into a new buffer, store either a reference to
-// Request::getBody() plus an index (bytesWrittenToCgi) or a lightweight span structure; then each time the CGI stdin
+// Request::getBody() plus an index (bytesWritten) or a lightweight span structure; then each time the CGI stdin
 // pipe is writable you write from body.begin() + bytesWritten onward until everything is sent. This is the info CgiInfo
 // must keep so the streaming logic knows what remains to transfer. Intuition recap: route() sets up the plan,
 // launchCgi() spawns and registers the child, the poll loop advances read/write/waitpid, and only after the child

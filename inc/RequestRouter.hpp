@@ -43,7 +43,7 @@ class RequestRouter {
 
     std::string resolvePath(const Request&, const std::string&, const std::string&);
     Response    route(Request&, const ServerConfig&);
-    void        generateResponseFromCgiOutput(Response&, std::string);
+    Response    generateResponseFromCgiOutput(Request&, Response&, std::string);
 };
 
 const LocationConfig* findLocationConfig(const std::string& path, const ServerConfig& config);

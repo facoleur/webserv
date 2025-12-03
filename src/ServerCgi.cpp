@@ -1,5 +1,6 @@
 // ServerCgi.cpp
 
+#include <signal.h>
 #include <sys/fcntl.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -9,12 +10,19 @@
 #include "Request.hpp"
 #include "RequestRouter.hpp"
 #include "Server.hpp"
+#include "Webserv.hpp"
 
 bool Server::isCgiPipe(const int fd) const {
     CgiFdMap::const_iterator it = _cgiFdMap.find(fd);
     if (it == _cgiFdMap.end() || it->second.cgiInfo == NULL)
         return false;
     return true;
+}
+
+bool Server::isCGIPipeRole(int listener, CgiPipeRole role) const {
+    if (!isCgiPipe(listener))
+        return false;
+    return _cgiFdMap.at(listener).role == role;
 }
 
 int Server::setupCgiPipes(int (&stdinPipe)[2], int (&stdoutPipe)[2]) {
@@ -45,51 +53,6 @@ int Server::setupCgiPipes(int (&stdinPipe)[2], int (&stdoutPipe)[2]) {
     return 0;
 }
 
-int Server::writeToCgi(int (&stdinPipe)[2], int (&stdoutPipe)[2], Request& request) {
-    pid_t pid = request.cgiInfo.getCgiPID();
-
-    close(stdinPipe[0]);
-    close(stdoutPipe[1]);
-
-    const std::string& body    = request.getBody();
-    size_t             written = 0;
-    while (written < body.size()) {
-        ssize_t chunk = write(stdinPipe[1], body.data() + written, body.size() - written);
-        if (chunk <= 0) {
-            close(stdinPipe[1]);
-            close(stdoutPipe[0]);
-            waitpid(pid, NULL, 0);
-            return -1;
-        }
-        written += static_cast<size_t>(chunk);
-        request.cgiInfo.setLastActive(time(NULL));
-    }
-    close(stdinPipe[1]);
-    return 0;
-}
-
-int Server::readFromCgi(int fd, Request& request) {
-    int         cgiReadFd = request.cgiInfo.getReadFd();
-    pid_t       pid       = request.cgiInfo.getCgiPID();
-    std::string output;
-    char        buffer[4096];
-
-    if (fd != cgiReadFd) // wrong fd
-        return -1;
-
-    ssize_t bytes = 0;
-    while ((bytes = read(fd, buffer, sizeof(buffer))) > 0) {
-        output.append(buffer, static_cast<size_t>(bytes));
-        request.cgiInfo.setLastActive(time(NULL));
-    }
-    close(fd);
-    if (bytes == -1) {
-        waitpid(pid, NULL, 0);
-        return -1;
-    }
-    return 0;
-}
-
 // add CGI pipeFds to pfds, to CgiInfo and to CgiMap
 void Server::storeCgiPipeFds(const int stdinPipe[2], const int stdoutPipe[2], Request& request,
                              struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
@@ -115,27 +78,20 @@ void Server::storeCgiPipeFds(const int stdinPipe[2], const int stdoutPipe[2], Re
     _cgiFdMap[readCgiPipeFd] = readPipeFdInfo;
 }
 
-void Server::cleanUpCgiFds(const int firedFd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) { // alternative (b)
-    if (!isCgiPipe(firedFd))
+void Server::cleanUpCgiFd(int fd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
+    if (!isCgiPipe(fd) || fd < 0)
         return;
 
-    CgiInfo* info    = _cgiFdMap[firedFd].cgiInfo;
-    int      writeFd = info->getWriteFd();
-    int      readFd  = info->getReadFd();
+    CgiFdMap::iterator it   = _cgiFdMap.find(fd);
+    CgiInfo*           info = it->second.cgiInfo;
+    close(fd);
+    removePollEntry(fd, pfds, nfds);
+    _cgiFdMap.erase(it);
 
-    if (writeFd >= 0) {
-        close(writeFd);
-        removePollEntry(writeFd, pfds, nfds);
-        _cgiFdMap.erase(writeFd);
+    if (it->second.role == CGI_STDIN)
         info->setWriteFd(-1);
-    }
-    if (readFd >= 0) {
-        close(readFd);
-        removePollEntry(readFd, pfds, nfds);
-        _cgiFdMap.erase(readFd);
+    else
         info->setReadFd(-1);
-    }
-    info->exists = false;
 }
 
 int Server::launchCgi(Request& request, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
@@ -195,6 +151,54 @@ int Server::launchCgi(Request& request, struct pollfd (&pfds)[MAX_EVENTS], int& 
     return 0;
 }
 
+void Server::terminateCgiProcess(pid_t pid) {
+    if (pid <= 0)
+        return;
+
+    kill(pid, SIGTERM);
+
+    for (int attempt = 0; attempt < 5; ++attempt) {
+        int   status = 0;
+        pid_t ret    = waitpid(pid, &status, WNOHANG);
+        if (ret == pid || ret == -1)
+            return;
+        usleep(50000); // 50 ms grace slice
+    }
+
+    kill(pid, SIGKILL);
+    waitpid(pid, NULL, WNOHANG);
+}
+
+void Server::cleanUpBothCgiFds(const int fd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
+    CgiFdMap::iterator it = _cgiFdMap.find(fd);
+    if (it == _cgiFdMap.end() || it->second.cgiInfo == NULL)
+        return;
+
+    CgiInfo* info = it->second.cgiInfo;
+    if (info->getWriteFd() >= 0)
+        cleanUpCgiFd(info->getWriteFd(), pfds, nfds);
+    if (info->getReadFd() >= 0)
+        cleanUpCgiFd(info->getReadFd(), pfds, nfds);
+    info->exists = false;
+}
+
+void Server::handleCgiError(const int fd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, statusCode statusCode) {
+    if (!_cgiFdMap[fd].cgiInfo)
+        return;
+
+    Request* req    = _cgiFdMap[fd].cgiInfo->getRequest();
+    pid_t    cgiPID = _cgiFdMap[fd].cgiInfo->getCgiPID();
+
+    // CGI handling
+    cleanUpBothCgiFds(fd, pfds, nfds);
+    terminateCgiProcess(cgiPID);
+
+    // request handling
+    req->setStatusCode(statusCode);
+    req->setState(CGI_DONE);
+    DEBUG_LOG("handleCgiError(): done");
+}
+
 int Server::waitForCgiTermination(pid_t pid, Request& req) {
     (void)req;
     int status = 0;
@@ -209,7 +213,7 @@ int Server::waitForCgiTermination(pid_t pid, Request& req) {
         return -1;
     // if (ret == 0)    // child still running, leave the pipes registered and keep enforcing timeouts
     //                  // do nothing, continue server ?
-    //     if (ret > 0) // child exited => clean up pipes, parse buffered output, transition the request to DONE (or
+    //     if (ret > 0) // child exited => clean up pipes, parse buffered output, transition the request to CGI_DONE (or
     //     error
     //                  // if !WIFEXITED/WEXITSTATUS != 0)
     return 0;

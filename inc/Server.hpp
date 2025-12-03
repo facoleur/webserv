@@ -59,27 +59,29 @@ class Server {
     void             run();
     void             add_bad_request_to_queue(ClientContext&);
     void             handle_requests(ClientContext&, int, struct pollfd (&)[MAX_EVENTS], int&);
-    void             handleInvalidRequest(ClientContext&, Response&);
+    void             handleInvalidRequest(ClientContext&, Response&, struct pollfd&);
     void             disconnect_client(int&, int&, struct pollfd (&)[MAX_EVENTS], int&, std::map<int, ClientContext>&);
     void             setPollFd(struct pollfd&, int, short, short);
     void             removePollEntry(int, struct pollfd (&)[MAX_EVENTS], int&);
     std::vector<int> initListenerSockets(struct pollfd (&)[MAX_EVENTS], int&);
     int  handleNewConnection(int, struct pollfd (&)[MAX_EVENTS], int&, std::map<int, struct ClientContext>&);
-    void handleRead(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
-    void sendResponses(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
+    int  handleRead(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
+    int  sendResponses(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
     void handlePartialRequest(ClientContext&, int, struct pollfd (&)[MAX_EVENTS], int&);
     void checkTimeouts(ContextMap&, int&, struct pollfd (&)[MAX_EVENTS]);
 
     // CGI
     bool isCgiPipe(int) const;
+    bool isCGIPipeRole(int, CgiPipeRole) const;
     int  launchCgi(Request&, struct pollfd (&)[MAX_EVENTS], int&);
     int  setupCgiPipes(int (&)[2], int (&)[2]);
     void storeCgiPipeFds(const int[2], const int[2], Request&, struct pollfd (&)[MAX_EVENTS], int&);
-    void cleanUpCgiFds(const int, struct pollfd (&)[MAX_EVENTS], int&);
-    int  writeToCgi(int (&)[2], int (&)[2], Request&);
-    int  readFromCgi(int, Request&);
+    void cleanUpCgiFd(const int, struct pollfd (&)[MAX_EVENTS], int&);
+    void cleanUpBothCgiFds(const int, struct pollfd (&)[MAX_EVENTS], int&);
+    int  writePendingBodyToCgi(const int, struct pollfd (&)[MAX_EVENTS], int&);
+    int  readFromCgi(const int, struct pollfd (&)[MAX_EVENTS], int&);
     int  waitForCgiTermination(pid_t, Request&);
-    void handleCgiError(const int, struct pollfd (&)[MAX_EVENTS], int&, ClientContext*, statusCode);
+    void handleCgiError(const int, struct pollfd (&)[MAX_EVENTS], int&, statusCode);
     void terminateCgiProcess(pid_t);
 };
 

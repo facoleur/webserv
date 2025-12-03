@@ -5,7 +5,7 @@
 #include <map>
 #include <string>
 
-enum requestState { PENDING, CGI_START, CGI_STREAMING, DONE };
+enum requestState { PENDING, CGI_START, CGI_STREAMING, CGI_DONE };
 
 enum requestHeaders {
     SERVER,
