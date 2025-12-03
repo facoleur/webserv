@@ -22,3 +22,5 @@ tests/logs/cgi_server.log
 
 .cache/**
 compile_commands.json
+nginx_test/upload/*
+nginx_test/logs/*
