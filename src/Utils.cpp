@@ -51,6 +51,12 @@ void replace(std::string& str, const std::string& from, const std::string& to) {
     }
 }
 
+void removeDoubleSlash(std::string& s) {
+    while (s.find("//") != std::string::npos) {
+        replace(s, "//", "/");
+    }
+}
+
 std::vector<std::string> split(const std::string& s, char delimiter) {
     std::vector<std::string> tokens;
     std::stringstream        ss(s);
@@ -98,7 +104,7 @@ std::string readFile(const std::ifstream& file) {
     return content.str();
 }
 
-std::string getParentDir(const std::string& path) {
+std::string getParent(const std::string& path) {
     if (path.empty())
         return "";
 
@@ -113,7 +119,10 @@ std::string getParentDir(const std::string& path) {
     if (pos == 0)
         return "/";
 
-    return trimmed.substr(0, pos);
+    std::string parentPath = "/" + trimmed.substr(0, pos) + "/";
+
+    removeDoubleSlash(parentPath);
+    return parentPath;
 }
 
 bool isSpace(int i) {
