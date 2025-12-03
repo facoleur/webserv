@@ -139,16 +139,6 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
 
     if (isDirectory(path)) {
 
-        if (!path.empty() && path[path.size() - 1] != '/') {
-            res.setStatusCode(REDIRECT);
-            res.setHeader(LOCATION, path + "/");
-            res.setBody("");
-            res.setHeader(CONTENT_LENGTH, "0");
-            DEBUG_LOG("GET DONE redirect");
-
-            return res;
-        }
-
         for (size_t i = 0; i < config.index_files.size(); ++i) {
             std::string indexPath = path + config.index_files[i];
             if (!resourceExists(indexPath, req))
@@ -231,7 +221,11 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
     out.write(req.getBody().c_str(), req.getBody().size());
 
     Response res;
-    res.setHeader(LOCATION, uploadPath);
+
+    std::string location = req.getPath() + "/" + filename;
+    removeDoubleSlash(location);
+
+    res.setHeader(LOCATION, location);
     res.setStatusCode(CREATED);
     res.setBody(generateHtml("Upload success!"));
     res.setHeader(CONTENT_LENGTH, toString(res.getBody().size()));
@@ -441,6 +435,17 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
 
     if (!resourceExists(resolvedPath, req)) {
         return makeErrorResponse(NOT_FOUND);
+    }
+
+    if (isDirectory(resolvedPath)) {
+        Response res;
+        if (!resolvedPath.empty() && resolvedPath[resolvedPath.size() - 1] != '/') {
+            res.setStatusCode(REDIRECT);
+            res.setHeader(LOCATION, req.getPath() + "/");
+            res.setBody("");
+            res.setHeader(CONTENT_LENGTH, "0");
+            return res;
+        }
     }
 
     if (!isMethodAllowed(req, resolvedConfig)) {
