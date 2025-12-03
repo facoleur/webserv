@@ -10,6 +10,11 @@ Request::Request(void)
     : _state(PENDING), _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _body(), _statusCode(NO_STATUS) {
 }
 
+Request::Request(ClientContext& client)
+    : _state(PENDING), _client(&client), _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _body(),
+      _statusCode(NO_STATUS) {
+}
+
 Request::~Request(void) {
 }
 
@@ -29,6 +34,10 @@ std::ostream& operator<<(std::ostream& os, const Request& req) {
 
 enum requestState Request::getState(void) const {
     return _state;
+}
+
+ClientContext* Request::getClientPtr(void) {
+    return _client;
 }
 
 enum requestMethod Request::getMethod(void) const {

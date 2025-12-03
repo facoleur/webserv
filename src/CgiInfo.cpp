@@ -3,13 +3,18 @@
 #include "CGI.hpp"
 
 CgiInfo::CgiInfo()
-    : exists(false), _CgiPID(-1), _lastActive(-1), _writeFd(-1), _readFd(-1), _bytesWrittenToCgi(0), _output() {
+    : exists(false), _request(NULL), _interpreter(), _scriptPath(), _envStorage(), _CgiPID(-1), _lastActive(-1),
+      _writeFd(-1), _readFd(-1), _bytesWrittenToCgi(0), _output() {
 }
 
 CgiInfo::~CgiInfo() {
 }
 
 // getters
+Request* CgiInfo::getRequest(void) const {
+    return _request;
+}
+
 std::string CgiInfo::getInterpreter(void) const {
     return _interpreter;
 }
@@ -47,6 +52,10 @@ std::string CgiInfo::getOutput(void) const {
 }
 
 // setters
+void CgiInfo::setRequest(Request& request) {
+    _request = &request;
+}
+
 void CgiInfo::setInterpreter(const std::string& interpreter) {
     _interpreter = interpreter;
 }

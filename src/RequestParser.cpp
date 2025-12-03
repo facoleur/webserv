@@ -159,8 +159,8 @@ int RequestParser::extractChunkData(void) {
     return PARSE_MORE_CHUNKS;
 }
 
-void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
-    Request req;
+void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, ClientContext& context) {
+    Request req(context);
     int     ret;
 
     _accumulator += buf;
@@ -231,7 +231,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue) {
                 }
                 DEBUG_LOG(req);
                 reqQueue.push(req);
-                req = Request();
+                req = Request(context);
                 this->resetParser();
                 _parsingPhase = PARSING_START_LINE;
             }

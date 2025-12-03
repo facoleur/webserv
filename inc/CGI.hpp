@@ -4,10 +4,12 @@
 
 #include <string>
 #include <sys/types.h>
+#include <vector>
 
-#include "Config.hpp"
+class Request;
 
 #define CGI_BUFFER_SIZE 4096
+#define CGI_TIMEOUT 10
 
 class CgiInfo {
   public:
@@ -18,6 +20,7 @@ class CgiInfo {
     bool exists;
 
     // getters
+    Request*                 getRequest(void) const;
     std::string              getInterpreter(void) const;
     std::string              getScriptPath(void) const;
     std::vector<std::string> getEnvStorage(void) const;
@@ -29,6 +32,7 @@ class CgiInfo {
     std::string              getOutput(void) const;
 
     // setters
+    void setRequest(Request&);
     void setInterpreter(const std::string&);
     void setScriptPath(const std::string&);
     void setEnvStorage(const std::vector<std::string>&);
@@ -41,6 +45,7 @@ class CgiInfo {
 
   private:
     // launch variables
+    Request*                 _request; // the request owning the CGI
     std::string              _interpreter;
     std::string              _scriptPath;
     std::vector<std::string> _envStorage;

@@ -22,6 +22,7 @@
 #define FIRST_SECTION_OK 6
 
 class Request;
+struct ClientContext;
 
 /* parses an HTTP request, (in)validating its syntax, and storing the result in
 a Request object */
@@ -33,7 +34,7 @@ class RequestParser {
     ~RequestParser(void);
 
     // public functions
-    void feed(char*, std::queue<Request>&);
+    void feed(char*, std::queue<Request>&, ClientContext&);
     void resetParser(void);
 
     // getters

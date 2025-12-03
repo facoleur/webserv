@@ -100,6 +100,9 @@ Response RequestRouter::prepareCgi(Request& req, const std::string& path, const 
     std::vector<std::string> envStorage = storeCgiEnv(req, resolvedConfig, serverConfig, path);
     req.cgiInfo.setEnvStorage(envStorage);
 
+    // set CGI owning request
+    req.cgiInfo.setRequest(req);
+
     Response response;
     response.setMustLaunchCgi(true);
     return response;

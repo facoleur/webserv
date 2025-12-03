@@ -7,6 +7,7 @@
 #include "CGI.hpp"
 #include "Enums.hpp"
 
+struct ClientContext;
 class Response;
 
 // stores and validates (semantically) an HTTP request
@@ -14,6 +15,7 @@ class Request {
   public:
     // Constructors
     Request(void);
+    Request(ClientContext&);
     ~Request(void);
 
     CgiInfo cgiInfo;
@@ -23,6 +25,7 @@ class Request {
 
     // getters
     requestState       getState(void) const;
+    ClientContext*     getClientPtr(void);
     requestMethod      getMethod(void) const;
     const std::string& getPath(void) const;
     const std::string& getQueryString(void) const;
@@ -46,11 +49,12 @@ class Request {
 
   private:
     // Attributes
-    requestState  _state;
-    requestMethod _method;
-    std::string   _path;
-    std::string   _queryString;
-    std::string   _protocolVersion;
+    requestState   _state;
+    ClientContext* _client;
+    requestMethod  _method;
+    std::string    _path;
+    std::string    _queryString;
+    std::string    _protocolVersion;
 
     headersMap  _headers;
     std::string _body;

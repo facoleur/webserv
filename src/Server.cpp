@@ -5,11 +5,14 @@
 #include <cstring>
 #include <iostream>
 #include <map>
+#include <signal.h>
 #include <string>
+#include <sys/_types/_pid_t.h>
 #include <sys/time.h>
 #include <utility>
 #include <vector>
 
+#include "CGI.hpp"
 #include "Config.hpp"
 #include "Enums.hpp"
 #include "RequestParser.hpp"
@@ -31,31 +34,55 @@ ClientContext::ClientContext(void) : close_after_responses(false), selectedServe
 }
 
 void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pfds)[MAX_EVENTS]) {
-    std::map<int, ClientContext>::iterator it;
-    long                                   currTime;
+    ContextMap::iterator itClient;
+    CgiFdMap::iterator   itCgi;
+    long                 currTime;
 
     currTime = time(NULL);
     if (currTime == -1)
         return; // handleTimeError ?
-    it = contextMap.begin();
-    while (it != contextMap.end()) {
-        if ((currTime - it->second.lastActive) > CLIENT_TIMEOUT) {
+
+    // loop over all clients
+    itClient = contextMap.begin();
+    while (itClient != contextMap.end()) {
+        ClientContext& client = itClient->second;
+
+        // if client has passed timeout
+        if ((currTime - client.lastActive) > CLIENT_TIMEOUT) {
             int j         = 0;
-            int client_fd = it->first;
+            int client_fd = itClient->first;
+
+            // check that the client_fd is in pfds
             while (j < nfds && pfds[j].fd != client_fd)
                 j++;
-            ++it;
-            if (pfds[j].fd == client_fd) {
-                // if (isCGIFd()) {
-                //     killCGI();
-                //     cleanUpCgiFds(const int, struct pollfd(&)[64], int&);
-                //     client_fd = getClientFromCGI();
-                // }
-                disconnect_client(j, client_fd, pfds, nfds, contextMap);
+            if (j == nfds) { // client fd not found in pfds
+                ++itClient;
+                continue;
             }
+            ++itClient; // to avoid issues when client is removed from contextMap in disconnect_client()
+
+            // close the client_fd, remove itClient from pfds and remove the clientContext from the contextMap
+            disconnect_client(j, client_fd, pfds, nfds, contextMap);
+            continue; // skip the ++itClient
+        } else
+            ++itClient;
+    }
+
+    // loop over all CGIs
+    itCgi = _cgiFdMap.begin();
+    while (itCgi != _cgiFdMap.end()) {
+        CgiFdMap::iterator current = itCgi++;
+        CgiPipeInfo&       pipe    = current->second;
+
+        if (!pipe.cgiInfo)
             continue;
+
+        // CGI has passed timeout
+        if ((currTime - pipe.cgiInfo->getLastActive()) > CGI_TIMEOUT) {
+            int            cgiFd     = current->first;
+            ClientContext* clientPtr = current->second.cgiInfo->getRequest()->getClientPtr();
+            handleCgiError(cgiFd, pfds, nfds, clientPtr, GATEWAY_TIMEOUT);
         }
-        ++it;
     }
 }
 
@@ -88,7 +115,7 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
         DEBUG_LOG("read returned 0 (client closed their send side)");
         ctx.close_after_responses = true;
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
-            handlePartialRequest(context[listener], i, pfds, nfds);
+            handlePartialRequest(context[listener], pfds, nfds);
             return;
         }
     } else if (len < 0) {
@@ -97,12 +124,12 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
         return;
     } else { // Parsing
         tmp[len] = '\0';
-        ctx.req_parser.feed(tmp, ctx.requests);
+        ctx.req_parser.feed(tmp, ctx.requests, context[listener]);
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL)
             return;
     }
 
-    handle_requests(ctx, pfds, i, nfds);
+    handle_requests(ctx, pfds, nfds);
 }
 
 void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
@@ -131,12 +158,49 @@ void Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS
     return;
 }
 
+void Server::terminateCgiProcess(pid_t pid) {
+    if (pid <= 0)
+        return;
+
+    kill(pid, SIGTERM);
+
+    for (int attempt = 0; attempt < 5; ++attempt) {
+        int   status = 0;
+        pid_t ret    = waitpid(pid, &status, WNOHANG);
+        if (ret == pid || ret == -1)
+            return;
+        usleep(50000); // 50 ms grace slice
+    }
+
+    kill(pid, SIGKILL);
+    waitpid(pid, NULL, WNOHANG);
+}
+
+void Server::handleCgiError(const int fd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ClientContext* context,
+                            statusCode statusCode) {
+    if (!_cgiFdMap[fd].cgiInfo)
+        return;
+
+    Request* req    = _cgiFdMap[fd].cgiInfo->getRequest();
+    pid_t    cgiPID = _cgiFdMap[fd].cgiInfo->getCgiPID();
+
+    // CGI handling
+    cleanUpCgiFds(fd, pfds, nfds);
+    terminateCgiProcess(cgiPID);
+
+    // request handling
+    if (!context)
+        context->close_after_responses = true;
+    req->setStatusCode(statusCode);
+    req->setState(DONE);
+    DEBUG_LOG("handleCgiError(): done");
+}
+
 void Server::run() {
     struct pollfd    pfds[MAX_EVENTS];
     int              nfds;
     std::vector<int> listen_fds;
     ContextMap       contextMap;
-    CgiFdMap         cgiFdMap;
 
     nfds       = 0;
     listen_fds = initListenerSockets(pfds, nfds);
@@ -159,16 +223,15 @@ void Server::run() {
 
         // handle events of each pollfd
         for (int i = 0; i < nfds; i++) {
-            DEBUG_LOG("* for loop: i == " + toString(i) + " *");
             int listener = pfds[i].fd;
-            DEBUG_LOG("listener: " + toString(listener));
+            DEBUG_LOG("* for loop: i == " + toString(i) + " *\n" + "listener: " + toString(listener));
 
             if (pfds[i].revents & (POLLERR | POLLNVAL)) {
                 DEBUG_LOG("--- POLLERR | POLLNVAL ---\n disconnect 1");
-                // if (isCgiPipe(listener))
-                //     cleanUpCgiFds(listener, pfds, nfds);
-                // else
-                disconnect_client(i, listener, pfds, nfds, contextMap);
+                if (isCgiPipe(listener))
+                    handleCgiError(listener, pfds, nfds, &contextMap[listener], BAD_GATEWAY);
+                else
+                    disconnect_client(i, listener, pfds, nfds, contextMap);
                 continue;
             }
 

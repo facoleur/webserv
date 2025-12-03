@@ -5,6 +5,7 @@
 #include "AutoIndex.hpp"
 #include "Config.hpp"
 #include "Enums.hpp"
+#include "Server.hpp"
 #include "Utils.hpp"
 
 class Request;

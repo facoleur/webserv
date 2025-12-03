@@ -10,8 +10,9 @@
 #include "RequestRouter.hpp"
 #include "Server.hpp"
 
-bool Server::isCgiPipe(int listener) const {
-    if (_cgiFdMap.find(listener) == _cgiFdMap.end())
+bool Server::isCgiPipe(const int fd) const {
+    CgiFdMap::const_iterator it = _cgiFdMap.find(fd);
+    if (it == _cgiFdMap.end() || it->second.cgiInfo == NULL)
         return false;
     return true;
 }
@@ -67,16 +68,21 @@ int Server::writeToCgi(int (&stdinPipe)[2], int (&stdoutPipe)[2], Request& reque
     return 0;
 }
 
-int Server::readFromCgi(int (&stdoutPipe)[2], Request& request) {
-    pid_t       pid = request.cgiInfo.getCgiPID();
+int Server::readFromCgi(int fd, Request& request) {
+    int         cgiReadFd = request.cgiInfo.getReadFd();
+    pid_t       pid       = request.cgiInfo.getCgiPID();
     std::string output;
     char        buffer[4096];
-    ssize_t     bytes = 0;
-    while ((bytes = read(stdoutPipe[0], buffer, sizeof(buffer))) > 0) {
+
+    if (fd != cgiReadFd) // wrong fd
+        return -1;
+
+    ssize_t bytes = 0;
+    while ((bytes = read(fd, buffer, sizeof(buffer))) > 0) {
         output.append(buffer, static_cast<size_t>(bytes));
         request.cgiInfo.setLastActive(time(NULL));
     }
-    close(stdoutPipe[0]);
+    close(fd);
     if (bytes == -1) {
         waitpid(pid, NULL, 0);
         return -1;
@@ -98,23 +104,22 @@ void Server::storeCgiPipeFds(const int stdinPipe[2], const int stdoutPipe[2], Re
     setPollFd(pfds[nfds], readCgiPipeFd, POLLIN, 0);
     ++nfds;
 
-    CgiPipeInfo readPipeFdInfo;
-    readPipeFdInfo.cgiInfo   = &request.cgiInfo;
-    readPipeFdInfo.role      = CGI_STDIN;
-    _cgiFdMap[readCgiPipeFd] = readPipeFdInfo;
-
     CgiPipeInfo writePipeFdInfo;
     writePipeFdInfo.cgiInfo   = &request.cgiInfo;
-    writePipeFdInfo.role      = CGI_STDOUT;
+    writePipeFdInfo.role      = CGI_STDIN;
     _cgiFdMap[writeCgiPipeFd] = writePipeFdInfo;
+
+    CgiPipeInfo readPipeFdInfo;
+    readPipeFdInfo.cgiInfo   = &request.cgiInfo;
+    readPipeFdInfo.role      = CGI_STDOUT;
+    _cgiFdMap[readCgiPipeFd] = readPipeFdInfo;
 }
 
 void Server::cleanUpCgiFds(const int firedFd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) { // alternative (b)
-    CgiFdMap::iterator it = _cgiFdMap.find(firedFd);
-    if (it == _cgiFdMap.end() || it->second.cgiInfo == NULL)
+    if (!isCgiPipe(firedFd))
         return;
 
-    CgiInfo* info    = it->second.cgiInfo;
+    CgiInfo* info    = _cgiFdMap[firedFd].cgiInfo;
     int      writeFd = info->getWriteFd();
     int      readFd  = info->getReadFd();
 
