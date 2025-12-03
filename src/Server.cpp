@@ -14,7 +14,6 @@
 #include "Enums.hpp"
 #include "RequestParser.hpp"
 #include "RequestRouter.hpp"
-#include "Response.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
 #include "Webserv.hpp"
@@ -46,8 +45,14 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
             while (j < nfds && pfds[j].fd != client_fd)
                 j++;
             ++it;
-            if (pfds[j].fd == client_fd)
+            if (pfds[j].fd == client_fd) {
+                // if (isCGIFd()) {
+                //     killCGI();
+                //     cleanUpCgiFds(const int, struct pollfd(&)[64], int&);
+                //     client_fd = getClientFromCGI();
+                // }
                 disconnect_client(j, client_fd, pfds, nfds, contextMap);
+            }
             continue;
         }
         ++it;
@@ -83,7 +88,7 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
         DEBUG_LOG("read returned 0 (client closed their send side)");
         ctx.close_after_responses = true;
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
-            handlePartialRequest(context[listener], pfds[i], nfds);
+            handlePartialRequest(context[listener], i, pfds, nfds);
             return;
         }
     } else if (len < 0) {
@@ -160,28 +165,29 @@ void Server::run() {
 
             if (pfds[i].revents & (POLLERR | POLLNVAL)) {
                 DEBUG_LOG("--- POLLERR | POLLNVAL ---\n disconnect 1");
-                if (isCgiPipe(listener))
-                    cleanUpCgiFds(listener, pfds, nfds);
-                else
-                    disconnect_client(i, listener, pfds, nfds, contextMap);
+                // if (isCgiPipe(listener))
+                //     cleanUpCgiFds(listener, pfds, nfds);
+                // else
+                disconnect_client(i, listener, pfds, nfds, contextMap);
                 continue;
             }
 
-            if (isCgiPipe(listener)) {
-                if (waitForCgiTermination(pid_t, Request&) == -1) {
-                    cleanUpCgiFds(listener, pfds, nfds);
-                    disconnect_client(i, listener, pfds, nfds, contextMap);
-                }
-                continue;
-            }
+            // if (isCgiPipe(listener)) {
+            //     if (waitForCgiTermination(pid_t, Request&) == -1) {
+            //         cleanUpCgiFds(listener, pfds, nfds);
+            //         disconnect_client(i, listener, pfds, nfds, contextMap);
+            //     }
+            //     continue;
+            // }
 
             if (pfds[i].revents & POLLIN) {
                 DEBUG_LOG("--- POLLIN ---");
 
                 // if (isCGIReadFD(pfds[i], ....)) // => check CgiFdMap
-                //     readFromCGIChild();
-                // if (readFromCgi(stdoutPipe, request) == -1)
-                //     return -1;
+                // {
+                // 		if (readFromCgi(stdoutPipe, request) == -1)
+                //     		return -1;
+                // }
                 // else
                 if (_listenerToServers.count(listener))
                     handleNewConnection(listener, pfds, nfds, contextMap);
@@ -192,9 +198,10 @@ void Server::run() {
 
             if (pfds[i].revents & POLLOUT) {
                 // if isCGIWriteFD(pfds[i], ....); => check CgiFdMap
-                //     writeToCGIChild();
-                // if (writeToCgi(stdinPipe, stdoutPipe, request) == -1)
-                //     return -1;
+                // {
+                // 		if (writeToCgi(stdinPipe, stdoutPipe, request) == -1)
+                //     		return -1;
+                // }
                 // else
                 sendResponses(listener, i, pfds, nfds, contextMap);
                 continue;

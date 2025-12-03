@@ -16,7 +16,7 @@ OBJ_DIR := bin
 SRCS := main.cpp ConfigFile.cpp Config.cpp ConfigParser.cpp Request.cpp RequestParser.cpp \
         RequestParserHeaders.cpp RequestParserStartLine.cpp RequestRouter.cpp \
 		OutstreamUtils.cpp Response.cpp Server.cpp ServerCgi.cpp ServerRequest.cpp ServerUtils.cpp \
-		Utils.cpp AutoIndex.cpp CGI.cpp CgiInfo.cpp	RequestRouterCgi.cpp
+		Utils.cpp AutoIndex.cpp CgiInfo.cpp	RequestRouterCgi.cpp
 HEADERS := ConfigFile.hpp Config.hpp ConfigParser.hpp Enums.hpp Request.hpp RequestParser.hpp \
            RequestRouter.hpp Response.hpp Server.hpp Utils.hpp Webserv.hpp AutoIndex.hpp  CGI.hpp
 

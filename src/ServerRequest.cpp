@@ -52,52 +52,61 @@ void Server::handle_requests(ClientContext& context, struct pollfd (&pfds)[MAX_E
         std::cout << "servername: " << config.server_name << std::endl;
         std::cout << "host header: " << req.getHeader(HOST) << std::endl;
 
-        // process the request
         Response res;
-        if (req.getState() == PENDING) {
-            res = router.route(req, config);
-            if (res.isError()) {
-                handleInvalidRequest(context, res);
-                break;
-            }
-            if (res.getMustLaunchCgi())
-                req.setState(CGI_START);
-            else
-                req.setState(DONE);
+        res = router.route(req, config);
+        if (res.isError()) {
+            handleInvalidRequest(context, res);
+            break;
         }
-        if (req.getState() == CGI_START) {
-            if (launchCgi(req, pfds, nfds) != 0) {
-                req.setStatusCode(BAD_GATEWAY);
-                res = router.route(req, config);
-                handleInvalidRequest(context, res);
-                break;
-            }
+        context.write_buffer.append(res.serialize());
+        context.requests.pop();
 
-            // generate response headers from CGI output
-            router.generateResponseFromCgiOutput(res, req.cgiInfo.getOutput());
-            // ?
-        }
-        if (req.getState() == CGI_STREAMING) {
-
-            // anything to do ?
-        }
-        if (req.getState() == DONE) {
-            if (req.cgiInfo.exists)
-                router.generateResponseFromCgiOutput(
-                    res, req.cgiInfo.getOutput()); // idea; this could be managed elsewhere also
-            // any additional steps for CGI requests ?
-            context.write_buffer.append(res.serialize());
-            context.requests.pop();
-        }
+        (void)nfds;
+        // process the request
+        // Response res;
+        // if (req.getState() == PENDING) {
+        //     res = router.route(req, config);
+        //     if (res.isError()) {
+        //         handleInvalidRequest(context, res);
+        //         break;
+        //     }
+        //     if (res.getMustLaunchCgi())
+        //         req.setState(CGI_START);
+        //     else
+        //         req.setState(DONE);
+        // }
+        // if (req.getState() == CGI_START) {
+        //     if (launchCgi(req, pfds, nfds) != 0) {
+        //         req.setStatusCode(BAD_GATEWAY);
+        //         res = router.route(req, config);
+        //         handleInvalidRequest(context, res);
+        //         break;
+        //     }
+        //     // ?
+        // }
+        // if (req.getState() == CGI_STREAMING) {
+        //     // if (waitForCgiTermination())
+        //     //     ? req.setState(DONE);
+        //     // else
+        //     //     continue; // ?
+        // }
+        // if (req.getState() == DONE) {
+        //     if (req.cgiInfo.exists)
+        //         router.generateResponseFromCgiOutput(
+        //             res, req.cgiInfo.getOutput()); // idea; this could be managed elsewhere also
+        //     // any additional steps for CGI requests ?
+        //     context.write_buffer.append(res.serialize());
+        //     context.requests.pop();
+        // }
     }
     pfd.events = POLLOUT;
 }
 
 // handles partial request i.e. unfinished request but no more POLLIN revents (see Server::run() loop)
 // this is a case of bad request
-void Server::handlePartialRequest(ClientContext& context, struct pollfd& pfd, int& nfds) {
+void Server::handlePartialRequest(ClientContext& context, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
     add_bad_request_to_queue(context); // the request was partial and not in the queue
     DEBUG_LOG("handlePartialRequest: added bad request to queue");
-    handle_requests(context, pfd, nfds);
+    handle_requests(context, pfds, i, nfds);
     context.req_parser.setState(REQ_PARSE_COMPLETE);
 }

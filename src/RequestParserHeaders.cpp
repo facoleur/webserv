@@ -118,7 +118,7 @@ void RequestParser::validateHeaders(Request& req) {
 
     _maxBodySize = pow(16, 6); // temp value before choosing the correct serv
 
-    // To do: get max body size from config:
+    // To do: get max body size from config before, we did:
     // const ServerConfig& serverConfig = _config.getServers().at(ctx.server_index);
     // size_t maxBodySize = serverConfig.client_max_body_size;
 
@@ -134,9 +134,6 @@ void RequestParser::validateHeaders(Request& req) {
                                 " cannot have a content-length header";
         throw RequestParsingError(error_msg.c_str());
     }
-
-    if (req.hasHeader(CONTENT_LENGTH) && _maxBodySize == -1)
-        throw RequestParsingError("validateHeaders(): , max body size not set");
 
     if (req.hasHeader(CONTENT_LENGTH))
         handleHeaderContentLength(req, headers);

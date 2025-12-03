@@ -7,11 +7,12 @@
 #include "Enums.hpp"
 
 #define READ_BUF_SIZE 8000
-#define MIN_REQ_SIZE 19            // shortest possible request without ending CRLFCRLF: "GET / HTTP/2\r\nHost:"
-#define MIN_HEADER_SIZE 3          // header name + field min length ("H:I")
-#define MAX_HEADER_SIZE 4000       // header name + field max length
-#define MAX_CHUNK_SIZE 16777216    // 16^6 => 6 hex digits (FFFFFF)
-#define MAX_CHUNK_SIZE_LINE_SIZE 6 // 6 hex digits
+#define MIN_REQ_SIZE 19               // shortest possible request without ending CRLFCRLF: "GET / HTTP/2\r\nHost:"
+#define MIN_HEADER_SIZE 3             // header name + field min length ("H:I")
+#define MAX_HEADER_SIZE 4000          // header name + field max length
+#define MAX_CHUNK_SIZE 1048576        // 16^5 => 5 hex digits (FFFFFF)
+#define MAX_CHUNK_SIZE_LINE_SIZE 5    // 5 hex digits
+#define DEFAULT_MAX_BODY_SIZE 5000000 // 5 MB
 #define CRLF std::string("\r\n")
 #define READ_MORE 1
 #define CONTENT_LENGTH_OK 2

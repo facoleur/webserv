@@ -15,7 +15,7 @@
 class Response;
 
 #define MAX_EVENTS 64
-#define CLIENT_TIMEOUT 10000
+#define CLIENT_TIMEOUT 10
 #define POLL_TIMEOUT 4000
 #define READ_SIZE 8000
 
@@ -66,7 +66,7 @@ class Server {
     int  handleNewConnection(int, struct pollfd (&)[MAX_EVENTS], int&, std::map<int, struct ClientContext>&);
     void handleRead(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
     void sendResponses(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
-    void handlePartialRequest(ClientContext&, struct pollfd&, int&);
+    void handlePartialRequest(ClientContext&, int, struct pollfd (&)[MAX_EVENTS], int&);
     void checkTimeouts(ContextMap&, int&, struct pollfd (&)[MAX_EVENTS]);
 
     // CGI

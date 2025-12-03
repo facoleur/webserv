@@ -1,10 +1,12 @@
 #include "Enums.hpp"
 #include <iostream>
+#include <string>
 #include <sys/stat.h>
 #include <vector>
 
 class ConfigParser;
 
+std::string              getCurrentDatetime();
 std::string&             replaceVariables(std::string&, const std::string&, const std::string&);
 std::string              methodToString(requestMethod);
 std::string              trimString(const std::string&);
@@ -22,9 +24,10 @@ bool                     endsWith(const std::string&, const std::string&);
 std::string              join(const std::vector<std::string>&, char);
 bool                     isDirectory(const std::string&);
 std::string              readFile(const std::ifstream&);
-std::string              getParentDir(const std::string&);
+std::string              getParent(const std::string&);
 bool                     isSpace(int);
 bool                     isAcceptedHeader(std::string&);
+void                     removeDoubleSlash(std::string&);
 
 // OutstreamUtils.cpp
 std::ostream& operator<<(std::ostream&, const struct pollfd);

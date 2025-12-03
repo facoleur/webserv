@@ -167,7 +167,7 @@ void RequestRouter::generateResponseFromCgiOutput(Response& response, std::strin
     }
 
     // typedef std::map<requestHeaders, std::string> headersMap;
-    response.setHeaders(responseHeaders);
+    // response.setHeaders(responseHeaders);
 
     if (responseHeaders.find("Content-Type") == responseHeaders.end())
         responseHeaders["Content-Type"] = "text/html";

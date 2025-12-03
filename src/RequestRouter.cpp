@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <vector>
 
+#include "Config.hpp"
 #include "Enums.hpp"
 #include "Request.hpp"
 #include "RequestRouter.hpp"
@@ -39,37 +40,6 @@ bool RequestRouter::isMethodAllowed(const Request& req, const LocationConfig& co
     return (config.methods.find(req.getMethod()) != config.methods.end());
 }
 
-bool RequestRouter::isCgiRequest(const std::string& path, const LocationConfig& config) {
-    return !getCgiInterpreter(path, config).empty();
-}
-
-std::string RequestRouter::getCgiInterpreter(const std::string& path, const LocationConfig& config) const {
-    const std::map<std::string, std::string>& cgi_ext = config.cgi_map;
-    if (cgi_ext.empty())
-        return "";
-
-    std::string::size_type dot = path.find_last_of('.');
-    if (dot != std::string::npos) {
-        std::string                                        ext = path.substr(dot);
-        std::map<std::string, std::string>::const_iterator it  = cgi_ext.find(ext);
-        if (it != cgi_ext.end())
-            return it->second;
-        if (dot + 1 < path.size()) {
-            std::string alt = path.substr(dot + 1);
-            it              = cgi_ext.find(alt);
-            if (it != cgi_ext.end())
-                return it->second;
-            if (!alt.empty()) {
-                std::string withDot = "." + alt;
-                it                  = cgi_ext.find(withDot);
-                if (it != cgi_ext.end())
-                    return it->second;
-            }
-        }
-    }
-    return "";
-}
-
 void RequestRouter::resolveAbsolutePath(std::string& path) {
     std::string::size_type pos = path.find("http://");
     path.erase(pos, 7);
@@ -79,18 +49,8 @@ void RequestRouter::resolveAbsolutePath(std::string& path) {
 }
 
 std::string RequestRouter::resolvePath(const Request& req, const std::string& root, const std::string& location) {
-    (void)req;
     std::string path = req.getPath();
-    // std::cout << "path: " << path << std::endl;
-    // std::cout << "location: " << location << std::endl;
-
-    path = "/" + path.substr(location.size());
-
-    // if (startsWith(path, "http://"))
-    //     resolveAbsolutePath(path);
-    // else if (!startsWith(path, "/")) {
-    //     throw std::runtime_error("Relative path doesn't start with /");
-    // }
+    (void)location;
 
     if (path.empty())
         path = "/";
@@ -148,16 +108,6 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
 
     if (isDirectory(path)) {
 
-        if (!path.empty() && path[path.size() - 1] != '/') {
-            res.setStatusCode(REDIRECT);
-            res.setHeader(LOCATION, path + "/");
-            res.setBody("");
-            res.setHeader(CONTENT_LENGTH, "0");
-            DEBUG_LOG("GET DONE redirect");
-
-            return res;
-        }
-
         for (size_t i = 0; i < config.index_files.size(); ++i) {
             std::string indexPath = path + config.index_files[i];
             if (!resourceExists(indexPath, req))
@@ -178,7 +128,7 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
 
         if (config.autoindex) {
             DEBUG_LOG("GET DONE autoindex");
-            return makeAutoindexResponse(path, config.path);
+            return makeAutoindexResponse(req.getPath(), path);
         } else {
             DEBUG_LOG("GET DONE 403 no autoindex");
             return makeErrorResponse(FORBIDDEN);
@@ -232,17 +182,19 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
         replace(uploadPath, "//", "/");
     }
 
-    std::cout << "uploadPath: " << uploadPath << std::endl;
     std::ofstream out(uploadPath.c_str(), std::ios::binary);
     if (!out.is_open()) {
-        std::cout << "500 ici" << std::endl;
         return makeErrorResponse(INTERNAL_SERVER_ERROR);
     }
 
     out.write(req.getBody().c_str(), req.getBody().size());
 
     Response res;
-    res.setHeader(LOCATION, uploadPath);
+
+    std::string location = req.getPath() + "/" + filename;
+    removeDoubleSlash(location);
+
+    res.setHeader(LOCATION, location);
     res.setStatusCode(CREATED);
     res.setBody(generateHtml("Upload success!"));
     res.setHeader(CONTENT_LENGTH, toString(res.getBody().size()));
@@ -312,47 +264,53 @@ std::string RequestRouter::generateHtml(const std::string& message) {
 Response RequestRouter::makeErrorResponse(enum statusCode statusCode) {
     Response res;
     res.setBody(generateErrorHtml(statusCode));
+    res.setHeader(CONTENT_LENGTH, toString(res.getBody().size()));
     res.setStatusCode(statusCode);
 
     return res;
 }
 
-Response RequestRouter::makeAutoindexResponse(const std::string& path, const std::string& location) {
-    DIR* dirstream = opendir(path.c_str());
+Response RequestRouter::makeAutoindexResponse(const std::string& uri, const std::string& path) {
+    DIR* dir = opendir(path.c_str());
+    if (!dir)
+        return makeErrorResponse(NOT_FOUND);
 
-    std::string loc = location;
-    if (loc[loc.size() - 1] != '/')
-        loc.push_back('/');
+    std::vector<AutoIndexItem> entries;
 
-    std::vector<AutoIndexItem> files;
-    files.push_back(AutoIndexItem(getParentDir(path), "../", 0, T_DIR, ""));
-
-    while (dirent* f = readdir(dirstream)) {
-
-        if (std::string(f->d_name) == "." || std::string(f->d_name) == "..")
-            continue;
-
-        std::string name(f->d_name);
-        std::string fileloc = location + "/" + f->d_name;
-
-        std::string fullpath = path + "/" + f->d_name;
-        struct stat st;
-        stat(fullpath.c_str(), &st);
-
-        time_t     lastModified = st.st_mtime;
-        char       lastModifedReadable[64];
-        struct tm* tm = localtime(&lastModified);
-        strftime(lastModifedReadable, sizeof(lastModifedReadable), "%Y-%m-%d %H:%M:%S", tm);
-
-        enum autoIndexType type = T_FILE;
-        if (f->d_type == DT_DIR) {
-            type = T_DIR;
-            name.push_back('/');
-        }
-        files.push_back(AutoIndexItem(fileloc, name, st.st_size, type, lastModifedReadable));
+    if (uri != "/") {
+        std::string parent = getParent(uri);
+        entries.push_back(AutoIndexItem(parent, "../", 0, T_DIR, ""));
     }
 
-    std::string html = AutoIndex::fillTemplate(loc, files);
+    while (dirent* entry = readdir(dir)) {
+
+        std::string name(entry->d_name);
+
+        if (name == "." || name == "..")
+            continue;
+
+        std::string entryFsPath = path + "/" + entry->d_name;
+
+        struct stat st;
+        stat(entryFsPath.c_str(), &st);
+
+        char timestamp[64];
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&st.st_mtime));
+
+        std::string entryUrl = uri + "/" + entry->d_name;
+        removeDoubleSlash(entryUrl);
+
+        bool isDir = false;
+        if (entry->d_type == DT_DIR) {
+            isDir = true;
+            entryUrl.push_back('/');
+            name.push_back('/');
+        }
+
+        entries.push_back(AutoIndexItem(entryUrl, name, st.st_size, isDir ? T_DIR : T_FILE, timestamp));
+    }
+
+    std::string html = AutoIndex::fillTemplate(uri, entries);
 
     Response res;
     res.setStatusCode(OK);
@@ -382,8 +340,11 @@ const LocationConfig resolveConfig(const ServerConfig& server, const LocationCon
     LocationConfig resolved;
 
     if (location) {
-        locationPath = location->path;
-        resolved     = *location;
+        locationPath       = location->path;
+        resolved           = *location;
+        resolved.autoindex = location->autoindex;
+    } else {
+        resolved.autoindex = server.autoindex;
     }
 
     if (resolved.methods.empty()) {
@@ -426,6 +387,8 @@ Response RequestRouter::route(Request& req, const ServerConfig& config) {
     std::string           locationPath;
     const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig, locationPath);
 
+    _config = resolvedConfig;
+
     if (resolvedConfig.redirect.status) {
         return makeRedirectResponse(resolvedConfig.redirect.target);
     }
@@ -440,6 +403,17 @@ Response RequestRouter::route(Request& req, const ServerConfig& config) {
 
     if (!resourceExists(resolvedPath, req)) {
         return makeErrorResponse(NOT_FOUND);
+    }
+
+    if (isDirectory(resolvedPath)) {
+        Response res;
+        if (!resolvedPath.empty() && resolvedPath[resolvedPath.size() - 1] != '/') {
+            res.setStatusCode(REDIRECT);
+            res.setHeader(LOCATION, req.getPath() + "/");
+            res.setBody("");
+            res.setHeader(CONTENT_LENGTH, "0");
+            return res;
+        }
     }
 
     if (!isMethodAllowed(req, resolvedConfig)) {

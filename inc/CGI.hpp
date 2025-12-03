@@ -44,9 +44,9 @@ class CgiInfo {
     std::string              _interpreter;
     std::string              _scriptPath;
     std::vector<std::string> _envStorage;
-    std::string&             _bodyReference;
-    ServerConfig*            _srvConfigPtr;
-    LocationConfig*          _locConfigPtr;
+    // std::string*             _bodyReference;
+    // ServerConfig*            _srvConfigPtr;
+    // LocationConfig*          _locConfigPtr;
 
     // run variables
     pid_t       _CgiPID;

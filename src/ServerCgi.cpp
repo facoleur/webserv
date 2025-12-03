@@ -107,9 +107,6 @@ void Server::storeCgiPipeFds(const int stdinPipe[2], const int stdoutPipe[2], Re
     writePipeFdInfo.cgiInfo   = &request.cgiInfo;
     writePipeFdInfo.role      = CGI_STDOUT;
     _cgiFdMap[writeCgiPipeFd] = writePipeFdInfo;
-
-    // do we have to do something like this ?
-    context[new_client_fd].availableServers = _listenerToServers[listener];
 }
 
 void Server::cleanUpCgiFds(const int firedFd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) { // alternative (b)
@@ -210,4 +207,5 @@ int Server::waitForCgiTermination(pid_t pid, Request& req) {
     //     if (ret > 0) // child exited => clean up pipes, parse buffered output, transition the request to DONE (or
     //     error
     //                  // if !WIFEXITED/WEXITSTATUS != 0)
+    return 0;
 }

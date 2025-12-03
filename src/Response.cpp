@@ -4,8 +4,11 @@
 #include "Enums.hpp"
 #include "Request.hpp"
 #include "Utils.hpp"
+#include "Webserv.hpp"
 
 Response::Response() : _statusCode(OK), _mustLaunchCgi(false) {
+    setHeader(SERVER, WEBSERV_VERSION);
+    setHeader(DATE, getCurrentDatetime());
 }
 
 Response::Response(statusCode statusCode) : _statusCode(statusCode), _mustLaunchCgi(false) {
@@ -49,7 +52,7 @@ void Response::setHeader(requestHeaders key, const std::string& value) {
     _headers[key] = value;
 }
 
-void Response::setHeaders(headersMap& headers) {
+void Response::setHeaders(const headersMap& headers) {
     for (headersMap::const_iterator it = headers.begin(); it != headers.end(); ++it) {
         _headers[it->first] = it->second;
     }

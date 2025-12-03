@@ -10,7 +10,7 @@
 
 RequestParser::RequestParser(void)
     : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_START_LINE), _accumulator(), _firstSection(), _startLine(),
-      _headersBuffer(), _contentLength(-1), _chunkSize(-1), _maxBodySize(-1), _bodyBuffer() {
+      _headersBuffer(), _contentLength(-1), _chunkSize(-1), _maxBodySize(DEFAULT_MAX_BODY_SIZE), _bodyBuffer() {
 }
 
 RequestParser::~RequestParser(void) {

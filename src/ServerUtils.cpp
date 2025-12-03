@@ -104,8 +104,6 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
             continue;
         }
         setPollFd(pfds[nfds], listener, POLLIN, 0);
-        // DEBUG_LOG("setting _listenerToServerIdx[" + toString(listener) + "] to " + toString(si));
-        // _listenerToServerIdx[listener] = si;
         _listenerToServers[listener] = serverIndices;
         listen_fds.push_back(listener);
         ++nfds;

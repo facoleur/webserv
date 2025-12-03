@@ -1,6 +1,7 @@
 // Utils.cpp
 
 #include "Utils.hpp"
+#include <ctime>
 #include <dirent.h>
 #include <fstream>
 #include <iostream>
@@ -8,6 +9,17 @@
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
+
+std::string getCurrentDatetime() {
+    std::time_t now       = std::time(NULL);
+    std::tm*    localTime = std::localtime(&now);
+
+    char buffer[64];
+
+    std::strftime(buffer, sizeof(buffer), "%a, %d %h %G %H:%M:%S %Z", localTime);
+
+    return std::string(buffer);
+}
 
 std::string toString(long long n) {
 
@@ -36,6 +48,12 @@ void replace(std::string& str, const std::string& from, const std::string& to) {
     while ((start = str.find(from, start)) != std::string::npos) {
         str.replace(start, from.length(), to);
         start += to.length();
+    }
+}
+
+void removeDoubleSlash(std::string& s) {
+    while (s.find("//") != std::string::npos) {
+        replace(s, "//", "/");
     }
 }
 
@@ -86,7 +104,7 @@ std::string readFile(const std::ifstream& file) {
     return content.str();
 }
 
-std::string getParentDir(const std::string& path) {
+std::string getParent(const std::string& path) {
     if (path.empty())
         return "";
 
@@ -101,7 +119,10 @@ std::string getParentDir(const std::string& path) {
     if (pos == 0)
         return "/";
 
-    return trimmed.substr(0, pos);
+    std::string parentPath = "/" + trimmed.substr(0, pos) + "/";
+
+    removeDoubleSlash(parentPath);
+    return parentPath;
 }
 
 bool isSpace(int i) {
