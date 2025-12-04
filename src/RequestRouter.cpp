@@ -371,11 +371,15 @@ const LocationConfig resolveConfig(const ServerConfig& server, const LocationCon
     LocationConfig resolved;
 
     if (location) {
+        if (!location->client_max_body_size)
+            resolved.client_max_body_size = server.client_max_body_size;
+
         locationPath       = location->path;
         resolved           = *location;
         resolved.autoindex = location->autoindex;
     } else {
-        resolved.autoindex = server.autoindex;
+        resolved.autoindex            = server.autoindex;
+        resolved.client_max_body_size = server.client_max_body_size;
     }
 
     if (resolved.methods.empty()) {
@@ -417,6 +421,10 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
 
     std::string           locationPath;
     const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig, locationPath);
+
+    if (req.getBody().size() > resolvedConfig.client_max_body_size) {
+        return makeErrorResponse(CONTENT_TOO_LARGE);
+    }
 
     _config = resolvedConfig;
 

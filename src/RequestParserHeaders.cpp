@@ -2,16 +2,19 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstddef>
 #include <cstdio>
 #include <sstream>
+#include <string>
 
 #include "Enums.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
+#include "RequestRouter.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
 
-void RequestParser::parseHeaders(Request& req, size_t maxBodySize) {
+void RequestParser::parseHeaders(Request& req) {
     size_t      pos;
     std::string header;
 
@@ -19,21 +22,21 @@ void RequestParser::parseHeaders(Request& req, size_t maxBodySize) {
     while (pos != std::string::npos) {
         header         = _headersBuffer.substr(0, pos);
         _headersBuffer = _headersBuffer.substr(pos + 2);
-        parseHeader(header, req, maxBodySize);
+        parseHeader(header, req);
         pos = _headersBuffer.find(CRLF);
     }
     if (_headersBuffer.size()) // last header
         header = _headersBuffer.substr(0, pos);
-    parseHeader(header, req, maxBodySize);
+    parseHeader(header, req);
     _headersBuffer.clear();
 }
 
-void RequestParser::parseHeader(std::string& header, Request& req, size_t maxBodySize) {
+void RequestParser::parseHeader(std::string& header, Request& req) {
     std::pair<std::string, std::string> header_pair;
 
     header_pair = checkHeaderSyntax(header, req);
     fillHeadersMap(header_pair, req);
-    validateHeaders(req, maxBodySize);
+    validateHeaders(req);
 }
 
 // splits the header line around ":" and performs syntax checks
@@ -113,7 +116,7 @@ void RequestParser::handleHeaderContentLength(Request& req, const headersMap& he
     _contentLength = contentLength;
 }
 
-void RequestParser::validateHeaders(Request& req, size_t maxBodySize) {
+void RequestParser::validateHeaders(Request& req) {
     const headersMap headers = req.getHeaders();
 
     if (!req.hasHeader(HOST) || // TEST THIS
@@ -130,7 +133,7 @@ void RequestParser::validateHeaders(Request& req, size_t maxBodySize) {
     }
 
     if (req.hasHeader(CONTENT_LENGTH))
-        handleHeaderContentLength(req, headers, maxBodySize);
+        handleHeaderContentLength(req, headers, _tmpMaxBodySize);
 
     if (req.hasHeader(TRANSFER_ENCODING) &&
         headers.at(TRANSFER_ENCODING) != "chunked") { // the transfer-encoding header value must be "chunked"

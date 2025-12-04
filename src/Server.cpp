@@ -155,9 +155,6 @@ void Server::handle_requests(ClientContext& context, struct pollfd& pfd) {
 
         ServerConfig& config = _config.getServers().at(chosenConfig);
 
-        std::cout << "servername: " << config.server_name << std::endl;
-        std::cout << "host header: " << req.getHeader(HOST) << std::endl;
-
         // std::cout << req << std::endl;
 
         // const ServerConfig& config = _config.getServers()[context.server_index];
@@ -207,6 +204,24 @@ int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS],
     return 0;
 }
 
+size_t getTmpMaxBodySize(const Config& _config) {
+    size_t size = 0;
+
+    std::vector<ServerConfig> servers = _config.getServers();
+    for (size_t i = 0; i < servers.size(); i++) {
+        if (servers[i].client_max_body_size > size) {
+            size = servers[i].client_max_body_size;
+        }
+        for (size_t j = 0; j < servers[i].locations.size(); j++) {
+            LocationConfig& loc = servers[i].locations[j];
+            if (loc.client_max_body_size > size) {
+                size = loc.client_max_body_size;
+            }
+        }
+    }
+    return size;
+}
+
 void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
     char           tmp[READ_SIZE + 1];
     int            len;
@@ -234,9 +249,10 @@ void Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], 
         disconnect_client(i, listener, pfds, nfds, context); // correct ?
         return;
     } else { // Parsing
-        tmp[len]           = '\0';
-        size_t maxBodySize = 1024 * 1024; // temp value before choosing the correct serv
-        // size_t maxBodySize = serverConfig.client_max_body_size;
+        tmp[len] = '\0';
+
+        size_t maxBodySize = getTmpMaxBodySize(_config);
+
         ctx.req_parser.feed(tmp, ctx.requests, maxBodySize);
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL)
             return;

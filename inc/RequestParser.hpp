@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <queue>
 
 #include "Enums.hpp"
@@ -56,8 +57,8 @@ class RequestParser {
   private:
     // Main parsing functions
     void parseStartLine(Request&);
-    void parseHeaders(Request&, size_t);
-    void parseHeader(std::string&, Request&, size_t);
+    void parseHeaders(Request&);
+    void parseHeader(std::string&, Request&);
     void parseFullBody(Request&);
 
     // sub-parsing functions
@@ -72,7 +73,7 @@ class RequestParser {
     void handleHeaderContentLength(Request&, const headersMap&, size_t);
 
     // Validation
-    void validateHeaders(Request&, size_t);
+    void validateHeaders(Request&);
     bool isValidBody(Request&) const; // used ?
 
     // Helpers
@@ -96,4 +97,6 @@ class RequestParser {
     int                                   _contentLength;
     int                                   _chunkSize;
     std::string                           _bodyBuffer;
+
+    size_t _tmpMaxBodySize;
 };

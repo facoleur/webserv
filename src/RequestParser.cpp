@@ -166,6 +166,8 @@ int RequestParser::extractChunkData(void) {
 }
 
 void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, size_t maxBodySize) {
+    _tmpMaxBodySize = maxBodySize;
+
     Request req;
     int     ret;
 
@@ -211,7 +213,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, size_t maxBod
             }
             if (_parsingPhase == PARSING_HEADERS) {
                 _headersBuffer = _firstSection;
-                parseHeaders(req, maxBodySize);
+                parseHeaders(req);
                 if (req.hasHeader(CONTENT_LENGTH)) {
                     _parsingPhase = PARSING_BODY_CONTENT_LENGTH;
                     continue;

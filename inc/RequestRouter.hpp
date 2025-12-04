@@ -43,4 +43,5 @@ class RequestRouter {
 };
 
 const LocationConfig* findLocationConfig(const std::string& path, const ServerConfig& config);
-const LocationConfig  resolveConfig(const ServerConfig& server, const LocationConfig* location);
+const LocationConfig  resolveConfig(const ServerConfig& server, const LocationConfig* location,
+                                    std::string& locationPath);
