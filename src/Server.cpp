@@ -6,8 +6,8 @@
 #include <iostream>
 #include <map>
 #include <string>
-#include <sys/_types/_pid_t.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <utility>
 #include <vector>
 
@@ -91,6 +91,8 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
 // Handle incoming connections
 int Server::handleNewConnection(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
                                 ContextMap& context) {
+    (void)i;
+
     DEBUG_LOG("handleNewConnection()");
     int new_client_fd = accept(listener, NULL, NULL);
     if (new_client_fd < 0) {
@@ -258,17 +260,18 @@ void Server::run() {
     while (1) {
         checkTimeouts(contextMap, nfds, pfds);
 
-        DEBUG_LOG("** while loop start **\n{nfds}: " + toString(nfds) + "\n((((( POLL )))))");
+        // DEBUG_LOG("** while loop start **\n{nfds}: " + toString(nfds) + "\n((((( POLL )))))");
         if (poll(pfds, nfds, POLL_TIMEOUT) < 0) {
             DEBUG_LOG("poll error");
             continue;
         }
 
         for (int index = 0; index < nfds; index++) {
-            int fd = pfds[index].fd;
-            DEBUG_LOG("* for loop*\nindex == " + toString(index) + "\nfd == " + toString(fd));
+            int   fd      = pfds[index].fd;
+            short revents = pfds[index].revents;
+            // DEBUG_LOG("* for loop*\nindex == " + toString(index) + "\nfd == " + toString(fd));
 
-            if (pfds[index].revents & (POLLERR | POLLNVAL)) {
+            if (revents & (POLLERR | POLLNVAL)) {
                 DEBUG_LOG("--- POLLERR | POLLNVAL ---\n disconnect 1");
                 if (isCgiPipe(fd)) // if fd==PipeFd from a CGI, clean up the CGI and pre-prepare error response
                     handleCgiError(fd, pfds, nfds, BAD_GATEWAY);
@@ -277,12 +280,14 @@ void Server::run() {
                 continue;
             }
 
-            if (pfds[index].revents & POLLIN) {
+            // handle CGI stdout as readable even when only POLLHUP is set (Linux pipe EOF)
+            if (isCGIPipeRole(fd, CGI_STDOUT) && (revents & (POLLIN | POLLHUP))) {
+                readFromCgi(fd, index, pfds, nfds);
+                continue;
+            }
+
+            if (revents & POLLIN) {
                 DEBUG_LOG("--- POLLIN ---");
-                if (isCGIPipeRole(fd, CGI_STDOUT)) { // if fd==readPipeFd from a CGI, read from it
-                    readFromCgi(fd, index, pfds, nfds);
-                    continue;
-                }
                 if (_listenerToServers.count(fd)) // if we're the listener, open a new connection
                     handleNewConnection(fd, index, pfds, nfds, contextMap);
                 else
@@ -290,7 +295,16 @@ void Server::run() {
                 continue;
             }
 
-            if (pfds[index].revents & POLLOUT) {
+            if (revents & POLLHUP) {
+                if (isCGIPipeRole(fd, CGI_STDIN)) { // CGI closed before consuming input
+                    handleCgiError(fd, pfds, nfds, BAD_GATEWAY);
+                } else if (!_listenerToServers.count(fd)) { // treat hangup like a read to flush/close client
+                    handleRead(fd, index, pfds, nfds, contextMap);
+                }
+                continue;
+            }
+
+            if (revents & POLLOUT) {
                 DEBUG_LOG("--- POLLOUT ---");
                 if (isCGIPipeRole(fd, CGI_STDIN)) { // if fd==writePipeFd from a CGI, write the request body to it
                     writePendingBodyToCgi(fd, pfds, nfds);

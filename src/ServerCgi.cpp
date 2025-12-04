@@ -204,8 +204,15 @@ void Server::handleCgiError(const int fd, struct pollfd (&pfds)[MAX_EVENTS], int
     cleanUpBothCgiFds(fd, pfds, nfds);
 
     // request handling
+    std::cout << "statusCode: " << statusCode << std::endl;
+
     req->setStatusCode(statusCode);
     req->setState(CGI_DONE);
+
+    // continue normal request handling so an error response is sent to the client
+    int clientFdIndex = findPollFdIndexFromFd(req->getClientFd(), pfds, nfds);
+    if (clientFdIndex >= 0)
+        handle_requests(req->getClientContext(), clientFdIndex, pfds, nfds);
     DEBUG_LOG("handleCgiError(): done");
 }
 

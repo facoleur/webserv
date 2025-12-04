@@ -5,7 +5,7 @@
 #include "Response.hpp"
 #include "Server.hpp"
 #include "Webserv.hpp"
-#include <sys/_types/_pid_t.h>
+#include <sys/types.h>
 
 void Server::add_bad_request_to_queue(ClientContext& context) {
     Request req(context, context.pfd.fd);
