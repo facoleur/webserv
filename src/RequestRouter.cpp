@@ -79,9 +79,8 @@ void RequestRouter::resolveAbsolutePath(std::string& path) {
     path.erase(0, pos);
 }
 
-std::string RequestRouter::resolvePath(const Request& req, const std::string& root, const std::string& location) {
+std::string RequestRouter::resolvePath(const Request& req, const std::string& root) {
     std::string path = req.getPath();
-    (void)location;
 
     if (path.empty())
         path = "/";
@@ -95,7 +94,11 @@ std::string RequestRouter::resolvePath(const Request& req, const std::string& ro
 
     std::string fullPath = root;
 
-    fullPath.append(path);
+    if (req.getMethod() == POST && _config.upload_enable) {
+        fullPath.append(_config.upload_store + '/');
+    } else {
+        fullPath.append(path);
+    }
 
     while (fullPath.find("//") != std::string::npos) {
         replace(fullPath, "//", "/");
@@ -204,16 +207,18 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
     if (pos != std::string::npos)
         basename = path.substr(pos + 1);
 
-    std::string uploadPath;
+    std::string fsUploadPath;
     std::string filename = generateUploadName();
     if (!config.upload_store.empty())
-        uploadPath = config.root + "/" + config.upload_store + "/" + filename;
+        fsUploadPath = config.root + "/" + config.upload_store + "/" + filename;
 
-    while (uploadPath.find("//") != std::string::npos) {
-        replace(uploadPath, "//", "/");
+    while (fsUploadPath.find("//") != std::string::npos) {
+        replace(fsUploadPath, "//", "/");
     }
 
-    std::ofstream out(uploadPath.c_str(), std::ios::binary);
+    std::cout << "fsUploadPath: " << fsUploadPath << std::endl;
+
+    std::ofstream out(fsUploadPath.c_str(), std::ios::binary);
     if (!out.is_open()) {
         return makeErrorResponse(INTERNAL_SERVER_ERROR);
     }
@@ -435,14 +440,36 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     std::string resolvedPath;
 
     try {
-        resolvedPath = resolvePath(req, resolvedConfig.root, locationPath);
+
+        std::cout << "req.getpath():" << req.getPath() << std::endl;
+        resolvedPath = resolvePath(req, resolvedConfig.root);
+        std::cout << "resolvedPath:" << resolvedPath << std::endl;
 
     } catch (std::exception&) {
         return makeErrorResponse(BAD_REQUEST);
     }
 
-    if (!resourceExists(resolvedPath, req)) {
-        return makeErrorResponse(NOT_FOUND);
+    if (req.getMethod() == POST && _config.upload_enable) {
+        std::string loc = locationPath;
+        if (!loc.empty() && loc[loc.size() - 1] == '/')
+            loc.erase(loc.size() - 1);
+
+        std::string p = req.getPath();
+        if (!p.empty() && p[p.size() - 1] == '/')
+            p.erase(p.size() - 1);
+
+        if (p != loc) {
+            return makeErrorResponse(NOT_FOUND);
+        }
+
+        if (!isDirectory(resolvedPath)) {
+            return makeErrorResponse(NOT_FOUND);
+        }
+
+    } else {
+        if (!resourceExists(resolvedPath, req)) {
+            return makeErrorResponse(NOT_FOUND);
+        }
     }
 
     if (isDirectory(resolvedPath)) {

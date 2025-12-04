@@ -38,7 +38,7 @@ class RequestRouter {
     RequestRouter();
     ~RequestRouter();
 
-    std::string resolvePath(const Request&, const std::string&, const std::string&);
+    std::string resolvePath(const Request&, const std::string&);
     Response    route(const Request&, const ServerConfig&);
 };
 
