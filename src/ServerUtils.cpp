@@ -37,12 +37,12 @@ void Server::removePollEntry(int targetFd, struct pollfd (&pfds)[MAX_EVENTS], in
 void Server::disconnect_client(int& index, int& client_fd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
                                ContextMap& contextMap) {
 
-    contextMap.erase(client_fd);
     pfds[index] = pfds[nfds - 1];
     index--;
-    close(client_fd);
     nfds--;
-    std::cout << "client disconnected" << std::endl;
+    contextMap.erase(client_fd);
+    close(client_fd);
+    std::cerr << "client disconnected" << std::endl;
 }
 
 // Create one listening socket per server:port
@@ -112,4 +112,13 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
     }
 
     return listen_fds;
+}
+
+// retrieves the matching pollfd (if any) for a given fd
+int Server::findPollFdIndexFromFd(int fd, struct pollfd (&pfds)[MAX_EVENTS], int nfds) const {
+    for (int i = 0; i < nfds; ++i) {
+        if (pfds[i].fd == fd)
+            return i;
+    }
+    return -1;
 }

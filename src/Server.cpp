@@ -33,6 +33,7 @@ ClientContext::ClientContext(void) : close_after_responses(false), selectedServe
 }
 
 void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pfds)[MAX_EVENTS]) {
+    DEBUG_LOG("checkTimeouts()");
     ContextMap::iterator itClient;
     CgiFdMap::iterator   itCgi;
     long                 currTime;
@@ -40,6 +41,7 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
     currTime = time(NULL);
     if (currTime == -1)
         return; // handleTimeError ?
+    DEBUG_LOG("TIMESTAMP: " + toString(time(NULL)));
 
     // loop over all clients
     itClient = contextMap.begin();
@@ -61,7 +63,7 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
             ++itClient; // to avoid issues when client is removed from contextMap in disconnect_client()
 
             // close the client_fd, remove itClient from pfds and remove the clientContext from the contextMap
-            DEBUG_LOG("checkTimeouts: disconnecting client");
+            DEBUG_LOG("Client timed out after (in theory) " + toString(CLIENT_TIMEOUT) + " seconds)");
             disconnect_client(j, client_fd, pfds, nfds, contextMap);
             continue; // skip the ++itClient
         } else
@@ -80,6 +82,7 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
         // CGI has passed timeout
         if ((currTime - pipe.cgiInfo->getLastActive()) > CGI_TIMEOUT) {
             int cgiFd = current->first;
+            DEBUG_LOG("CGI timed out after (in theory) " + toString(CGI_TIMEOUT) + " seconds)");
             handleCgiError(cgiFd, pfds, nfds, GATEWAY_TIMEOUT);
         }
     }
@@ -117,6 +120,9 @@ int Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], i
             handlePartialRequest(context[listener], i, pfds, nfds);
             return -1;
         }
+        // pfds[i].events &= ~POLLIN;
+        // pfds[i].revents = 0;
+        // return 0;
     } else if (len < 0) {
         DEBUG_LOG("disconnect 3: read error");
         disconnect_client(i, listener, pfds, nfds, context);
@@ -133,7 +139,7 @@ int Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], i
 }
 
 int Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
-    DEBUG_LOG("--- POLLOUT ---");
+    DEBUG_LOG("sendResponses()");
     std::string& buf = context[listener].write_buffer;
     while (!buf.empty()) {
         ssize_t sent = write(listener, buf.data(), buf.size());
@@ -141,6 +147,7 @@ int Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS]
         if (sent > 0) {
             buf.erase(0, sent);
             context[listener].lastActive = time(NULL);
+            pfds[i].events               = POLLIN; // new, from below
             break;
         }
         if (sent == -1) { // error or connection closed: (sent == 0 ?)
@@ -154,11 +161,12 @@ int Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS]
         disconnect_client(i, listener, pfds, nfds, context);
         return -1;
     }
-    pfds[i].events = POLLIN;
+    //    pfds[i].events = POLLIN;
     return 0;
 }
 
 int Server::writePendingBodyToCgi(int writeFd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
+    DEBUG_LOG("writePendingBodyToCgi()");
     CgiPipeInfo& pipe = _cgiFdMap.at(writeFd);
     CgiInfo*     info = pipe.cgiInfo;
     Request*     req  = info->getRequest();
@@ -187,21 +195,32 @@ int Server::writePendingBodyToCgi(int writeFd, struct pollfd (&pfds)[MAX_EVENTS]
 }
 
 // read output from CGI
-int Server::readFromCgi(int readFd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
-    CgiPipeInfo& pipe   = _cgiFdMap.at(readFd);
-    CgiInfo*     info   = pipe.cgiInfo;
-    int          cgiPID = info->getCgiPID();
-    Request*     req    = info->getRequest();
-    char         buf[CGI_BUFFER_SIZE];
+int Server::readFromCgi(int readFd, int index, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
+    DEBUG_LOG("readFromCgi()");
+    CgiPipeInfo&   pipe      = _cgiFdMap.at(readFd);
+    CgiInfo*       info      = pipe.cgiInfo;
+    int            cgiPID    = info->getCgiPID();
+    Request*       req       = info->getRequest();
+    ClientContext* clientPtr = NULL;
+    char           buf[CGI_BUFFER_SIZE];
+
+    if (req)
+        clientPtr = req->getClientPtr();
+    else
+        return -1;
+    if (!clientPtr)
+        return -1;
 
     ssize_t n = read(readFd, buf, sizeof(buf));
     if (n > 0) { // append chunk
         std::string chunk(buf, n);
         info->appendToOutput(chunk);
         info->setLastActive(time(NULL));
+        DEBUG_LOG("read " + toString(n) + " bytes; output is now: \n\n{\n" + info->getOutput() + "\n}\n\n");
         return 0;
     }
     if (n == 0) { // EOF: close stdout pipe
+        DEBUG_LOG("read 0 bytes; cleaning up Cgi fds");
         cleanUpCgiFd(readFd, pfds, nfds);
         int writeFd = info->getWriteFd();
         if (writeFd >= 0)
@@ -209,9 +228,16 @@ int Server::readFromCgi(int readFd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds
         if (waitForCgiTermination(cgiPID, *req) != 0)
             req->setStatusCode(BAD_GATEWAY);
         req->setState(CGI_DONE);
+        (void)index;
+        // ClientContext& context       = *clientPtr;
+        // int            clientFdIndex = findPollFdIndexFromFd(context.pfd.fd, pfds, nfds);
+        // if (index == -1)
+        //     return -1;
+        // handle_requests(context, clientFdIndex, pfds, nfds);
         return 0;
     }
 
+    DEBUG_LOG("read " + toString(n) + " bytes (read error !)");
     handleCgiError(readFd, pfds, nfds, BAD_GATEWAY);
     return -1;
 }
@@ -239,38 +265,42 @@ void Server::run() {
         }
 
         // handle events of each pollfd
-        for (int i = 0; i < nfds; ++i) {
-            int fd = pfds[i].fd;
-            DEBUG_LOG("* for loop: i == " + toString(i) + " *\n" + "fd: " + toString(fd));
+        // the index is so we loop through all pollfds
+        // then we get the actual fd with fd = pfds[index].fd
+        // if we disconnect, then nfds is decreased but not the index
+        for (int index = 0; index < nfds; ++index) {
+            int fd = pfds[index].fd;
+            DEBUG_LOG("* for loop*\nindex == " + toString(index) + "\nfd == " + toString(fd));
 
-            if (pfds[i].revents & (POLLERR | POLLNVAL)) {
+            if (pfds[index].revents & (POLLERR | POLLNVAL)) {
                 DEBUG_LOG("--- POLLERR | POLLNVAL ---\n disconnect 1");
-                if (isCgiPipe(fd))
+                if (isCgiPipe(fd)) // if fd==PipeFd from a CGI, clean up the CGI and pre-prepare error response
                     handleCgiError(fd, pfds, nfds, BAD_GATEWAY);
-                else
-                    disconnect_client(i, fd, pfds, nfds, contextMap);
+                else // otherwise, fd==clientFd that had a problem -> disconnect it
+                    disconnect_client(index, fd, pfds, nfds, contextMap);
                 continue;
             }
 
-            if (pfds[i].revents & POLLIN) {
+            if (pfds[index].revents & POLLIN) {
                 DEBUG_LOG("--- POLLIN ---");
-                if (isCGIPipeRole(fd, CGI_STDOUT)) {
-                    readFromCgi(fd, pfds, nfds);
+                if (isCGIPipeRole(fd, CGI_STDOUT)) { // if fd==readPipeFd from a CGI, read from it
+                    readFromCgi(fd, index, pfds, nfds);
                     continue;
                 }
-                if (_listenerToServers.count(fd))
+                if (_listenerToServers.count(fd)) // if we're the listener, open a new connection
                     handleNewConnection(fd, pfds, nfds, contextMap);
                 else
-                    handleRead(fd, i, pfds, nfds, contextMap);
+                    handleRead(fd, index, pfds, nfds, contextMap); // otherwise fd==client fd to read data from
                 continue;
             }
 
-            if (pfds[i].revents & POLLOUT) {
-                if (isCGIPipeRole(fd, CGI_STDIN)) {
+            if (pfds[index].revents & POLLOUT) {
+                DEBUG_LOG("--- POLLOUT ---");
+                if (isCGIPipeRole(fd, CGI_STDIN)) { // if fd==writePipeFd from a CGI, write the request body to it
                     writePendingBodyToCgi(fd, pfds, nfds);
                     continue;
                 }
-                sendResponses(fd, i, pfds, nfds, contextMap);
+                sendResponses(fd, index, pfds, nfds, contextMap); // otherwise fd==client socketFd -> write response
                 continue;
             }
             DEBUG_LOG("* end for loop *\n");

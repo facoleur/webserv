@@ -15,7 +15,7 @@
 class Response;
 
 #define MAX_EVENTS 64
-#define CLIENT_TIMEOUT 10
+#define CLIENT_TIMEOUT 30
 #define POLL_TIMEOUT 4000
 #define READ_SIZE 8000
 
@@ -58,7 +58,7 @@ class Server {
 
     void             run();
     void             add_bad_request_to_queue(ClientContext&);
-    void             handle_requests(ClientContext&, int, struct pollfd (&)[MAX_EVENTS], int&);
+    void             handle_requests(ClientContext&, int, struct pollfd (&pfds)[MAX_EVENTS], int&);
     void             handleInvalidRequest(ClientContext&, Response&, struct pollfd&);
     void             disconnect_client(int&, int&, struct pollfd (&)[MAX_EVENTS], int&, std::map<int, ClientContext>&);
     void             setPollFd(struct pollfd&, int, short, short);
@@ -69,6 +69,7 @@ class Server {
     int  sendResponses(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
     void handlePartialRequest(ClientContext&, int, struct pollfd (&)[MAX_EVENTS], int&);
     void checkTimeouts(ContextMap&, int&, struct pollfd (&)[MAX_EVENTS]);
+    int  findPollFdIndexFromFd(int, struct pollfd (&)[MAX_EVENTS], int) const;
 
     // CGI
     bool isCgiPipe(int) const;
@@ -79,7 +80,7 @@ class Server {
     void cleanUpCgiFd(const int, struct pollfd (&)[MAX_EVENTS], int&);
     void cleanUpBothCgiFds(const int, struct pollfd (&)[MAX_EVENTS], int&);
     int  writePendingBodyToCgi(const int, struct pollfd (&)[MAX_EVENTS], int&);
-    int  readFromCgi(const int, struct pollfd (&)[MAX_EVENTS], int&);
+    int  readFromCgi(const int, int, struct pollfd (&)[MAX_EVENTS], int&);
     int  waitForCgiTermination(pid_t, Request&);
     void handleCgiError(const int, struct pollfd (&)[MAX_EVENTS], int&, statusCode);
     void terminateCgiProcess(pid_t);

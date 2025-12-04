@@ -84,14 +84,13 @@ void Server::cleanUpCgiFd(int fd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) 
 
     CgiFdMap::iterator it   = _cgiFdMap.find(fd);
     CgiInfo*           info = it->second.cgiInfo;
-    close(fd);
     removePollEntry(fd, pfds, nfds);
-    _cgiFdMap.erase(it);
-
     if (it->second.role == CGI_STDIN)
         info->setWriteFd(-1);
     else
         info->setReadFd(-1);
+    close(fd);
+    _cgiFdMap.erase(it);
 }
 
 int Server::launchCgi(Request& request, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
@@ -122,7 +121,10 @@ int Server::launchCgi(Request& request, struct pollfd (&pfds)[MAX_EVENTS], int& 
         close(stdoutPipe[1]);
         return -1;
     }
-    request.cgiInfo.exists = true; // CGI was started
+
+    // set CGI Info
+    request.cgiInfo.exists = true;
+    request.cgiInfo.setLastActive(time(NULL));
 
     if (pid == 0) { // child process
         close(stdinPipe[1]);
@@ -145,9 +147,11 @@ int Server::launchCgi(Request& request, struct pollfd (&pfds)[MAX_EVENTS], int& 
 
         execve(interpreter.c_str(), &argv[0], &envp[0]);
         _exit(1);
-    } else
+    } else {
+        close(stdinPipe[0]);
+        close(stdoutPipe[1]);
         request.cgiInfo.setCgiPID(pid);
-
+    }
     return 0;
 }
 
@@ -175,6 +179,10 @@ void Server::cleanUpBothCgiFds(const int fd, struct pollfd (&pfds)[MAX_EVENTS], 
         return;
 
     CgiInfo* info = it->second.cgiInfo;
+    if (!info) {
+        info->exists = false;
+        return;
+    }
     if (info->getWriteFd() >= 0)
         cleanUpCgiFd(info->getWriteFd(), pfds, nfds);
     if (info->getReadFd() >= 0)
@@ -183,6 +191,8 @@ void Server::cleanUpBothCgiFds(const int fd, struct pollfd (&pfds)[MAX_EVENTS], 
 }
 
 void Server::handleCgiError(const int fd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, statusCode statusCode) {
+    DEBUG_LOG("handleCgiError()");
+    DEBUG_LOG("TIMESTAMP: " + toString(time(NULL)));
     if (!_cgiFdMap[fd].cgiInfo)
         return;
 
@@ -190,8 +200,8 @@ void Server::handleCgiError(const int fd, struct pollfd (&pfds)[MAX_EVENTS], int
     pid_t    cgiPID = _cgiFdMap[fd].cgiInfo->getCgiPID();
 
     // CGI handling
-    cleanUpBothCgiFds(fd, pfds, nfds);
     terminateCgiProcess(cgiPID);
+    cleanUpBothCgiFds(fd, pfds, nfds);
 
     // request handling
     req->setStatusCode(statusCode);

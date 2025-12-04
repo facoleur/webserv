@@ -1,5 +1,6 @@
 // ServerRequest.cpp
 
+#include "Enums.hpp"
 #include "RequestRouter.hpp"
 #include "Response.hpp"
 #include "Server.hpp"
@@ -107,6 +108,7 @@ void Server::handle_requests(ClientContext& context, int i, struct pollfd (&pfds
             }
             context.write_buffer.append(res.serialize());
             context.requests.pop();
+            DEBUG_LOG("CGI_DONE is over");
             pfds[i].events = POLLOUT;
         }
     }

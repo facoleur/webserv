@@ -91,7 +91,7 @@ std::string RequestRouter::getMimeType(const std::string& path) {
     if (pos == std::string::npos)
         return "text/plain";
 
-    std::string extension = tolower(path.substr(++pos));
+    std::string extension = toLower(path.substr(++pos));
     std::string mimetype  = mime[extension];
 
     if (mimetype == "")

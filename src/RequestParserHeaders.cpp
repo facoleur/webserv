@@ -72,10 +72,10 @@ std::pair<std::string, std::string> RequestParser::checkHeaderSyntax(std::string
         throw RequestParsingError("checkHeaderSyntax(): whitespace found before colon (':')");
 
     // format header name and field
-    headerName  = tolower(headerName);
+    headerName  = toLower(headerName);
     headerField = trimString(headerField);
     if (isCaseInsensitiveHeader(headerName))
-        headerField = tolower(headerField);
+        headerField = toLower(headerField);
 
     return std::pair<std::string, std::string>(headerName, headerField);
 }
@@ -149,27 +149,18 @@ void RequestParser::validateHeaders(Request& req) {
 // 	=> if yes, append to existing value with ","
 // 	=> if no, append to existing (empty) value
 void RequestParser::fillHeadersMap(std::pair<std::string, std::string> const& header_pair, Request& req) {
-    std::string headerName  = header_pair.first;
-    std::string headerField = header_pair.second;
-    std::string existingHeader;
+    std::map<std::string, requestHeaders> headerStringToEnum;
+    std::string                           headerName  = header_pair.first;
+    std::string                           headerField = header_pair.second;
+    std::string                           existingHeader;
 
-    initHeaderStringToEnumMap();
-    if (_headerStringToEnum.find(headerName) == _headerStringToEnum.end())
+    initHeaderStringToEnumMap(headerStringToEnum);
+    if (headerStringToEnum.find(headerName) == headerStringToEnum.end())
         return;
-    existingHeader = req.getHeader(_headerStringToEnum[headerName]);
+    existingHeader = req.getHeader(headerStringToEnum[headerName]);
     if (!existingHeader.empty())
         headerField = "," + headerField; // add a comma if there is already a value for a given header
-    req.setHeader(_headerStringToEnum[headerName], headerField);
-}
-
-void RequestParser::initHeaderStringToEnumMap(void) {
-    _headerStringToEnum["host"]              = HOST;
-    _headerStringToEnum["content-length"]    = CONTENT_LENGTH;
-    _headerStringToEnum["location"]          = LOCATION;
-    _headerStringToEnum["transfer-encoding"] = TRANSFER_ENCODING;
-    _headerStringToEnum["content-type"]      = CONTENT_TYPE;
-    _headerStringToEnum["connection"]        = CONNECTION;
-    _headerStringToEnum["accept"]            = ACCEPT;
+    req.setHeader(headerStringToEnum[headerName], headerField);
 }
 
 bool RequestParser::isCaseInsensitiveHeader(std::string& headerName) {

@@ -66,6 +66,8 @@ class ReasonPhrase {
                 return "Not Implemented";
             case 502:
                 return "Bad Gateway";
+            case 504:
+                return "Gateway Timeout";
             case 505:
                 return "Http Version Not Supported";
             default:

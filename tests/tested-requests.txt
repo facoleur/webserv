@@ -1,3 +1,7 @@
+***Problem***
+- segfault: with config/cgi_test.conf:
+printf 'POST /cgi-bin/echo.py HTTP/1.1\r\nHost:example.com\r\nContent-Type:application/x-www-form-urlencoded\r\nContent-Length:12\r\n\r\nname=Copilot' | nc localhost 8085
+
 **Ok**
 printf "GET /index.html HTTP/1.1\r\n\r\n" | nc localhost 8080
 printf "GET /index.html? HTTP/1.1\r\n\r\n" | nc localhost 8080

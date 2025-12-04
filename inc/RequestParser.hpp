@@ -81,7 +81,6 @@ class RequestParser {
     std::pair<std::string, std::string> checkHeaderSyntax(std::string&, Request&);
     void                                fillHeadersMap(std::pair<std::string, std::string> const&, Request&);
     bool                                isCaseInsensitiveHeader(std::string&);
-    void                                initHeaderStringToEnumMap(void);
 
     // Error handling
     void handleParseError(Request&, std::queue<Request>&, const char*);
@@ -93,7 +92,7 @@ class RequestParser {
     std::string                           _firstSection; // start-line + headers
     std::string                           _startLine;
     std::string                           _headersBuffer;
-    std::map<std::string, requestHeaders> _headerStringToEnum;
+
     int                                   _contentLength;
     int                                   _chunkSize;
     int                                   _maxBodySize;

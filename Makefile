@@ -55,6 +55,9 @@ re: fclean all
 leaks:
 	@leaks -atExit -- ./$(NAME)
 
+sanitize: CCFLAGS += -fsanitize=address -g3
+sanitize: re
+
 debug: CCFLAGS += -DDEBUG_MODE
 debug: re
 

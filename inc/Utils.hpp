@@ -10,12 +10,11 @@ std::string              getCurrentDatetime();
 std::string&             replaceVariables(std::string&, const std::string&, const std::string&);
 std::string              methodToString(requestMethod);
 std::string              trimString(const std::string&);
-std::string              toLower(const std::string&);
 bool                     isSubPath(const std::string&, const std::string&);
 requestMethod            toMethod(const std::string&);
 std::string              toString(long long);
 size_t                   toSizet(const std::string&);
-std::string              tolower(const std::string&);
+std::string              toLower(const std::string&);
 unsigned char            toLowerChar(unsigned char);
 void                     replace(std::string&, const std::string&, const std::string&);
 std::vector<std::string> split(const std::string&, char);
@@ -28,6 +27,7 @@ std::string              getParent(const std::string&);
 bool                     isSpace(int);
 bool                     isAcceptedHeader(std::string&);
 void                     removeDoubleSlash(std::string&);
+void                     initHeaderStringToEnumMap(std::map<std::string, requestHeaders>&);
 
 // OutstreamUtils.cpp
 std::ostream& operator<<(std::ostream&, const struct pollfd);

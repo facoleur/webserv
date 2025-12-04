@@ -110,11 +110,13 @@ Response RequestRouter::prepareCgi(Request& req, const std::string& path, const 
 }
 
 Response RequestRouter::generateResponseFromCgiOutput(Request& req, Response& response, std::string output) {
+    DEBUG_LOG("generateResponseFromCgiOutput()");
 
-    std::string                        responseBody;
-    std::map<std::string, std::string> responseHeaders;
-    int                                statusCode    = 200;
-    std::string                        statusMessage = "OK";
+    std::map<enum requestHeaders, std::string> responseHeaders;
+    std::map<std::string, requestHeaders>      headerStringToEnum;
+    std::string                                responseBody;
+    int                                        statusCode    = 200;
+    std::string                                statusMessage = "OK";
 
     // check if there was an error
     if (req.getStatusCode() != NO_STATUS) {
@@ -123,11 +125,8 @@ Response RequestRouter::generateResponseFromCgiOutput(Request& req, Response& re
         return makeErrorResponse(req.getStatusCode());
     }
 
-    // preparing the response
-    response.setStatusCode(
-        static_cast<enum statusCode>(statusCode)); // ALWAYS 200 ? I guess we only use this function when CGI went ok
-    response.setBody(responseBody);
-
+    // extract headers and body
+    initHeaderStringToEnumMap(headerStringToEnum);
     std::string::size_type headerEnd = output.find("\r\n\r\n");
     size_t                 delimiter = 4;
     if (headerEnd == std::string::npos) {
@@ -143,6 +142,7 @@ Response RequestRouter::generateResponseFromCgiOutput(Request& req, Response& re
         responseBody = output;
     }
 
+    // get headers
     if (!headersBlock.empty()) {
         std::istringstream iss(headersBlock);
         std::string        line;
@@ -170,36 +170,50 @@ Response RequestRouter::generateResponseFromCgiOutput(Request& req, Response& re
                         statusMessage = text;
                     else
                         statusMessage.clear();
+                    headerValue = toString(statusCode) + statusMessage;
                 }
-                continue;
             }
-            responseHeaders[headerName] = headerValue;
+            std::map<std::string, requestHeaders>::const_iterator it = headerStringToEnum.find(lowered);
+            if (it == headerStringToEnum.end())
+                continue; // unknown header
+            else
+                responseHeaders[it->second] = headerValue;
         }
     }
 
-    // typedef std::map<requestHeaders, std::string> headersMap;
-    // response.setHeaders(responseHeaders);
+    // defaults
+    if (!responseHeaders.count(CONTENT_TYPE))
+        responseHeaders[CONTENT_TYPE] = "text/html";
+    if (!responseHeaders.count(CONTENT_LENGTH))
+        responseHeaders[CONTENT_LENGTH] = toString(responseBody.size());
 
-    if (responseHeaders.find("Content-Type") == responseHeaders.end())
-        responseHeaders["Content-Type"] = "text/html";
-    if (responseHeaders.find("Content-Length") == responseHeaders.end())
-        responseHeaders["Content-Length"] = toString(responseBody.size());
+    // set headers in response
+    if (responseHeaders.count(CONTENT_TYPE))
+        response.setHeader(CONTENT_TYPE, responseHeaders[CONTENT_TYPE]);
+    if (responseHeaders.count(CONTENT_LENGTH))
+        response.setHeader(CONTENT_LENGTH, responseHeaders[CONTENT_LENGTH]);
+    if (responseHeaders.count(HOST))
+        response.setHeader(HOST, responseHeaders[HOST]);
+    if (responseHeaders.count(LOCATION))
+        response.setHeader(LOCATION, responseHeaders[LOCATION]);
+    if (responseHeaders.count(TRANSFER_ENCODING))
+        response.setHeader(TRANSFER_ENCODING, responseHeaders[TRANSFER_ENCODING]);
+    if (responseHeaders.count(SERVER))
+        response.setHeader(SERVER, responseHeaders[SERVER]);
+    if (responseHeaders.count(ACCEPT))
+        response.setHeader(ACCEPT, responseHeaders[ACCEPT]);
+    if (responseHeaders.count(DATE))
+        response.setHeader(DATE, responseHeaders[DATE]);
+    if (responseHeaders.count(CONNECTION))
+        response.setHeader(CONNECTION, responseHeaders[CONNECTION]);
+    response.setHeaders(responseHeaders);
 
-    for (std::map<std::string, std::string>::const_iterator headerIt = responseHeaders.begin();
-         headerIt != responseHeaders.end(); ++headerIt) {
-        std::string lower = toLower(headerIt->first);
-        if (lower == "content-length")
-            response.setHeader(CONTENT_LENGTH, headerIt->second);
-        else if (lower == "content-type")
-            response.setHeader(CONTENT_TYPE, headerIt->second);
-        else if (lower == "location")
-            response.setHeader(LOCATION, headerIt->second);
-        else if (lower == "transfer-encoding")
-            response.setHeader(TRANSFER_ENCODING, headerIt->second);
-        else if (lower == "connection")
-            response.setHeader(CONNECTION, headerIt->second);
-        // else
-        //     response.addHeader(headerIt->first, headerIt->second);
-    }
+    // set response statusCode and body
+    response.setStatusCode(static_cast<enum statusCode>(statusCode));
+    response.setBody(responseBody);
+
+    DEBUG_LOG("generateResponseFromCgiOutput() generated response: ");
+    DEBUG_LOG(response);
+
     return response;
 }
