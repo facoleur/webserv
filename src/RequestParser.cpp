@@ -5,6 +5,7 @@
 #include "Enums.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
+#include "Server.hpp"
 #include "Utils.hpp"
 #include "Webserv.hpp"
 
@@ -160,7 +161,7 @@ int RequestParser::extractChunkData(void) {
 }
 
 void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, ClientContext& context) {
-    Request req(context);
+    Request req(context, context.pfd.fd);
     int     ret;
 
     _accumulator += buf;
@@ -231,7 +232,7 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, ClientContext
                 }
                 DEBUG_LOG(req);
                 reqQueue.push(req);
-                req = Request(context);
+                req = Request(context, context.pfd.fd);
                 this->resetParser();
                 _parsingPhase = PARSING_START_LINE;
             }

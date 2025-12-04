@@ -8,7 +8,7 @@
 #include <sys/_types/_pid_t.h>
 
 void Server::add_bad_request_to_queue(ClientContext& context) {
-    Request req(context);
+    Request req(context, context.pfd.fd);
     req.setStatusCode(BAD_REQUEST);
     context.requests.push(req);
 }
@@ -109,7 +109,8 @@ void Server::handle_requests(ClientContext& context, int i, struct pollfd (&pfds
             context.write_buffer.append(res.serialize());
             context.requests.pop();
             DEBUG_LOG("CGI_DONE is over");
-            pfds[i].events = POLLOUT;
+            pfds[i].events  = POLLOUT;
+            pfds[i].revents = 0;
         }
     }
 }

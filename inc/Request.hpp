@@ -15,7 +15,7 @@ class Request {
   public:
     // Constructors
     Request(void);
-    Request(ClientContext&);
+    Request(ClientContext&, int);
     ~Request(void);
 
     CgiInfo cgiInfo;
@@ -26,6 +26,8 @@ class Request {
     // getters
     requestState       getState(void) const;
     ClientContext*     getClientPtr(void);
+    ClientContext&     getClientContext(void) const;
+    int                getClientFd(void) const;
     requestMethod      getMethod(void) const;
     const std::string& getPath(void) const;
     const std::string& getQueryString(void) const;
@@ -38,6 +40,7 @@ class Request {
 
     // setters
     void setState(requestState);
+    void setClientFd(int);
     void setMethod(const std::string&);
     void setPath(std::string const&);
     void setQueryString(std::string const&);
@@ -51,6 +54,7 @@ class Request {
     // Attributes
     requestState   _state;
     ClientContext* _client;
+    int            _clientFd;
     requestMethod  _method;
     std::string    _path;
     std::string    _queryString;

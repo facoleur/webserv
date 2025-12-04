@@ -89,7 +89,8 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
 }
 
 // Handle incoming connections
-int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
+int Server::handleNewConnection(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
+                                ContextMap& context) {
     DEBUG_LOG("handleNewConnection()");
     int new_client_fd = accept(listener, NULL, NULL);
     if (new_client_fd < 0) {
@@ -101,7 +102,10 @@ int Server::handleNewConnection(int listener, struct pollfd (&pfds)[MAX_EVENTS],
     context[new_client_fd]                  = ClientContext();
     context[new_client_fd].availableServers = _listenerToServers[listener];
     context[new_client_fd].lastActive       = time(NULL);
+    context[new_client_fd].pfd              = pfds[nfds];
     nfds++;
+    DEBUG_LOG("the new client fd is " + toString(new_client_fd) + " with index " + toString(i) +
+              " and nfds == " + toString(nfds));
     return 0;
 }
 
@@ -114,15 +118,14 @@ int Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], i
     len            = read(listener, tmp, READ_SIZE);
     ctx.lastActive = time(NULL);
     if (len == 0) { // client closed their send side (or POLLHUP ? unclear but it works)
-        DEBUG_LOG("read returned 0 (client closed their send side)");
+        DEBUG_LOG("read on fd " + toString(listener) + " returned 0 (client closed their send side)");
         ctx.close_after_responses = true;
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
             handlePartialRequest(context[listener], i, pfds, nfds);
             return -1;
         }
-        // pfds[i].events &= ~POLLIN;
-        // pfds[i].revents = 0;
-        // return 0;
+        pfds[i].events &= ~POLLIN;
+        pfds[i].revents = 0;
     } else if (len < 0) {
         DEBUG_LOG("disconnect 3: read error");
         disconnect_client(i, listener, pfds, nfds, context);
@@ -147,7 +150,6 @@ int Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS]
         if (sent > 0) {
             buf.erase(0, sent);
             context[listener].lastActive = time(NULL);
-            pfds[i].events               = POLLIN; // new, from below
             break;
         }
         if (sent == -1) { // error or connection closed: (sent == 0 ?)
@@ -161,7 +163,7 @@ int Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS]
         disconnect_client(i, listener, pfds, nfds, context);
         return -1;
     }
-    //    pfds[i].events = POLLIN;
+    pfds[i].events = POLLIN;
     return 0;
 }
 
@@ -197,18 +199,12 @@ int Server::writePendingBodyToCgi(int writeFd, struct pollfd (&pfds)[MAX_EVENTS]
 // read output from CGI
 int Server::readFromCgi(int readFd, int index, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
     DEBUG_LOG("readFromCgi()");
-    CgiPipeInfo&   pipe      = _cgiFdMap.at(readFd);
-    CgiInfo*       info      = pipe.cgiInfo;
-    int            cgiPID    = info->getCgiPID();
-    Request*       req       = info->getRequest();
-    ClientContext* clientPtr = NULL;
-    char           buf[CGI_BUFFER_SIZE];
-
-    if (req)
-        clientPtr = req->getClientPtr();
-    else
-        return -1;
-    if (!clientPtr)
+    CgiPipeInfo& pipe   = _cgiFdMap.at(readFd);
+    CgiInfo*     info   = pipe.cgiInfo;
+    int          cgiPID = info->getCgiPID();
+    Request*     req    = info->getRequest();
+    char         buf[CGI_BUFFER_SIZE];
+    if (!req)
         return -1;
 
     ssize_t n = read(readFd, buf, sizeof(buf));
@@ -228,12 +224,16 @@ int Server::readFromCgi(int readFd, int index, struct pollfd (&pfds)[MAX_EVENTS]
         if (waitForCgiTermination(cgiPID, *req) != 0)
             req->setStatusCode(BAD_GATEWAY);
         req->setState(CGI_DONE);
+
         (void)index;
-        // ClientContext& context       = *clientPtr;
-        // int            clientFdIndex = findPollFdIndexFromFd(context.pfd.fd, pfds, nfds);
-        // if (index == -1)
-        //     return -1;
-        // handle_requests(context, clientFdIndex, pfds, nfds);
+        DEBUG_LOG("req->getClientFd() == " + toString(req->getClientFd()));
+        int clientFdIndex = findPollFdIndexFromFd(req->getClientFd(), pfds, nfds);
+        if (clientFdIndex == -1) {
+            DEBUG_LOG("findPollFdIndexFromFd() couldn't find the index for the client fd");
+            return -1;
+        }
+        DEBUG_LOG("findPollFdIndexFromFd() found index " + toString(clientFdIndex));
+        handle_requests(req->getClientContext(), clientFdIndex, pfds, nfds);
         return 0;
     }
 
@@ -264,11 +264,7 @@ void Server::run() {
             continue;
         }
 
-        // handle events of each pollfd
-        // the index is so we loop through all pollfds
-        // then we get the actual fd with fd = pfds[index].fd
-        // if we disconnect, then nfds is decreased but not the index
-        for (int index = 0; index < nfds; ++index) {
+        for (int index = 0; index < nfds; index++) {
             int fd = pfds[index].fd;
             DEBUG_LOG("* for loop*\nindex == " + toString(index) + "\nfd == " + toString(fd));
 
@@ -288,7 +284,7 @@ void Server::run() {
                     continue;
                 }
                 if (_listenerToServers.count(fd)) // if we're the listener, open a new connection
-                    handleNewConnection(fd, pfds, nfds, contextMap);
+                    handleNewConnection(fd, index, pfds, nfds, contextMap);
                 else
                     handleRead(fd, index, pfds, nfds, contextMap); // otherwise fd==client fd to read data from
                 continue;

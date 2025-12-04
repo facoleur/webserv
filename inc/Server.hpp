@@ -16,7 +16,7 @@ class Response;
 
 #define MAX_EVENTS 64
 #define CLIENT_TIMEOUT 30
-#define POLL_TIMEOUT 4000
+#define POLL_TIMEOUT 0
 #define READ_SIZE 8000
 
 struct ClientContext {
@@ -64,7 +64,7 @@ class Server {
     void             setPollFd(struct pollfd&, int, short, short);
     void             removePollEntry(int, struct pollfd (&)[MAX_EVENTS], int&);
     std::vector<int> initListenerSockets(struct pollfd (&)[MAX_EVENTS], int&);
-    int  handleNewConnection(int, struct pollfd (&)[MAX_EVENTS], int&, std::map<int, struct ClientContext>&);
+    int  handleNewConnection(int, int, struct pollfd (&)[MAX_EVENTS], int&, std::map<int, struct ClientContext>&);
     int  handleRead(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
     int  sendResponses(int, int, struct pollfd (&)[MAX_EVENTS], int&, ContextMap&);
     void handlePartialRequest(ClientContext&, int, struct pollfd (&)[MAX_EVENTS], int&);
