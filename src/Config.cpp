@@ -1,9 +1,11 @@
 #include "Config.hpp"
+#include <cstddef>
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <unistd.h>
+#include <vector>
 
 #include "ConfigFile.hpp"
 
@@ -116,10 +118,46 @@ static void ensureUploadStore(const LocationConfig& loc, const std::string& root
     throw std::runtime_error("Upload store must be a directory: " + path);
 }
 
+struct ServerBlock {
+    std::vector<int> ports;
+    std::string      host;
+    std::string      server_name;
+
+    bool operator==(const ServerBlock& other) const {
+        return ports == other.ports && host == other.host && server_name == other.server_name;
+    }
+
+    ServerBlock(std::vector<int> ports, const std::string& host, const std::string& server_name)
+        : ports(ports), host(host), server_name(server_name) {
+    }
+};
+
+void validateAmbigousServerBlock(const std::vector<ServerBlock>& serverBlock) {
+    for (size_t i = 0; i < serverBlock.size(); i++) {
+        const ServerBlock& current = serverBlock[i];
+
+        for (size_t j = 0; j < serverBlock.size(); j++) {
+            if (i == j)
+                continue;
+
+            const ServerBlock& existing = serverBlock[j];
+
+            if (current == existing)
+                throw std::runtime_error("invalid config: duplicate <ip>:<port> server block");
+        }
+    }
+}
+
 void validateCompatibility(const Config& cfg) {
     const std::vector<ServerConfig>& servers = cfg.getServers();
+
+    std::vector<ServerBlock> serverBlock;
+
     for (size_t i = 0; i < servers.size(); ++i) {
         const ServerConfig& srv = servers[i];
+
+        serverBlock.push_back(ServerBlock(srv.listen_ports, srv.host, srv.server_name));
+
         // Server-level checks
         if (srv.listen_ports.empty()) {
             std::cerr << "Error: server[" << i << "] missing listen directive (at least one port required)\n";
@@ -164,6 +202,8 @@ void validateCompatibility(const Config& cfg) {
             ensureUploadStore(loc, srv.root);
         }
     }
+
+    validateAmbigousServerBlock(serverBlock);
 }
 
 bool ServerConfig::matchServerName(const std::string& hostHeader) const {
