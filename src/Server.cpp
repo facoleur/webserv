@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <utility>
 #include <vector>
+#include <errno.h>
 
 #include "CGI.hpp"
 #include "Config.hpp"

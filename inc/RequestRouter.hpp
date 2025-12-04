@@ -30,6 +30,7 @@ class RequestRouter {
     Response                 makeRedirectResponse(const std::string&);
     void                     resolveAbsolutePath(std::string&);
     std::string              getMimeType(const std::string&);
+
     int executeCgi(const ServerConfig&, const LocationConfig&, const Request&, const std::string&, const std::string&,
                    std::string&, std::map<std::string, std::string>&, int&, std::string&) const;
 

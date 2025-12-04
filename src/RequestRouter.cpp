@@ -396,6 +396,7 @@ Response RequestRouter::route(Request& req, const ServerConfig& config) {
 
     try {
         resolvedPath = resolvePath(req, resolvedConfig.root, locationPath);
+
     } catch (std::exception&) {
         return makeErrorResponse(BAD_REQUEST);
     }
