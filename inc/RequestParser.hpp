@@ -4,6 +4,7 @@
 
 #include <queue>
 
+#include "Config.hpp"
 #include "Enums.hpp"
 
 #define READ_BUF_SIZE 8000
@@ -55,6 +56,9 @@ class RequestParser {
         std::string _message;
     };
 
+    Config _config;
+    size_t _tmpMaxBodySize;
+
   private:
     // Main parsing functions
     void parseStartLine(Request&);
@@ -86,15 +90,15 @@ class RequestParser {
     void handleParseError(Request&, std::queue<Request>&, const char*);
 
     // attributes
-    ParserState                           _parserState;
-    ParsingPhase                          _parsingPhase;
-    std::string                           _accumulator;
-    std::string                           _firstSection; // start-line + headers
-    std::string                           _startLine;
-    std::string                           _headersBuffer;
+    ParserState  _parserState;
+    ParsingPhase _parsingPhase;
+    std::string  _accumulator;
+    std::string  _firstSection; // start-line + headers
+    std::string  _startLine;
+    std::string  _headersBuffer;
 
-    int                                   _contentLength;
-    int                                   _chunkSize;
-    int                                   _maxBodySize;
-    std::string                           _bodyBuffer;
+    int         _contentLength;
+    int         _chunkSize;
+    int         _maxBodySize;
+    std::string _bodyBuffer;
 };

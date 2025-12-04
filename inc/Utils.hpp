@@ -1,4 +1,6 @@
+#include "Config.hpp"
 #include "Enums.hpp"
+#include "Server.hpp"
 #include <iostream>
 #include <string>
 #include <sys/stat.h>
@@ -28,6 +30,7 @@ bool                     isSpace(int);
 bool                     isAcceptedHeader(std::string&);
 void                     removeDoubleSlash(std::string&);
 void                     initHeaderStringToEnumMap(std::map<std::string, requestHeaders>&);
+const ServerConfig&      getServerConfig(const ClientContext& context, const Config& config, const std::string& host);
 
 // OutstreamUtils.cpp
 std::ostream& operator<<(std::ostream&, const struct pollfd);

@@ -1,6 +1,8 @@
 // Utils.cpp
 
 #include "Utils.hpp"
+#include "Config.hpp"
+#include "Server.hpp"
 #include <cctype>
 #include <ctime>
 #include <dirent.h>
@@ -214,4 +216,21 @@ void initHeaderStringToEnumMap(std::map<std::string, requestHeaders>& headerStri
     headerStringToEnum["content-type"]      = CONTENT_TYPE;
     headerStringToEnum["connection"]        = CONNECTION;
     headerStringToEnum["accept"]            = ACCEPT;
+}
+
+const ServerConfig& getServerConfig(const ClientContext& context, const Config& config, const std::string& host) {
+    int                              chosenConfig  = -1;
+    const std::vector<ServerConfig>& serverConfigs = config.getServers();
+    for (size_t j = 0; j < context.availableServers.size(); j++) {
+        int index = context.availableServers[j];
+        std::cout << index << std::endl;
+        if (serverConfigs[index].matchServerName(host)) {
+            chosenConfig = index;
+            break;
+        }
+    }
+    if (chosenConfig == -1)
+        chosenConfig = context.availableServers[0];
+    const ServerConfig& serverConfig = config.getServers().at(chosenConfig);
+    return serverConfig;
 }

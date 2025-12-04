@@ -1,10 +1,12 @@
 // ServerRequest.cpp
 
+#include "Config.hpp"
 #include "Enums.hpp"
 #include "RequestRouter.hpp"
 #include "Response.hpp"
 #include "Server.hpp"
 #include "Webserv.hpp"
+#include <string>
 #include <sys/types.h>
 
 void Server::add_bad_request_to_queue(ClientContext& context) {
@@ -31,28 +33,14 @@ void Server::handle_requests(ClientContext& context, int i, struct pollfd (&pfds
     DEBUG_LOG("handle_requests: " + toString(context.requests.size()) + " requests in queue");
 
     while (!context.requests.empty()) {
-        Request&                         req           = context.requests.front();
-        std::string                      hostHeader    = req.getHeader(HOST);
-        int                              chosenConfig  = -1;
-        const std::vector<ServerConfig>& serverConfigs = _config.getServers();
+        Request&    req        = context.requests.front();
+        std::string hostHeader = req.getHeader(HOST);
 
         DEBUG_LOG("- handling request:");
         DEBUG_LOG(req);
 
         // obtain the right config based on Host header
-        for (size_t j = 0; j < context.availableServers.size(); j++) {
-            int index = context.availableServers[j];
-            std::cout << index << std::endl;
-            if (serverConfigs[index].matchServerName(hostHeader)) {
-                chosenConfig = index;
-                break;
-            }
-        }
-        if (chosenConfig == -1)
-            chosenConfig = context.availableServers[0];
-        ServerConfig& config = _config.getServers().at(chosenConfig);
-        std::cout << "servername: " << config.server_name << std::endl;
-        std::cout << "host header: " << req.getHeader(HOST) << std::endl;
+        const ServerConfig& config = getServerConfig(context, _config, hostHeader);
 
         // OLD CODE
         // Response res;
