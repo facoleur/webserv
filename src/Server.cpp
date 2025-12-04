@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <cstddef>
 #include <cstring>
+#include <errno.h>
 #include <iostream>
 #include <map>
 #include <string>
@@ -10,7 +11,6 @@
 #include <sys/types.h>
 #include <utility>
 #include <vector>
-#include <errno.h>
 
 #include "CGI.hpp"
 #include "Config.hpp"
@@ -134,7 +134,8 @@ int Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], i
         disconnect_client(i, listener, pfds, nfds, context);
         return -1;
     } else { // Parsing
-        tmp[len] = '\0';
+        tmp[len]               = '\0';
+        ctx.req_parser._config = _config;
         ctx.req_parser.feed(tmp, ctx.requests, context[listener]);
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL)
             return -1;
