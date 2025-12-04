@@ -5,6 +5,8 @@
 #include <map>
 #include <string>
 
+enum requestState { PENDING, CGI_START, CGI_STREAMING, CGI_DONE };
+
 enum requestHeaders {
     SERVER,
     DATE,
@@ -33,14 +35,15 @@ enum statusCode {
 
     // Errors
     BAD_REQUEST                = 400,
-    FORBIDDEN                  = 403, // probably not used; discussed on 12/11 call
+    FORBIDDEN                  = 403,
     NOT_FOUND                  = 404,
-    NOT_ALLOWED                = 405, // checked if relevant => yes (also in Kaydoo's)
+    NOT_ALLOWED                = 405,
     LENGTH_REQUIRED            = 411,
     CONTENT_TOO_LARGE          = 413,
     INTERNAL_SERVER_ERROR      = 500,
     NOT_IMPLEMENTED            = 501,
     BAD_GATEWAY                = 502,
+    GATEWAY_TIMEOUT            = 504,
     HTTP_VERSION_NOT_SUPPORTED = 505
 };
 
@@ -58,3 +61,5 @@ enum ParsingPhase {
     PARSING_BODY_FINISHED,
     PARSING_COMPLETE
 };
+
+enum CgiPipeRole { CGI_STDIN, CGI_STDOUT };

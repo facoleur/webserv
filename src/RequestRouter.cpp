@@ -1,6 +1,5 @@
 // RequestRouter.cpp
 
-#include <cctype>
 #include <ctime>
 #include <dirent.h>
 #include <fstream>
@@ -38,37 +37,6 @@ bool RequestRouter::isMethodAllowed(const Request& req, const LocationConfig& co
     }
 
     return (config.methods.find(req.getMethod()) != config.methods.end());
-}
-
-bool RequestRouter::isCgiRequest(const std::string& path, const LocationConfig& config) {
-    return !getCgiInterpreter(path, config).empty();
-}
-
-std::string RequestRouter::getCgiInterpreter(const std::string& path, const LocationConfig& config) const {
-    const std::map<std::string, std::string>& cgi_ext = config.cgi_map;
-    if (cgi_ext.empty())
-        return "";
-
-    std::string::size_type dot = path.find_last_of('.');
-    if (dot != std::string::npos) {
-        std::string                                        ext = path.substr(dot);
-        std::map<std::string, std::string>::const_iterator it  = cgi_ext.find(ext);
-        if (it != cgi_ext.end())
-            return it->second;
-        if (dot + 1 < path.size()) {
-            std::string alt = path.substr(dot + 1);
-            it              = cgi_ext.find(alt);
-            if (it != cgi_ext.end())
-                return it->second;
-            if (!alt.empty()) {
-                std::string withDot = "." + alt;
-                it                  = cgi_ext.find(withDot);
-                if (it != cgi_ext.end())
-                    return it->second;
-            }
-        }
-    }
-    return "";
 }
 
 void RequestRouter::resolveAbsolutePath(std::string& path) {
@@ -122,7 +90,7 @@ std::string RequestRouter::getMimeType(const std::string& path) {
     if (pos == std::string::npos)
         return "text/plain";
 
-    std::string extension = tolower(path.substr(++pos));
+    std::string extension = toLower(path.substr(++pos));
     std::string mimetype  = mime[extension];
 
     if (mimetype == "")
@@ -403,7 +371,7 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
     return res;
 }
 
-Response RequestRouter::route(const Request& req, const ServerConfig& config) {
+Response RequestRouter::route(Request& req, const ServerConfig& config) {
     DEBUG_LOG("RequestRouter.route():");
 
     if (req.getStatusCode() != NO_STATUS) {
@@ -453,7 +421,7 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     }
 
     if (isCgiRequest(resolvedPath, resolvedConfig))
-        return handleCgi(req, resolvedPath, config, resolvedConfig);
+        return prepareCgi(req, resolvedPath, config, resolvedConfig);
 
     switch (req.getMethod()) {
         case GET:
