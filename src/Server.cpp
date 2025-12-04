@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <errno.h>
 
 #include "Config.hpp"
 #include "Enums.hpp"
