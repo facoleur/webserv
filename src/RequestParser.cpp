@@ -1,5 +1,6 @@
 // RequestParser.cpp
 
+#include <cstddef>
 #include <sstream>
 
 #include "Enums.hpp"
@@ -11,7 +12,7 @@
 
 RequestParser::RequestParser(void)
     : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_START_LINE), _accumulator(), _firstSection(), _startLine(),
-      _headersBuffer(), _contentLength(-1), _chunkSize(-1), _maxBodySize(DEFAULT_MAX_BODY_SIZE), _bodyBuffer() {
+      _headersBuffer(), _contentLength(-1), _chunkSize(-1), _bodyBuffer() {
 }
 
 RequestParser::~RequestParser(void) {
@@ -125,8 +126,8 @@ int RequestParser::extractChunkSize(void) {
         std::istringstream(chunkSizeStr) >> std::hex >> chunkSize;
         if (chunkSize > MAX_CHUNK_SIZE)
             throw RequestParsingError("chunked input: chunk size too big");
-        else if (_bodyBuffer.size() + chunkSize > static_cast<size_t>(_maxBodySize))
-            throw RequestParsingError("chunked input: parsed body would be too large (> " + toString(_maxBodySize) +
+        else if (_bodyBuffer.size() + chunkSize > _tmpMaxBodySize)
+            throw RequestParsingError("chunked input: parsed body would be too large (> " + toString(_tmpMaxBodySize) +
                                       " bytes).\n");
         else {
             _chunkSize   = chunkSize;
@@ -160,7 +161,8 @@ int RequestParser::extractChunkData(void) {
     return PARSE_MORE_CHUNKS;
 }
 
-void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, ClientContext& context) {
+void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, ClientContext& context, size_t maxBodySize) {
+    _tmpMaxBodySize = maxBodySize;
 
     Request req(context, context.pfd.fd);
     int     ret;

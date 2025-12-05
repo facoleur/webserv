@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <queue>
 
 #include "Config.hpp"
@@ -35,7 +36,7 @@ class RequestParser {
     ~RequestParser(void);
 
     // public functions
-    void feed(char*, std::queue<Request>&, ClientContext&);
+    void feed(char*, std::queue<Request>&, ClientContext&, size_t);
     void resetParser(void);
 
     // getters
@@ -79,6 +80,7 @@ class RequestParser {
 
     // Validation
     void validateHeaders(Request&);
+    bool isValidBody(Request&) const; // used ?
 
     // Helpers
     void                                splitStartLine(std::vector<std::string>&, std::string&);
@@ -90,15 +92,14 @@ class RequestParser {
     void handleParseError(Request&, std::queue<Request>&, const char*);
 
     // attributes
-    ParserState  _parserState;
-    ParsingPhase _parsingPhase;
-    std::string  _accumulator;
-    std::string  _firstSection; // start-line + headers
-    std::string  _startLine;
-    std::string  _headersBuffer;
-
-    int         _contentLength;
-    int         _chunkSize;
-    int         _maxBodySize;
-    std::string _bodyBuffer;
+    ParserState                           _parserState;
+    ParsingPhase                          _parsingPhase;
+    std::string                           _accumulator;
+    std::string                           _firstSection; // start-line + headers
+    std::string                           _startLine;
+    std::string                           _headersBuffer;
+    std::map<std::string, requestHeaders> _headerStringToEnum;
+    int                                   _contentLength;
+    int                                   _chunkSize;
+    std::string                           _bodyBuffer;
 };

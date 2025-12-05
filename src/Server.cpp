@@ -3,7 +3,6 @@
 #include <arpa/inet.h>
 #include <cstddef>
 #include <cstring>
-#include <errno.h>
 #include <iostream>
 #include <map>
 #include <string>
@@ -61,9 +60,8 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
                 ++itClient;
                 continue;
             }
-            ++itClient; // to avoid issues when client is removed from contextMap in disconnect_client()
 
-            // close the client_fd, remove itClient from pfds and remove the clientContext from the contextMap
+            ++itClient; // to avoid issues when client is removed from contextMap in disconnect_client()
             DEBUG_LOG("Client timed out after (in theory) " + toString(CLIENT_TIMEOUT) + " seconds)");
             disconnect_client(j, client_fd, pfds, nfds, contextMap);
             continue; // skip the ++itClient
@@ -112,6 +110,24 @@ int Server::handleNewConnection(int listener, int i, struct pollfd (&pfds)[MAX_E
     return 0;
 }
 
+size_t getTmpMaxBodySize(const Config& _config) {
+    size_t size = 0;
+
+    std::vector<ServerConfig> servers = _config.getServers();
+    for (size_t i = 0; i < servers.size(); i++) {
+        if (servers[i].client_max_body_size > size) {
+            size = servers[i].client_max_body_size;
+        }
+        for (size_t j = 0; j < servers[i].locations.size(); j++) {
+            LocationConfig& loc = servers[i].locations[j];
+            if (loc.client_max_body_size > size) {
+                size = loc.client_max_body_size;
+            }
+        }
+    }
+    return size;
+}
+
 int Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
     char           tmp[READ_SIZE + 1];
     int            len;
@@ -134,9 +150,10 @@ int Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], i
         disconnect_client(i, listener, pfds, nfds, context);
         return -1;
     } else { // Parsing
+        size_t maxBodySize     = getTmpMaxBodySize(_config);
         tmp[len]               = '\0';
         ctx.req_parser._config = _config;
-        ctx.req_parser.feed(tmp, ctx.requests, context[listener]);
+        ctx.req_parser.feed(tmp, ctx.requests, context[listener], maxBodySize);
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL)
             return -1;
     }

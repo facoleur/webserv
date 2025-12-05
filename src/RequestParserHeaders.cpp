@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <sstream>
@@ -12,6 +11,7 @@
 #include "Enums.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
+#include "RequestRouter.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
 
@@ -111,36 +111,17 @@ void RequestParser::handleHeaderContentLength(Request& req, const headersMap& he
     contentLength = toSizet(req.getHeader(CONTENT_LENGTH));
     if (contentLength > _tmpMaxBodySize) { // TEST THIS BY MODIFYING CONFIG
         req.setStatusCode(CONTENT_TOO_LARGE);
-        throw RequestParsingError("handleHeaderContentLength: exceeds _maxBodySize (" + toString(_maxBodySize) + ")");
+        throw RequestParsingError("handleHeaderContentLength: exceeds _maxBodySize (" + toString(_tmpMaxBodySize) +
+                                  ")");
     }
 
     _contentLength = contentLength;
-}
-
-size_t getTmpMaxBodySize(const Config& _config) {
-    size_t size = 0;
-
-    std::vector<ServerConfig> servers = _config.getServers();
-    for (size_t i = 0; i < servers.size(); i++) {
-        if (servers[i].client_max_body_size > size) {
-            size = servers[i].client_max_body_size;
-        }
-        for (size_t j = 0; j < servers[i].locations.size(); j++) {
-            LocationConfig& loc = servers[i].locations[j];
-            if (loc.client_max_body_size > size) {
-                size = loc.client_max_body_size;
-            }
-        }
-    }
-    return size;
 }
 
 void RequestParser::validateHeaders(Request& req) {
     const headersMap headers = req.getHeaders();
 
     // _maxBodySize = pow(16, 6); // temp value before choosing the correct serv
-
-    _tmpMaxBodySize = getTmpMaxBodySize(_config);
 
     // To do: get max body size from config before, we did:
     // const ServerConfig& serverConfig = _config.getServers().at(ctx.server_index);
