@@ -4,10 +4,19 @@
 
 #include "Enums.hpp"
 #include "Request.hpp"
+#include "Server.hpp"
 #include "Utils.hpp"
+#include "Webserv.hpp"
 
 Request::Request(void)
-    : _method(UNKNOWN), _path(), _queryString(), _protocolVersion(), _body(), _statusCode(NO_STATUS) {
+    : _state(PENDING), _client(NULL), _clientFd(-1), _method(UNKNOWN), _path(), _queryString(), _protocolVersion(),
+      _body(), _statusCode(NO_STATUS) {
+}
+
+Request::Request(ClientContext& client, int clientFd)
+    : _state(PENDING), _client(&client), _clientFd(clientFd), _method(UNKNOWN), _path(), _queryString(),
+      _protocolVersion(), _body(), _statusCode(NO_STATUS) {
+    DEBUG_LOG("Request initialised with _clientFd set to " + toString(_clientFd));
 }
 
 Request::~Request(void) {
@@ -25,6 +34,22 @@ std::ostream& operator<<(std::ostream& os, const Request& req) {
     os << "Status code:      " << req.getStatusCode() << std::endl;
     os << "--------------------------------" << std::endl;
     return os;
+}
+
+enum requestState Request::getState(void) const {
+    return _state;
+}
+
+ClientContext* Request::getClientPtr(void) {
+    return _client;
+}
+
+ClientContext& Request::getClientContext(void) const {
+    return *_client;
+}
+
+int Request::getClientFd(void) const {
+    return _clientFd;
 }
 
 enum requestMethod Request::getMethod(void) const {
@@ -73,6 +98,14 @@ void Request::setMethod(const std::string& method) {
         _method = DELETE;
     else
         _method = UNKNOWN;
+}
+
+void Request::setState(requestState state) {
+    _state = state;
+}
+
+void Request::setClientFd(int clientFd) {
+    _clientFd = clientFd;
 }
 
 void Request::setPath(std::string const& path) {

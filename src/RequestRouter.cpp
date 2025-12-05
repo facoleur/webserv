@@ -1,6 +1,5 @@
 // RequestRouter.cpp
 
-#include <cctype>
 #include <ctime>
 #include <dirent.h>
 #include <fstream>
@@ -8,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -40,43 +40,21 @@ bool RequestRouter::isMethodAllowed(const Request& req, const LocationConfig& co
     return (config.methods.find(req.getMethod()) != config.methods.end());
 }
 
-bool RequestRouter::isCgiRequest(const std::string& path, const LocationConfig& config) {
-    return !getCgiInterpreter(path, config).empty();
-}
-
-std::string RequestRouter::getCgiInterpreter(const std::string& path, const LocationConfig& config) const {
-    const std::map<std::string, std::string>& cgi_ext = config.cgi_map;
-    if (cgi_ext.empty())
-        return "";
-
-    std::string::size_type dot = path.find_last_of('.');
-    if (dot != std::string::npos) {
-        std::string                                        ext = path.substr(dot);
-        std::map<std::string, std::string>::const_iterator it  = cgi_ext.find(ext);
-        if (it != cgi_ext.end())
-            return it->second;
-        if (dot + 1 < path.size()) {
-            std::string alt = path.substr(dot + 1);
-            it              = cgi_ext.find(alt);
-            if (it != cgi_ext.end())
-                return it->second;
-            if (!alt.empty()) {
-                std::string withDot = "." + alt;
-                it                  = cgi_ext.find(withDot);
-                if (it != cgi_ext.end())
-                    return it->second;
-            }
-        }
-    }
-    return "";
-}
-
 void RequestRouter::resolveAbsolutePath(std::string& path) {
     std::string::size_type pos = path.find("http://");
     path.erase(pos, 7);
 
     pos = path.find("/");
     path.erase(0, pos);
+}
+
+std::string extractFile(const std::string& path) {
+    if (path == "")
+        return std::string("");
+
+    size_t      pos  = path.find_last_of('/');
+    std::string file = path.substr(pos);
+    return file;
 }
 
 std::string RequestRouter::resolvePath(const Request& req, const std::string& root) {
@@ -90,15 +68,17 @@ std::string RequestRouter::resolvePath(const Request& req, const std::string& ro
         path.find("=") != std::string::npos || path.find("&") != std::string::npos)
         throw std::runtime_error("Not accepted in path");
 
-    replace(path, "//", "/");
-
     std::string fullPath = root;
 
+    // replace(path, "//", "/");
+
     if (req.getMethod() == POST && _config.upload_enable) {
-        fullPath.append(_config.upload_store + '/');
+        fullPath.append('/' + _config.upload_store + '/');
     } else {
         fullPath.append(path);
     }
+
+    replace(fullPath, "//", "/");
 
     while (fullPath.find("//") != std::string::npos) {
         replace(fullPath, "//", "/");
@@ -125,7 +105,7 @@ std::string RequestRouter::getMimeType(const std::string& path) {
     if (pos == std::string::npos)
         return "text/plain";
 
-    std::string extension = tolower(path.substr(++pos));
+    std::string extension = toLower(path.substr(++pos));
     std::string mimetype  = mime[extension];
 
     if (mimetype == "")
@@ -191,7 +171,9 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
 
 std::string generateUploadName() {
     std::ostringstream oss;
-    oss << "upload_" << std::time(0);
+    struct timeval     tv;
+    gettimeofday(&tv, 0);
+    oss << "upload_" << tv.tv_sec << tv.tv_usec;
     return oss.str();
 }
 
@@ -209,8 +191,9 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
 
     std::string fsUploadPath;
     std::string filename = generateUploadName();
-    if (!config.upload_store.empty())
+    if (!config.upload_store.empty()) {
         fsUploadPath = config.root + "/" + config.upload_store + "/" + filename;
+    }
 
     while (fsUploadPath.find("//") != std::string::npos) {
         replace(fsUploadPath, "//", "/");
@@ -412,7 +395,7 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
     return res;
 }
 
-Response RequestRouter::route(const Request& req, const ServerConfig& config) {
+Response RequestRouter::route(Request& req, const ServerConfig& config) {
     DEBUG_LOG("RequestRouter.route():");
 
     if (req.getStatusCode() != NO_STATUS) {
@@ -440,13 +423,16 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
     std::string resolvedPath;
 
     try {
-
         std::cout << "req.getpath():" << req.getPath() << std::endl;
         resolvedPath = resolvePath(req, resolvedConfig.root);
         std::cout << "resolvedPath:" << resolvedPath << std::endl;
 
     } catch (std::exception&) {
         return makeErrorResponse(BAD_REQUEST);
+    }
+
+    if (!isMethodAllowed(req, resolvedConfig)) {
+        return makeErrorResponse(NOT_ALLOWED);
     }
 
     if (req.getMethod() == POST && _config.upload_enable) {
@@ -483,12 +469,8 @@ Response RequestRouter::route(const Request& req, const ServerConfig& config) {
         }
     }
 
-    if (!isMethodAllowed(req, resolvedConfig)) {
-        return makeErrorResponse(NOT_ALLOWED);
-    }
-
     if (isCgiRequest(resolvedPath, resolvedConfig))
-        return handleCgi(req, resolvedPath, config, resolvedConfig);
+        return prepareCgi(req, resolvedPath, config, resolvedConfig);
 
     switch (req.getMethod()) {
         case GET:

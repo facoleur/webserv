@@ -23,10 +23,10 @@ std::string toString(long long n) {
     return ss.str();
 }
 
-std::string tolower(const std::string& s) {
+std::string toLower(const std::string& s) {
     std::string out = s;
     for (size_t i = 0; i < out.size(); i++)
-        out[i] = std::tolower(static_cast<unsigned char>(out[i]));
+        out[i] = std::toLower(static_cast<unsigned char>(out[i]));
     return out;
 }
 
@@ -92,13 +92,13 @@ void checkHeaderSyntax(std::string& header) {
     }
 
     // lowercase the headerName
-    headerName = tolower(headerName);
+    headerName = toLower(headerName);
     // std::transform(headerName.begin(), headerName.end(), headerName.begin(), toLowerChar);
 
     trimWhitespace(headerField);
 
     if (isCaseInsensitiveHeader(headerName))
-        headerField = tolower(headerField);
+        headerField = toLower(headerField);
 }
 
 #include <unistd.h>
@@ -116,7 +116,7 @@ int main(void) {
         std::string name  = header.substr(0, pos);
         std::string value = header.substr(pos + 1);
         trimWhitespace(value);
-        name = tolower(name);
+        name = toLower(name);
 
         std::cout << "TEST OK" << std::endl;
         std::cout << "  -> name  = {" << name << "}" << std::endl;

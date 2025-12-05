@@ -66,6 +66,8 @@ class ReasonPhrase {
                 return "Not Implemented";
             case 502:
                 return "Bad Gateway";
+            case 504:
+                return "Gateway Timeout";
             case 505:
                 return "Http Version Not Supported";
             default:
@@ -77,6 +79,7 @@ class ReasonPhrase {
 class Response {
   private:
     statusCode  _statusCode;
+    bool        _mustLaunchCgi;
     headersMap  _headers;
     std::string _body;
 
@@ -88,10 +91,12 @@ class Response {
     ~Response();
 
     void               setStatusCode(statusCode);
+    void               setMustLaunchCgi(bool);
     void               setHeader(requestHeaders, const std::string&);
     void               setHeaders(const headersMap&);
     void               setBody(const std::string&);
     statusCode         getStatusCode() const;
+    bool               getMustLaunchCgi() const;
     const std::string& getHeader(requestHeaders) const;
     const headersMap&  getHeaders() const;
     const std::string& getBody() const;

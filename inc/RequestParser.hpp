@@ -5,14 +5,16 @@
 #include <cstddef>
 #include <queue>
 
+#include "Config.hpp"
 #include "Enums.hpp"
 
 #define READ_BUF_SIZE 8000
-#define MIN_REQ_SIZE 19            // shortest possible request without ending CRLFCRLF: "GET / HTTP/2\r\nHost:"
-#define MIN_HEADER_SIZE 3          // header name + field min length ("H:I")
-#define MAX_HEADER_SIZE 4000       // header name + field max length
-#define MAX_CHUNK_SIZE 268435456   // 16^7 => 7 hex digits
-#define MAX_CHUNK_SIZE_LINE_SIZE 7 // 7 hex digits
+#define MIN_REQ_SIZE 19               // shortest possible request without ending CRLFCRLF: "GET / HTTP/2\r\nHost:"
+#define MIN_HEADER_SIZE 3             // header name + field min length ("H:I")
+#define MAX_HEADER_SIZE 4000          // header name + field max length
+#define MAX_CHUNK_SIZE 1048576        // 16^5 => 5 hex digits (FFFFFF)
+#define MAX_CHUNK_SIZE_LINE_SIZE 5    // 5 hex digits
+#define DEFAULT_MAX_BODY_SIZE 5000000 // 5 MB
 #define CRLF std::string("\r\n")
 #define READ_MORE 1
 #define CONTENT_LENGTH_OK 2
@@ -22,6 +24,7 @@
 #define FIRST_SECTION_OK 6
 
 class Request;
+struct ClientContext;
 
 /* parses an HTTP request, (in)validating its syntax, and storing the result in
 a Request object */
@@ -33,7 +36,7 @@ class RequestParser {
     ~RequestParser(void);
 
     // public functions
-    void feed(char*, std::queue<Request>&, size_t);
+    void feed(char*, std::queue<Request>&, ClientContext&, size_t);
     void resetParser(void);
 
     // getters
@@ -54,6 +57,9 @@ class RequestParser {
         std::string _message;
     };
 
+    Config _config;
+    size_t _tmpMaxBodySize;
+
   private:
     // Main parsing functions
     void parseStartLine(Request&);
@@ -65,12 +71,12 @@ class RequestParser {
     int  extractFirstSection(void);
     void extractStartLineFromFirstSection(void);
     int  extractFullBody(void);
-    int  extractChunkSize(size_t);
+    int  extractChunkSize(void);
     int  extractChunkData(void);
     void parsePathAndQueryString(std::string&, Request&);
     void parseMethod(std::string&, Request&);
     void parseProtocolVersion(std::string&, Request&);
-    void handleHeaderContentLength(Request&, const headersMap&, size_t);
+    void handleHeaderContentLength(Request&, const headersMap&);
 
     // Validation
     void validateHeaders(Request&);
@@ -81,7 +87,6 @@ class RequestParser {
     std::pair<std::string, std::string> checkHeaderSyntax(std::string&, Request&);
     void                                fillHeadersMap(std::pair<std::string, std::string> const&, Request&);
     bool                                isCaseInsensitiveHeader(std::string&);
-    void                                initHeaderStringToEnumMap(void);
 
     // Error handling
     void handleParseError(Request&, std::queue<Request>&, const char*);
@@ -97,6 +102,4 @@ class RequestParser {
     int                                   _contentLength;
     int                                   _chunkSize;
     std::string                           _bodyBuffer;
-
-    size_t _tmpMaxBodySize;
 };

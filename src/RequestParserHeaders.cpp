@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 
+#include "Config.hpp"
 #include "Enums.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
@@ -28,6 +29,7 @@ void RequestParser::parseHeaders(Request& req) {
     if (_headersBuffer.size()) // last header
         header = _headersBuffer.substr(0, pos);
     parseHeader(header, req);
+    validateHeaders(req);
     _headersBuffer.clear();
 }
 
@@ -36,7 +38,6 @@ void RequestParser::parseHeader(std::string& header, Request& req) {
 
     header_pair = checkHeaderSyntax(header, req);
     fillHeadersMap(header_pair, req);
-    validateHeaders(req);
 }
 
 // splits the header line around ":" and performs syntax checks
@@ -75,15 +76,15 @@ std::pair<std::string, std::string> RequestParser::checkHeaderSyntax(std::string
         throw RequestParsingError("checkHeaderSyntax(): whitespace found before colon (':')");
 
     // format header name and field
-    headerName  = tolower(headerName);
+    headerName  = toLower(headerName);
     headerField = trimString(headerField);
     if (isCaseInsensitiveHeader(headerName))
-        headerField = tolower(headerField);
+        headerField = toLower(headerField);
 
     return std::pair<std::string, std::string>(headerName, headerField);
 }
 
-void RequestParser::handleHeaderContentLength(Request& req, const headersMap& headers, size_t maxBodySize) {
+void RequestParser::handleHeaderContentLength(Request& req, const headersMap& headers) {
     std::string contentLengthHeader;
     size_t      contentLength;
 
@@ -108,9 +109,10 @@ void RequestParser::handleHeaderContentLength(Request& req, const headersMap& he
     }
 
     contentLength = toSizet(req.getHeader(CONTENT_LENGTH));
-    if (contentLength > maxBodySize) { // TEST THIS BY MODIFYING CONFIG
+    if (contentLength > _tmpMaxBodySize) { // TEST THIS BY MODIFYING CONFIG
         req.setStatusCode(CONTENT_TOO_LARGE);
-        throw RequestParsingError("handleHeaderContentLength: exceeds maxBodySize (" + toString(maxBodySize) + ")");
+        throw RequestParsingError("handleHeaderContentLength: exceeds _maxBodySize (" + toString(_tmpMaxBodySize) +
+                                  ")");
     }
 
     _contentLength = contentLength;
@@ -118,6 +120,12 @@ void RequestParser::handleHeaderContentLength(Request& req, const headersMap& he
 
 void RequestParser::validateHeaders(Request& req) {
     const headersMap headers = req.getHeaders();
+
+    // _maxBodySize = pow(16, 6); // temp value before choosing the correct serv
+
+    // To do: get max body size from config before, we did:
+    // const ServerConfig& serverConfig = _config.getServers().at(ctx.server_index);
+    // size_t maxBodySize = serverConfig.client_max_body_size;
 
     if (!req.hasHeader(HOST) || // TEST THIS
         headers.at(HOST).find(",") != std::string::npos) {
@@ -133,7 +141,7 @@ void RequestParser::validateHeaders(Request& req) {
     }
 
     if (req.hasHeader(CONTENT_LENGTH))
-        handleHeaderContentLength(req, headers, _tmpMaxBodySize);
+        handleHeaderContentLength(req, headers);
 
     if (req.hasHeader(TRANSFER_ENCODING) &&
         headers.at(TRANSFER_ENCODING) != "chunked") { // the transfer-encoding header value must be "chunked"
@@ -146,27 +154,18 @@ void RequestParser::validateHeaders(Request& req) {
 // 	=> if yes, append to existing value with ","
 // 	=> if no, append to existing (empty) value
 void RequestParser::fillHeadersMap(std::pair<std::string, std::string> const& header_pair, Request& req) {
-    std::string headerName  = header_pair.first;
-    std::string headerField = header_pair.second;
-    std::string existingHeader;
+    std::map<std::string, requestHeaders> headerStringToEnum;
+    std::string                           headerName  = header_pair.first;
+    std::string                           headerField = header_pair.second;
+    std::string                           existingHeader;
 
-    initHeaderStringToEnumMap();
-    if (_headerStringToEnum.find(headerName) == _headerStringToEnum.end())
+    initHeaderStringToEnumMap(headerStringToEnum);
+    if (headerStringToEnum.find(headerName) == headerStringToEnum.end())
         return;
-    existingHeader = req.getHeader(_headerStringToEnum[headerName]);
+    existingHeader = req.getHeader(headerStringToEnum[headerName]);
     if (!existingHeader.empty())
         headerField = "," + headerField; // add a comma if there is already a value for a given header
-    req.setHeader(_headerStringToEnum[headerName], headerField);
-}
-
-void RequestParser::initHeaderStringToEnumMap(void) {
-    _headerStringToEnum["host"]              = HOST;
-    _headerStringToEnum["content-length"]    = CONTENT_LENGTH;
-    _headerStringToEnum["location"]          = LOCATION;
-    _headerStringToEnum["transfer-encoding"] = TRANSFER_ENCODING;
-    _headerStringToEnum["content-type"]      = CONTENT_TYPE;
-    _headerStringToEnum["connection"]        = CONNECTION;
-    _headerStringToEnum["accept"]            = ACCEPT;
+    req.setHeader(headerStringToEnum[headerName], headerField);
 }
 
 bool RequestParser::isCaseInsensitiveHeader(std::string& headerName) {
