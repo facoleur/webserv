@@ -3,8 +3,10 @@
 #include <string>
 
 void Logger::log(const LogLevel level, const std::string& message) {
-    std::string timestamp = getCurrentDatetime("%F %T ");
+    if (level > LOG_ERROR)
+        return;
 
+    std::string timestamp = getCurrentDatetime("%F %T ");
     std::string lvlstr;
 
     switch (level) {
@@ -13,6 +15,9 @@ void Logger::log(const LogLevel level, const std::string& message) {
             break;
         case LOG_WARNING:
             lvlstr = "WARNING";
+            break;
+        case LOG_DEBUG:
+            lvlstr = "DEBUG";
             break;
         default:
             lvlstr = "ERROR";

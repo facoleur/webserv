@@ -2,7 +2,7 @@
 
 #include <string>
 
-enum LogLevel { LOG_INFO, LOG_WARNING, LOG_ERROR };
+enum LogLevel { LOG_INFO, LOG_WARNING, LOG_ERROR, LOG_DEBUG };
 
 class Logger {
   public:
@@ -15,3 +15,4 @@ class Logger {
 #define LOG_INFO(message) Logger::log(LOG_INFO, message);
 #define LOG_WARNING(message) Logger::log(LOG_WARNING, message);
 #define LOG_ERROR(message) Logger::log(LOG_ERROR, message);
+#define LOG_DEBUG(message) Logger::log(LOG_DEBUG, message);

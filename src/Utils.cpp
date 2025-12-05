@@ -223,7 +223,6 @@ const ServerConfig& getServerConfig(const ClientContext& context, const Config& 
     const std::vector<ServerConfig>& serverConfigs = config.getServers();
     for (size_t j = 0; j < context.availableServers.size(); j++) {
         int index = context.availableServers[j];
-        std::cout << index << std::endl;
         if (serverConfigs[index].matchServerName(host)) {
             chosenConfig = index;
             break;

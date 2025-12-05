@@ -4,11 +4,11 @@
 #include <sstream>
 
 #include "Enums.hpp"
+#include "Logger.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
-#include "Webserv.hpp"
 
 RequestParser::RequestParser(void)
     : _parserState(REQ_PARSE_START), _parsingPhase(PARSING_START_LINE), _accumulator(), _firstSection(), _startLine(),
@@ -38,7 +38,7 @@ void RequestParser::setState(ParserState parserState) {
 }
 
 void RequestParser::handleParseError(Request& req, std::queue<Request>& reqQueue, const char* msg) {
-    DEBUG_LOG("Parse error: " + std::string(msg));
+    LOG_DEBUG("Parse error: " + std::string(msg));
     (void)msg;
     if (req.getStatusCode() == NO_STATUS)
         req.setStatusCode(BAD_REQUEST);
@@ -156,7 +156,7 @@ int RequestParser::extractChunkData(void) {
     chunkDataStr = _accumulator.substr(0, _chunkSize);
     _accumulator = _accumulator.substr(_chunkSize + 2);
     _bodyBuffer += chunkDataStr;
-    DEBUG_LOG("extractChunkData - chunkDataStr: {" + chunkDataStr + "}, accumulator: {" + _accumulator +
+    LOG_DEBUG("extractChunkData - chunkDataStr: {" + chunkDataStr + "}, accumulator: {" + _accumulator +
               "}, bodyBuffer: {" + _bodyBuffer + "}");
     return PARSE_MORE_CHUNKS;
 }
@@ -221,19 +221,18 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, ClientContext
                     _parsingPhase = PARSING_COMPLETE;
             }
             if (_parsingPhase == PARSING_BODY_FINISHED) {
-                DEBUG_LOG("PARSING_BODY_FINISHED; _bodyBuffer.size(): " + toString(_bodyBuffer.size()));
+                LOG_DEBUG("PARSING_BODY_FINISHED; _bodyBuffer.size(): " + toString(_bodyBuffer.size()));
                 req.setBody(_bodyBuffer);
                 _parsingPhase = PARSING_COMPLETE;
             }
             if (_parsingPhase == PARSING_COMPLETE) {
-                DEBUG_LOG("PARSING_COMPLETE");
+                LOG_DEBUG("PARSING_COMPLETE");
                 if (_accumulator.empty()) {
-                    DEBUG_LOG("accumulator empty: OK");
+                    LOG_DEBUG("accumulator empty: OK");
                 } else {
-                    DEBUG_LOG("PROBLEM: accumulator not empty: {" + _accumulator + "}" +
+                    LOG_DEBUG("PROBLEM: accumulator not empty: {" + _accumulator + "}" +
                               " size: " + toString(_accumulator.size()));
                 }
-                DEBUG_LOG(req);
                 reqQueue.push(req);
                 req = Request(context, context.pfd.fd);
                 this->resetParser();
@@ -243,6 +242,6 @@ void RequestParser::feed(char* buf, std::queue<Request>& reqQueue, ClientContext
     } catch (RequestParsingError& e) {
         return handleParseError(req, reqQueue, e.what());
     }
-    DEBUG_LOG("end of feed()");
+    LOG_DEBUG("end of feed()");
     _parserState = REQ_PARSE_COMPLETE;
 }

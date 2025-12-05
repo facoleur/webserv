@@ -3,10 +3,10 @@
 #include <iostream>
 
 #include "Enums.hpp"
+#include "Logger.hpp"
 #include "Request.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
-#include "Webserv.hpp"
 
 Request::Request(void)
     : _state(PENDING), _client(NULL), _clientFd(-1), _method(UNKNOWN), _path(), _queryString(), _protocolVersion(),
@@ -16,7 +16,7 @@ Request::Request(void)
 Request::Request(ClientContext& client, int clientFd)
     : _state(PENDING), _client(&client), _clientFd(clientFd), _method(UNKNOWN), _path(), _queryString(),
       _protocolVersion(), _body(), _statusCode(NO_STATUS) {
-    DEBUG_LOG("Request initialised with _clientFd set to " + toString(_clientFd));
+    LOG_DEBUG("Request initialised with _clientFd set to " + toString(_clientFd));
 }
 
 Request::~Request(void) {

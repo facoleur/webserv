@@ -134,7 +134,7 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
             res.setHeader(CONTENT_LENGTH, toString(body.size()));
             res.setBody(body);
 
-            LOG_INFO("Response: " + toString(res.getStatusCode()));
+            LOG_INFO("Response: " + toString(res.getStatusCode()) + " " + ReasonPhrase::get(res.getStatusCode()));
             return res;
         }
 
@@ -158,7 +158,7 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
     res.setHeader(CONTENT_TYPE, getMimeType(path));
     res.setHeader(CONTENT_LENGTH, toString(res.getBody().size()));
 
-    LOG_INFO("Response: " + toString(res.getStatusCode()));
+    LOG_INFO("Response: " + toString(res.getStatusCode()) + " " + ReasonPhrase::get(res.getStatusCode()));
     return res;
 }
 
@@ -190,8 +190,6 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
     while (fsUploadPath.find("//") != std::string::npos) {
         replace(fsUploadPath, "//", "/");
     }
-
-    std::cout << "fsUploadPath: " << fsUploadPath << std::endl;
 
     std::ofstream out(fsUploadPath.c_str(), std::ios::binary);
     if (!out.is_open()) {
@@ -245,7 +243,7 @@ std::string RequestRouter::generateErrorHtml(enum statusCode status) {
     std::string   html = readFile(templateHtml);
 
     replaceVariables(html, "statusCode", toString(status));
-    replaceVariables(html, "message", toString(status));
+    replaceVariables(html, "message", ReasonPhrase::get(status));
 
     return html;
 }
@@ -278,7 +276,7 @@ Response RequestRouter::makeErrorResponse(enum statusCode statusCode) {
     if (statusCode >= 500) {
         LOG_ERROR("Server error: " + toString(statusCode))
     }
-    LOG_INFO("Response: " + toString(statusCode));
+    LOG_INFO("Response: " + toString(statusCode) + " " + ReasonPhrase::get(statusCode));
 
     res.setBody(generateErrorHtml(statusCode));
     res.setHeader(CONTENT_LENGTH, toString(res.getBody().size()));
@@ -334,7 +332,7 @@ Response RequestRouter::makeAutoindexResponse(const std::string& uri, const std:
     res.setHeader(CONTENT_LENGTH, toString(html.size()));
     res.setBody(html);
 
-    LOG_INFO("Response: " + toString(OK));
+    LOG_INFO("Response: " + toString(OK) + " " + ReasonPhrase::get(OK));
 
     return res;
 }
@@ -387,7 +385,7 @@ const LocationConfig resolveConfig(const ServerConfig& server, const LocationCon
 }
 
 Response RequestRouter::makeRedirectResponse(const std::string& location) {
-    LOG_INFO("Response: " + toString(REDIRECT));
+    LOG_INFO("Response: " + toString(REDIRECT) + " " + ReasonPhrase::get(REDIRECT));
 
     Response res;
     res.setStatusCode(REDIRECT);
@@ -398,6 +396,8 @@ Response RequestRouter::makeRedirectResponse(const std::string& location) {
 }
 
 Response RequestRouter::route(Request& req, const ServerConfig& config) {
+
+    LOG_INFO("Request:  " + methodToString(req.getMethod()) + " " + req.getPath())
 
     if (req.getStatusCode() != NO_STATUS) {
         std::string reasonPhrase(ReasonPhrase::get(req.getStatusCode()));
@@ -423,9 +423,7 @@ Response RequestRouter::route(Request& req, const ServerConfig& config) {
     std::string resolvedPath;
 
     try {
-        std::cout << "req.getpath():" << req.getPath() << std::endl;
         resolvedPath = resolvePath(req, resolvedConfig.root);
-        std::cout << "resolvedPath:" << resolvedPath << std::endl;
 
     } catch (std::exception&) {
         return makeErrorResponse(BAD_REQUEST);

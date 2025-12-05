@@ -3,11 +3,13 @@
 #include <arpa/inet.h>
 #include <cstddef>
 #include <cstring>
+#include <fcntl.h>
 #include <iostream>
 #include <map>
 #include <string>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <unistd.h>
 #include <utility>
 #include <vector>
 
@@ -18,8 +20,6 @@
 #include "RequestParser.hpp"
 #include "RequestRouter.hpp"
 #include "Server.hpp"
-#include "Utils.hpp"
-#include "Webserv.hpp"
 
 Server::Server() {
 }
@@ -34,7 +34,7 @@ ClientContext::ClientContext(void) : close_after_responses(false), selectedServe
 }
 
 void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pfds)[MAX_EVENTS]) {
-    DEBUG_LOG("checkTimeouts()");
+    LOG_DEBUG("checkTimeouts()");
     ContextMap::iterator itClient;
     CgiFdMap::iterator   itCgi;
     long                 currTime;
@@ -42,7 +42,7 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
     currTime = time(NULL);
     if (currTime == -1)
         return; // handleTimeError ?
-    DEBUG_LOG("TIMESTAMP: " + toString(time(NULL)));
+    LOG_DEBUG("TIMESTAMP: " + toString(time(NULL)));
 
     // loop over all clients
     itClient = contextMap.begin();
@@ -63,7 +63,7 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
             }
 
             ++itClient; // to avoid issues when client is removed from contextMap in disconnect_client()
-            DEBUG_LOG("Client timed out after (in theory) " + toString(CLIENT_TIMEOUT) + " seconds)");
+            LOG_DEBUG("Client timed out after (in theory) " + toString(CLIENT_TIMEOUT) + " seconds)");
             disconnect_client(j, client_fd, pfds, nfds, contextMap);
             continue; // skip the ++itClient
         } else
@@ -82,7 +82,7 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
         // CGI has passed timeout
         if ((currTime - pipe.cgiInfo->getLastActive()) > CGI_TIMEOUT) {
             int cgiFd = current->first;
-            DEBUG_LOG("CGI timed out after (in theory) " + toString(CGI_TIMEOUT) + " seconds)");
+            LOG_DEBUG("CGI timed out after (in theory) " + toString(CGI_TIMEOUT) + " seconds)");
             handleCgiError(cgiFd, pfds, nfds, GATEWAY_TIMEOUT);
         }
     }
@@ -93,10 +93,10 @@ int Server::handleNewConnection(int listener, int i, struct pollfd (&pfds)[MAX_E
                                 ContextMap& context) {
     (void)i;
 
-    DEBUG_LOG("handleNewConnection()");
+    LOG_DEBUG("handleNewConnection()");
     int new_client_fd = accept(listener, NULL, NULL);
     if (new_client_fd < 0) {
-        DEBUG_LOG("accept error: errno is " + toString(errno));
+        LOG_DEBUG("accept error: errno is " + toString(errno));
         return -1;
     }
     fcntl(new_client_fd, F_SETFL, O_NONBLOCK);
@@ -106,7 +106,7 @@ int Server::handleNewConnection(int listener, int i, struct pollfd (&pfds)[MAX_E
     context[new_client_fd].lastActive       = time(NULL);
     context[new_client_fd].pfd              = pfds[nfds];
     nfds++;
-    DEBUG_LOG("the new client fd is " + toString(new_client_fd) + " with index " + toString(i) +
+    LOG_DEBUG("the new client fd is " + toString(new_client_fd) + " with index " + toString(i) +
               " and nfds == " + toString(nfds));
     return 0;
 }
@@ -134,11 +134,11 @@ int Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], i
     int            len;
     ClientContext& ctx = context[listener];
 
-    DEBUG_LOG("handleRead()");
+    LOG_DEBUG("handleRead()");
     len            = read(listener, tmp, READ_SIZE);
     ctx.lastActive = time(NULL);
     if (len == 0) { // client closed their send side (or POLLHUP ? unclear but it works)
-        DEBUG_LOG("read on fd " + toString(listener) + " returned 0 (client closed their send side)");
+        LOG_DEBUG("read on fd " + toString(listener) + " returned 0 (client closed their send side)");
         ctx.close_after_responses = true;
         if (ctx.req_parser.getState() == REQ_PARSE_PARTIAL) {
             handlePartialRequest(context[listener], i, pfds, nfds);
@@ -147,7 +147,7 @@ int Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], i
         pfds[i].events &= ~POLLIN;
         pfds[i].revents = 0;
     } else if (len < 0) {
-        DEBUG_LOG("disconnect 3: read error");
+        LOG_DEBUG("disconnect 3: read error");
         disconnect_client(i, listener, pfds, nfds, context);
         return -1;
     } else { // Parsing
@@ -164,24 +164,24 @@ int Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], i
 }
 
 int Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
-    DEBUG_LOG("sendResponses()");
+    LOG_DEBUG("sendResponses()");
     std::string& buf = context[listener].write_buffer;
     while (!buf.empty()) {
         ssize_t sent = write(listener, buf.data(), buf.size());
-        DEBUG_LOG("written bytes: " + toString(sent));
+        LOG_DEBUG("written bytes: " + toString(sent));
         if (sent > 0) {
             buf.erase(0, sent);
             context[listener].lastActive = time(NULL);
             break;
         }
         if (sent == -1) { // error or connection closed: (sent == 0 ?)
-            DEBUG_LOG("disconnect 4: error or connection closed while sending back response");
+            LOG_DEBUG("disconnect 4: error or connection closed while sending back response");
             disconnect_client(i, listener, pfds, nfds, context);
             return -1;
         }
     }
     if (context[listener].close_after_responses) {
-        DEBUG_LOG("disconnect 6: sendResponses (client.close_after_responses: true)");
+        LOG_DEBUG("disconnect 6: sendResponses (client.close_after_responses: true)");
         disconnect_client(i, listener, pfds, nfds, context);
         return -1;
     }
@@ -190,7 +190,7 @@ int Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS]
 }
 
 int Server::writePendingBodyToCgi(int writeFd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
-    DEBUG_LOG("writePendingBodyToCgi()");
+    LOG_DEBUG("writePendingBodyToCgi()");
     CgiPipeInfo& pipe = _cgiFdMap.at(writeFd);
     CgiInfo*     info = pipe.cgiInfo;
     Request*     req  = info->getRequest();
@@ -220,7 +220,7 @@ int Server::writePendingBodyToCgi(int writeFd, struct pollfd (&pfds)[MAX_EVENTS]
 
 // read output from CGI
 int Server::readFromCgi(int readFd, int index, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
-    DEBUG_LOG("readFromCgi()");
+    LOG_DEBUG("readFromCgi()");
     CgiPipeInfo& pipe   = _cgiFdMap.at(readFd);
     CgiInfo*     info   = pipe.cgiInfo;
     int          cgiPID = info->getCgiPID();
@@ -234,11 +234,11 @@ int Server::readFromCgi(int readFd, int index, struct pollfd (&pfds)[MAX_EVENTS]
         std::string chunk(buf, n);
         info->appendToOutput(chunk);
         info->setLastActive(time(NULL));
-        DEBUG_LOG("read " + toString(n) + " bytes; output is now: \n\n{\n" + info->getOutput() + "\n}\n\n");
+        LOG_DEBUG("read " + toString(n) + " bytes; output is now: \n\n{\n" + info->getOutput() + "\n}\n\n");
         return 0;
     }
     if (n == 0) { // EOF: close stdout pipe
-        DEBUG_LOG("read 0 bytes; cleaning up Cgi fds");
+        LOG_DEBUG("read 0 bytes; cleaning up Cgi fds");
         cleanUpCgiFd(readFd, pfds, nfds);
         int writeFd = info->getWriteFd();
         if (writeFd >= 0)
@@ -248,18 +248,18 @@ int Server::readFromCgi(int readFd, int index, struct pollfd (&pfds)[MAX_EVENTS]
         req->setState(CGI_DONE);
 
         (void)index;
-        DEBUG_LOG("req->getClientFd() == " + toString(req->getClientFd()));
+        LOG_DEBUG("req->getClientFd() == " + toString(req->getClientFd()));
         int clientFdIndex = findPollFdIndexFromFd(req->getClientFd(), pfds, nfds);
         if (clientFdIndex == -1) {
-            DEBUG_LOG("findPollFdIndexFromFd() couldn't find the index for the client fd");
+            LOG_DEBUG("findPollFdIndexFromFd() couldn't find the index for the client fd");
             return -1;
         }
-        DEBUG_LOG("findPollFdIndexFromFd() found index " + toString(clientFdIndex));
+        LOG_DEBUG("findPollFdIndexFromFd() found index " + toString(clientFdIndex));
         handle_requests(req->getClientContext(), clientFdIndex, pfds, nfds);
         return 0;
     }
 
-    DEBUG_LOG("read " + toString(n) + " bytes (read error !)");
+    LOG_DEBUG("read " + toString(n) + " bytes (read error !)");
     handleCgiError(readFd, pfds, nfds, BAD_GATEWAY);
     return -1;
 }
@@ -280,19 +280,19 @@ void Server::run() {
     while (1) {
         checkTimeouts(contextMap, nfds, pfds);
 
-        // DEBUG_LOG("** while loop start **\n{nfds}: " + toString(nfds) + "\n((((( POLL )))))");
+        // LOG_DEBUG("** while loop start **\n{nfds}: " + toString(nfds) + "\n((((( POLL )))))");
         if (poll(pfds, nfds, POLL_TIMEOUT) < 0) {
-            DEBUG_LOG("poll error");
+            LOG_DEBUG("poll error");
             continue;
         }
 
         for (int index = 0; index < nfds; index++) {
             int   fd      = pfds[index].fd;
             short revents = pfds[index].revents;
-            // DEBUG_LOG("* for loop*\nindex == " + toString(index) + "\nfd == " + toString(fd));
+            // LOG_DEBUG("* for loop*\nindex == " + toString(index) + "\nfd == " + toString(fd));
 
             if (revents & (POLLERR | POLLNVAL)) {
-                DEBUG_LOG("--- POLLERR | POLLNVAL ---\n disconnect 1");
+                LOG_DEBUG("--- POLLERR | POLLNVAL ---\n disconnect 1");
                 if (isCgiPipe(fd)) // if fd==PipeFd from a CGI, clean up the CGI and pre-prepare error response
                     handleCgiError(fd, pfds, nfds, BAD_GATEWAY);
                 else // otherwise, fd==clientFd that had a problem -> disconnect it
@@ -307,7 +307,7 @@ void Server::run() {
             }
 
             if (revents & POLLIN) {
-                DEBUG_LOG("--- POLLIN ---");
+                LOG_DEBUG("--- POLLIN ---");
                 if (_listenerToServers.count(fd)) // if we're the listener, open a new connection
                     handleNewConnection(fd, index, pfds, nfds, contextMap);
                 else
@@ -325,7 +325,7 @@ void Server::run() {
             }
 
             if (revents & POLLOUT) {
-                DEBUG_LOG("--- POLLOUT ---");
+                LOG_DEBUG("--- POLLOUT ---");
                 if (isCGIPipeRole(fd, CGI_STDIN)) { // if fd==writePipeFd from a CGI, write the request body to it
                     writePendingBodyToCgi(fd, pfds, nfds);
                     continue;
@@ -333,8 +333,8 @@ void Server::run() {
                 sendResponses(fd, index, pfds, nfds, contextMap); // otherwise fd==client socketFd -> write response
                 continue;
             }
-            DEBUG_LOG("* end for loop *\n");
+            LOG_DEBUG("* end for loop *\n");
         }
-        DEBUG_LOG("** end while loop **\n");
+        LOG_DEBUG("** end while loop **\n");
     }
 }

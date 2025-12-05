@@ -1,10 +1,10 @@
 // RequestParserStartLine.cpp
 
 #include "Enums.hpp"
+#include "Logger.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
 #include "Utils.hpp"
-#include "Webserv.hpp"
 
 void RequestParser::parseStartLine(Request& req) {
     std::vector<std::string> split;
@@ -42,7 +42,7 @@ void RequestParser::parseMethod(std::string& split0, Request& req) {
         throw RequestParsingError("parseMethod(): method field is empty");
 
     req.setMethod(split0);
-    DEBUG_LOG("parseMethod: setMethod() to " + split0);
+    LOG_DEBUG("parseMethod: setMethod() to " + split0);
     if (req.getMethod() != GET && req.getMethod() != POST && req.getMethod() != DELETE) {
         req.setStatusCode(NOT_IMPLEMENTED);
         throw RequestParsingError("parseMethod(): method not implemented");
@@ -74,7 +74,7 @@ void RequestParser::parseProtocolVersion(std::string& split2, Request& req) {
 
     if (split2 != "HTTP/1.0" && split2 != "HTTP/1.1" && split2 != "HTTP/0.9" && split2 != "HTTP/2" &&
         split2 != "HTTP/3") {
-        DEBUG_LOG("RequestParser: split2: " + split2);
+        LOG_DEBUG("RequestParser: split2: " + split2);
         throw RequestParsingError("parseProtocolVersion(): HTTP version \"" + split2 + "\" not recognized");
     }
 
