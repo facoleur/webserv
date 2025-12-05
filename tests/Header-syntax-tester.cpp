@@ -7,9 +7,9 @@
 struct RequestParsingError : std::exception {};
 
 // #ifdef DEBUG_MODE
-#define DEBUG_LOG(x) std::cout << x << std::endl
+#define LOG_DEBUG(x) std::cout << x << std::endl
 // #else
-// #define DEBUG_LOG(x)
+// #define LOG_DEBUG(x)
 // #endif
 
 bool isSpace(int i) {
@@ -79,15 +79,15 @@ void checkHeaderSyntax(std::string& header) {
         throw RequestParsingError();
     pos = header.find(":");
     if (pos == 0 || pos == header.size() - 1) // colon is first or last character
-        DEBUG_LOG("colon found at beginning or end of header"), throw RequestParsingError();
+        LOG_DEBUG("colon found at beginning or end of header"), throw RequestParsingError();
     headerName  = header.substr(0, pos);
     headerField = header.substr(pos + 1); // skip the ":"
-    // DEBUG_LOG("checkHeaderSyntax – headerName: {" + headerName + "}, headerField: {" + headerField + "}");
+    // LOG_DEBUG("checkHeaderSyntax – headerName: {" + headerName + "}, headerField: {" + headerField + "}");
 
     // check if whitespace before colon
     it = std::find_if(headerName.begin(), headerName.end(), isSpace);
     if (it != headerName.end()) {
-        DEBUG_LOG("whitespace found before colon");
+        LOG_DEBUG("whitespace found before colon");
         throw RequestParsingError();
     }
 

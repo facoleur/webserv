@@ -2,10 +2,10 @@
 
 #include "Config.hpp"
 #include "Enums.hpp"
+#include "Logger.hpp"
 #include "RequestRouter.hpp"
 #include "Response.hpp"
 #include "Server.hpp"
-#include "Webserv.hpp"
 #include <string>
 #include <sys/types.h>
 
@@ -17,7 +17,7 @@ void Server::add_bad_request_to_queue(ClientContext& context) {
 
 void Server::handleInvalidRequest(ClientContext& context, Response& res, struct pollfd& pfd) {
     std::string reasonPhrase(ReasonPhrase::get(res.getStatusCode()));
-    DEBUG_LOG("handle_requests() exiting with error: " + reasonPhrase);
+    LOG_DEBUG("handle_requests() exiting with error: " + reasonPhrase);
 
     context.write_buffer.append(res.serialize());
     std::queue<Request> empty;
@@ -30,14 +30,13 @@ void Server::handle_requests(ClientContext& context, int i, struct pollfd (&pfds
 
     RequestRouter router;
 
-    DEBUG_LOG("handle_requests: " + toString(context.requests.size()) + " requests in queue");
+    LOG_DEBUG("handle_requests: " + toString(context.requests.size()) + " requests in queue");
 
     while (!context.requests.empty()) {
         Request&    req        = context.requests.front();
         std::string hostHeader = req.getHeader(HOST);
 
-        DEBUG_LOG("- handling request:");
-        DEBUG_LOG(req);
+        LOG_DEBUG("- handling request:");
 
         // obtain the right config based on Host header
         const ServerConfig& config = getServerConfig(context, _config, hostHeader);
@@ -57,7 +56,7 @@ void Server::handle_requests(ClientContext& context, int i, struct pollfd (&pfds
         // process the request
         Response res;
         if (req.getState() == PENDING) {
-            DEBUG_LOG("handle_requests(): PENDING");
+            LOG_DEBUG("handle_requests(): PENDING");
             res = router.route(req, config);
             if (res.isError()) {
                 handleInvalidRequest(context, res, pfds[i]);
@@ -73,7 +72,7 @@ void Server::handle_requests(ClientContext& context, int i, struct pollfd (&pfds
             }
         }
         if (req.getState() == CGI_START) {
-            DEBUG_LOG("handle_requests(): CGI_START");
+            LOG_DEBUG("handle_requests(): CGI_START");
             if (launchCgi(req, pfds, nfds) != 0) {
                 req.setStatusCode(BAD_GATEWAY);
                 res = router.route(req, config);
@@ -84,11 +83,11 @@ void Server::handle_requests(ClientContext& context, int i, struct pollfd (&pfds
             break;
         }
         if (req.getState() == CGI_STREAMING) {
-            DEBUG_LOG("handle_requests(): CGI_STREAMING");
+            LOG_DEBUG("handle_requests(): CGI_STREAMING");
             break;
         }
         if (req.getState() == CGI_DONE) {
-            DEBUG_LOG("handle_requests(): CGI_DONE");
+            LOG_DEBUG("handle_requests(): CGI_DONE");
             res = router.generateResponseFromCgiOutput(req, res, req.cgiInfo.getOutput());
             if (res.isError()) {
                 handleInvalidRequest(context, res, pfds[i]);
@@ -96,7 +95,7 @@ void Server::handle_requests(ClientContext& context, int i, struct pollfd (&pfds
             }
             context.write_buffer.append(res.serialize());
             context.requests.pop();
-            DEBUG_LOG("CGI_DONE is over");
+            LOG_DEBUG("CGI_DONE is over");
             pfds[i].events  = POLLOUT;
             pfds[i].revents = 0;
         }
@@ -107,7 +106,7 @@ void Server::handle_requests(ClientContext& context, int i, struct pollfd (&pfds
 // this is a case of bad request
 void Server::handlePartialRequest(ClientContext& context, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
     add_bad_request_to_queue(context); // the request was partial and not in the queue
-    DEBUG_LOG("handlePartialRequest: added bad request to queue");
+    LOG_DEBUG("handlePartialRequest: added bad request to queue");
     handle_requests(context, i, pfds, nfds);
     context.req_parser.setState(REQ_PARSE_COMPLETE);
 }

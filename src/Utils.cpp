@@ -13,13 +13,13 @@
 #include <string>
 #include <sys/stat.h>
 
-std::string getCurrentDatetime() {
+std::string getCurrentDatetime(const std::string& format) {
     std::time_t now       = std::time(NULL);
     std::tm*    localTime = std::localtime(&now);
 
     char buffer[64];
 
-    std::strftime(buffer, sizeof(buffer), "%a, %d %h %G %H:%M:%S %Z", localTime);
+    std::strftime(buffer, sizeof(buffer), format.c_str(), localTime);
 
     return std::string(buffer);
 }
@@ -223,7 +223,6 @@ const ServerConfig& getServerConfig(const ClientContext& context, const Config& 
     const std::vector<ServerConfig>& serverConfigs = config.getServers();
     for (size_t j = 0; j < context.availableServers.size(); j++) {
         int index = context.availableServers[j];
-        std::cout << index << std::endl;
         if (serverConfigs[index].matchServerName(host)) {
             chosenConfig = index;
             break;

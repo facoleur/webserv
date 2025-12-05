@@ -4,20 +4,16 @@
 
 #include "ConfigFile.hpp"
 #include "ConfigParser.hpp"
+#include "Logger.hpp"
 #include "Server.hpp"
-#include "Webserv.hpp"
-#include <cstdlib>
 
 int main(int argc, char const* argv[]) {
-#ifndef DEBUG_MODE
-    system("clear");
-#endif
     const char* path = (argc > 1) ? argv[1] : "config/default.conf";
+
     // Validate config path early
     std::string err;
     if (!ConfigFile::validateConfigPath(path, err)) {
-        std::cout << "printing err here" << std::endl;
-        std::cerr << err << "\n";
+        LOG_ERROR(err);
         return 1;
     }
     ConfigParser parser;
@@ -25,18 +21,18 @@ int main(int argc, char const* argv[]) {
     try {
         cfg = parser.parseFile(path);
     } catch (ParseError& pe) {
-        std::cerr << pe.what() << std::endl << "aborting" << std::endl;
+        LOG_ERROR(pe.what());
         return -1;
     }
     applyDefaults(cfg);
     try {
         validateCompatibility(cfg); // try catch => if catch, return
     } catch (std::runtime_error& re) {
-        std::cerr << "Config invalid: " << re.what() << std::endl;
+        LOG_ERROR(re.what());
     }
 
-    DEBUG_LOG("TIMESTAMP: " + toString(time(NULL)));
     Server serv(cfg);
+    LOG_INFO("Starting server")
     serv.run();
 
     return 0;

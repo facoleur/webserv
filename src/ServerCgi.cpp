@@ -7,10 +7,10 @@
 
 #include "CGI.hpp"
 #include "Enums.hpp"
+#include "Logger.hpp"
 #include "Request.hpp"
 #include "RequestRouter.hpp"
 #include "Server.hpp"
-#include "Webserv.hpp"
 
 bool Server::isCgiPipe(const int fd) const {
     CgiFdMap::const_iterator it = _cgiFdMap.find(fd);
@@ -191,8 +191,8 @@ void Server::cleanUpBothCgiFds(const int fd, struct pollfd (&pfds)[MAX_EVENTS], 
 }
 
 void Server::handleCgiError(const int fd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, statusCode statusCode) {
-    DEBUG_LOG("handleCgiError()");
-    DEBUG_LOG("TIMESTAMP: " + toString(time(NULL)));
+    LOG_DEBUG("handleCgiError()");
+    LOG_DEBUG("TIMESTAMP: " + toString(time(NULL)));
     if (!_cgiFdMap[fd].cgiInfo)
         return;
 
@@ -204,7 +204,6 @@ void Server::handleCgiError(const int fd, struct pollfd (&pfds)[MAX_EVENTS], int
     cleanUpBothCgiFds(fd, pfds, nfds);
 
     // request handling
-    std::cout << "statusCode: " << statusCode << std::endl;
 
     req->setStatusCode(statusCode);
     req->setState(CGI_DONE);
@@ -213,7 +212,7 @@ void Server::handleCgiError(const int fd, struct pollfd (&pfds)[MAX_EVENTS], int
     int clientFdIndex = findPollFdIndexFromFd(req->getClientFd(), pfds, nfds);
     if (clientFdIndex >= 0)
         handle_requests(req->getClientContext(), clientFdIndex, pfds, nfds);
-    DEBUG_LOG("handleCgiError(): done");
+    LOG_DEBUG("handleCgiError(): done");
 }
 
 int Server::waitForCgiTermination(pid_t pid, Request& req) {

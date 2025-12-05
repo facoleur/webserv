@@ -4,11 +4,11 @@
 #include <unistd.h>
 
 #include "Enums.hpp"
+#include "Logger.hpp"
 #include "Request.hpp"
 #include "RequestRouter.hpp"
 #include "Response.hpp"
 #include "Utils.hpp"
-#include "Webserv.hpp"
 
 bool RequestRouter::isCgiRequest(const std::string& path, const LocationConfig& config) {
     return !getCgiInterpreter(path, config).empty();
@@ -110,7 +110,7 @@ Response RequestRouter::prepareCgi(Request& req, const std::string& path, const 
 }
 
 Response RequestRouter::generateResponseFromCgiOutput(Request& req, Response& response, std::string output) {
-    DEBUG_LOG("generateResponseFromCgiOutput()");
+    LOG_DEBUG("generateResponseFromCgiOutput()");
 
     std::map<enum requestHeaders, std::string> responseHeaders;
     std::map<std::string, requestHeaders>      headerStringToEnum;
@@ -121,7 +121,7 @@ Response RequestRouter::generateResponseFromCgiOutput(Request& req, Response& re
     // check if there was an error
     if (req.getStatusCode() != NO_STATUS) {
         std::string reasonPhrase(ReasonPhrase::get(req.getStatusCode()));
-        DEBUG_LOG("RequestRouter::generateResponseFromCgiOutput(): status already set before to: " + reasonPhrase);
+        LOG_DEBUG("RequestRouter::generateResponseFromCgiOutput(): status already set before to: " + reasonPhrase);
         return makeErrorResponse(req.getStatusCode());
     }
 
@@ -212,8 +212,7 @@ Response RequestRouter::generateResponseFromCgiOutput(Request& req, Response& re
     response.setStatusCode(static_cast<enum statusCode>(statusCode));
     response.setBody(responseBody);
 
-    DEBUG_LOG("generateResponseFromCgiOutput() generated response: ");
-    DEBUG_LOG(response);
+    LOG_DEBUG("generateResponseFromCgiOutput() generated response: ");
 
     return response;
 }

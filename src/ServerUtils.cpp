@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <cstring>
 #include <fcntl.h>
-#include <iostream>
 #include <map>
 #include <string>
 #include <sys/time.h>
@@ -13,9 +12,8 @@
 #include <vector>
 
 #include "Config.hpp"
-#include "RequestRouter.hpp"
+#include "Logger.hpp"
 #include "Server.hpp"
-#include "Utils.hpp"
 
 void Server::setPollFd(struct pollfd& pfd, int socketFd, short events, short revents) {
     pfd.fd      = socketFd;
@@ -42,7 +40,7 @@ void Server::disconnect_client(int& index, int& client_fd, struct pollfd (&pfds)
     nfds--;
     contextMap.erase(client_fd);
     close(client_fd);
-    std::cerr << "client disconnected" << std::endl;
+    LOG_INFO("client disconnected");
 }
 
 // Create one listening socket per server:port

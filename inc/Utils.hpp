@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Config.hpp"
 #include "Enums.hpp"
 #include "Server.hpp"
@@ -8,7 +10,7 @@
 
 class ConfigParser;
 
-std::string              getCurrentDatetime();
+std::string              getCurrentDatetime(const std::string& format = "%a, %d %h %G %H:%M:%S %Z");
 std::string&             replaceVariables(std::string&, const std::string&, const std::string&);
 std::string              methodToString(requestMethod);
 std::string              trimString(const std::string&);

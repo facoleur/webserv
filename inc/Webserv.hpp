@@ -12,8 +12,8 @@
 #define WEBSERV_VERSION "webserv/1.0.0"
 
 // Toggle this during compilation with -DDEBUG_MODE
-#ifdef DEBUG_MODE
-#define DEBUG_LOG(x) std::cerr << x << std::endl
-#else
-#define DEBUG_LOG(x)
-#endif
+// #ifdef DEBUG_MODE
+// #define LOG_DEBUG(x) std::cerr << x << std::endl
+// #else
+// #define LOG_DEBUG(x)
+// #endif

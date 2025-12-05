@@ -15,10 +15,10 @@ OBJ_DIR := bin
 
 SRCS := main.cpp ConfigFile.cpp Config.cpp ConfigParser.cpp Request.cpp RequestParser.cpp \
         RequestParserHeaders.cpp RequestParserStartLine.cpp RequestRouter.cpp \
-		OutstreamUtils.cpp Response.cpp Server.cpp ServerCgi.cpp ServerRequest.cpp ServerUtils.cpp \
-		Utils.cpp AutoIndex.cpp CgiInfo.cpp	RequestRouterCgi.cpp
+				OutstreamUtils.cpp Response.cpp Server.cpp ServerCgi.cpp ServerRequest.cpp ServerUtils.cpp \
+				Utils.cpp AutoIndex.cpp CgiInfo.cpp	RequestRouterCgi.cpp Logger.cpp
 HEADERS := ConfigFile.hpp Config.hpp ConfigParser.hpp Enums.hpp Request.hpp RequestParser.hpp \
-           RequestRouter.hpp Response.hpp Server.hpp Utils.hpp Webserv.hpp AutoIndex.hpp  CGI.hpp
+           RequestRouter.hpp Response.hpp Server.hpp Utils.hpp Webserv.hpp AutoIndex.hpp  CGI.hpp Logger.hpp
 
 OBJS := $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(notdir $(SRCS)))
 
