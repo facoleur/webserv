@@ -21,7 +21,7 @@ void Server::setPollFd(struct pollfd& pfd, int socketFd, short events, short rev
     pfd.revents = revents;
 }
 
-// similar to part of disconnect_client()
+// similar to part of disconnectClient()
 void Server::removePollEntry(int targetFd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
     for (int i = 0; i < nfds; ++i) {
         if (pfds[i].fd == targetFd) {
@@ -32,14 +32,14 @@ void Server::removePollEntry(int targetFd, struct pollfd (&pfds)[MAX_EVENTS], in
     }
 }
 
-void Server::disconnect_client(int& index, int& client_fd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
-                               ContextMap& contextMap) {
+void Server::disconnectClient(int& index, int& clientFd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
+                              ContextMap& contextMap) {
 
     pfds[index] = pfds[nfds - 1];
     index--;
     nfds--;
-    contextMap.erase(client_fd);
-    close(client_fd);
+    contextMap.erase(clientFd);
+    close(clientFd);
     LOG_INFO("client disconnected");
 }
 
@@ -56,8 +56,8 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
 
     for (size_t si = 0; si < servers.size(); si++) {
         const ServerConfig& srv = servers[si];
-        for (size_t pi = 0; pi < srv.listen_ports.size(); pi++) {
-            int         port = srv.listen_ports[pi];
+        for (size_t pi = 0; pi < srv.listenPorts.size(); pi++) {
+            int         port = srv.listenPorts[pi];
             std::string ip   = srv.host.empty() ? "0.0.0.0" : srv.host;
 
             listenMap[std::make_pair(ip, port)].push_back(si);

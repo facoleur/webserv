@@ -10,7 +10,6 @@
 #include "Enums.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
-#include "Utils.hpp"
 
 class Response;
 
@@ -22,15 +21,14 @@ class Response;
 struct ClientContext {
     ClientContext(void);
 
-    RequestParser       req_parser;
+    RequestParser       reqParser;
     std::queue<Request> requests;
     struct pollfd       pfd;
-    std::string         write_buffer;
-    bool                close_after_responses; // if bad request in the queue, set this to true
-    // size_t              server_index;          // which server accepted the client
-    int              selectedServer;
-    std::vector<int> availableServers;
-    int              lastActive;
+    std::string         writeBuffer;
+    bool                closeAfterResponses; // if bad request in the queue, set this to true
+    int                 selectedServer;
+    std::vector<int>    availableServers;
+    int                 lastActive;
 };
 
 struct CgiPipeInfo {
@@ -57,10 +55,10 @@ class Server {
     ~Server();
 
     void             run();
-    void             add_bad_request_to_queue(ClientContext&);
-    void             handle_requests(ClientContext&, int, struct pollfd (&pfds)[MAX_EVENTS], int&);
+    void             addBadRequestToQueue(ClientContext&);
+    void             handleRequests(ClientContext&, int, struct pollfd (&pfds)[MAX_EVENTS], int&);
     void             handleInvalidRequest(ClientContext&, Response&, struct pollfd&);
-    void             disconnect_client(int&, int&, struct pollfd (&)[MAX_EVENTS], int&, std::map<int, ClientContext>&);
+    void             disconnectClient(int&, int&, struct pollfd (&)[MAX_EVENTS], int&, std::map<int, ClientContext>&);
     void             setPollFd(struct pollfd&, int, short, short);
     void             removePollEntry(int, struct pollfd (&)[MAX_EVENTS], int&);
     std::vector<int> initListenerSockets(struct pollfd (&)[MAX_EVENTS], int&);

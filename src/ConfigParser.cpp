@@ -7,7 +7,7 @@
 #include <sstream>
 #include <string>
 
-ConfigParser::ConfigParser() : i_(0) {
+ConfigParser::ConfigParser() : _i(0) {
 }
 
 static bool isPunct(char c) {
@@ -113,8 +113,8 @@ std::vector<ConfigParser::Token> ConfigParser::tokenize(const std::string& text)
         }
 
         // Word token: read until whitespace or punctuation
-        size_t start_i   = i;
-        size_t start_col = col;
+        size_t startI   = i;
+        size_t startCol = col;
         while (i < n && !isSpace(text[i]) && !isPunct(text[i]) && text[i] != '#') {
             // stop before '//' comment start
             if (text[i] == '/' && i + 1 < n && text[i + 1] == '/')
@@ -123,9 +123,9 @@ std::vector<ConfigParser::Token> ConfigParser::tokenize(const std::string& text)
             col++;
         }
         Token t;
-        t.s.assign(text.begin() + start_i, text.begin() + i);
+        t.s.assign(text.begin() + startI, text.begin() + i);
         t.line = line;
-        t.col  = start_col;
+        t.col  = startCol;
         if (!t.s.empty())
             out.push_back(t);
     }
@@ -151,11 +151,11 @@ Config ConfigParser::parseFile(const std::string& path) {
 }
 
 Config ConfigParser::parseString(const std::string& text) {
-    cfg_.clearServers();
-    toks_ = tokenize(text);
-    i_    = 0;
+    _config.clearServers();
+    _tokens = tokenize(text);
+    _i      = 0;
     parseConfig();
-    return cfg_;
+    return _config;
 }
 
 void ConfigParser::parseConfig() {
@@ -208,7 +208,7 @@ void ConfigParser::parseServer() {
         oss << "unknown directive '" << t.s << "' in server (line " << t.line << ", col " << t.col << ")";
         throw ParseError(oss.str());
     }
-    cfg_.addServer(srv);
+    _config.addServer(srv);
 }
 
 void ConfigParser::parseLocation(ServerConfig& srv) {
@@ -246,9 +246,9 @@ bool ConfigParser::parseDirectiveServerName(ServerConfig& srv) {
     if (!accept("server_name"))
         return false;
 
-    Token       p           = next();
-    std::string server_name = p.s;
-    srv.server_name         = server_name;
+    Token       p          = next();
+    std::string serverName = p.s;
+    srv.serverName         = serverName;
     expect(";", "missing ';' after listen");
     return true;
 }
@@ -260,7 +260,7 @@ bool ConfigParser::parseDirectiveListen(ServerConfig& srv) {
     int   port = toInt(p.s);
     if (port < 1 || port > 65535)
         throw ParseError("invalid listen port");
-    srv.listen_ports.push_back(port);
+    srv.listenPorts.push_back(port);
     expect(";", "missing ';' after listen");
     return true;
 }
@@ -273,7 +273,7 @@ bool ConfigParser::parseDirectiveErrorPage(ServerConfig& srv) {
     Token path = next();
     if (code < 100 || code > 599 || path.s.empty() || path.s == ";" || path.s == "{" || path.s == "}")
         throw ParseError("invalid error_page directive");
-    srv.error_pages[code] = path.s;
+    srv.errorPages[code] = path.s;
     expect(";", "missing ';' after error_page");
     return true;
 }
@@ -302,7 +302,7 @@ bool ConfigParser::parseDirectiveAutoIndex(LocationConfig& loc) {
         loc.autoindex = false;
     else
         throw ParseError("invalid autoindex value (use on|off)");
-    loc.autoindex_set = true;
+    loc.autoindexSet = true;
     expect(";", "missing ';' after autoindex");
     return true;
 }
@@ -314,7 +314,7 @@ bool ConfigParser::parseDirectiveClientMaxBodySize(ServerConfig& srv) {
     int   sz = toInt(v.s);
     if (sz <= 0)
         throw ParseError("invalid client_max_body_size (must be > 0)");
-    srv.client_max_body_size = static_cast<size_t>(sz);
+    srv.clientMaxBodySize = static_cast<size_t>(sz);
     expect(";", "missing ';' after client_max_body_size");
     return true;
 }
@@ -326,7 +326,7 @@ bool ConfigParser::parseDirectiveClientMaxBodySize(LocationConfig& loc) {
     int   sz = toInt(v.s);
     if (sz <= 0)
         throw ParseError("invalid client_max_body_size (must be > 0)");
-    loc.client_max_body_size = static_cast<size_t>(sz);
+    loc.clientMaxBodySize = static_cast<size_t>(sz);
     expect(";", "missing ';' after client_max_body_size");
     return true;
 }
@@ -338,7 +338,7 @@ bool ConfigParser::parseDirectiveCgi(ServerConfig& srv) {
     Token interp = next();
     if (ext.s.empty() || ext.s[0] != '.' || interp.s.empty() || interp.s == ";")
         throw ParseError("invalid cgi directive (use: cgi .ext /path/to/interpreter;)");
-    srv.cgi_map[ext.s] = interp.s;
+    srv.cgiMap[ext.s] = interp.s;
     expect(";", "missing ';' after cgi");
     return true;
 }
@@ -350,7 +350,7 @@ bool ConfigParser::parseDirectiveCgi(LocationConfig& loc) {
     Token interp = next();
     if (ext.s.empty() || ext.s[0] != '.' || interp.s.empty() || interp.s == ";")
         throw ParseError("invalid cgi directive (use: cgi .ext /path/to/interpreter;)");
-    loc.cgi_map[ext.s] = interp.s;
+    loc.cgiMap[ext.s] = interp.s;
     expect(";", "missing ';' after cgi");
     return true;
 }
@@ -360,9 +360,9 @@ bool ConfigParser::parseDirectiveUploadEnable(LocationConfig& loc) {
         return false;
     Token v = next();
     if (v.s == "on")
-        loc.upload_enable = true;
+        loc.uploadEnable = true;
     else if (v.s == "off")
-        loc.upload_enable = false;
+        loc.uploadEnable = false;
     else
         throw ParseError("invalid upload_enable value (use on|off)");
     expect(";", "missing ';' after upload_enable");
@@ -375,7 +375,7 @@ bool ConfigParser::parseDirectiveUploadStore(LocationConfig& loc) {
     Token p = next();
     if (p.s.empty() || p.s == ";" || p.s == "{" || p.s == "}")
         throw ParseError("invalid upload_store path");
-    loc.upload_store = p.s;
+    loc.uploadStore = p.s;
     expect(";", "missing ';' after upload_store");
     return true;
 }
@@ -418,7 +418,7 @@ bool ConfigParser::parseDirectiveIndex(ServerConfig& srv) {
             msg << "invalid token '" << f.s << "' in index directive at line " << f.line << ", col " << f.col;
             throw ParseError(msg.str());
         }
-        srv.index_files.push_back(f.s);
+        srv.indexFiles.push_back(f.s);
     }
     return true;
 }
@@ -435,7 +435,7 @@ bool ConfigParser::parseDirectiveIndex(LocationConfig& loc) {
             msg << "invalid token '" << f.s << "' in index directive at line " << f.line << ", col " << f.col;
             throw ParseError(msg.str());
         }
-        loc.index_files.push_back(f.s);
+        loc.indexFiles.push_back(f.s);
     }
     return true;
 }
@@ -507,8 +507,8 @@ bool ConfigParser::parseDirectiveReturn(LocationConfig& loc) {
 }
 
 bool ConfigParser::accept(const std::string& kw) {
-    if (!eof() && toks_[i_].s == kw) {
-        i_++;
+    if (!eof() && _tokens[_i].s == kw) {
+        _i++;
         return true;
     }
     return false;
@@ -519,7 +519,7 @@ void ConfigParser::expect(const std::string& kw, const char* err) {
         std::ostringstream oss;
         oss << (err ? err : "expected token") << " (got '";
         if (!eof())
-            oss << toks_[i_].s << "' at line " << toks_[i_].line << ", col " << toks_[i_].col << ")";
+            oss << _tokens[_i].s << "' at line " << _tokens[_i].line << ", col " << _tokens[_i].col << ")";
         else
             oss << "EOF')";
         throw ParseError(oss.str());
@@ -529,15 +529,15 @@ void ConfigParser::expect(const std::string& kw, const char* err) {
 ConfigParser::Token ConfigParser::next() {
     if (eof())
         throw ParseError("unexpected EOF");
-    return toks_[i_++];
+    return _tokens[_i++];
 }
 
 const ConfigParser::Token& ConfigParser::peek() const {
     if (eof())
         throw ParseError("unexpected EOF");
-    return toks_[i_];
+    return _tokens[_i];
 }
 
 bool ConfigParser::eof() const {
-    return i_ >= toks_.size();
+    return _i >= _tokens.size();
 }

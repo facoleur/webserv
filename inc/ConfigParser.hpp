@@ -63,7 +63,7 @@ class ConfigParser {
     static bool isMethod(const std::string& m);
     static int  toInt(const std::string& s);
 
-    Config             cfg_;
-    std::vector<Token> toks_;
-    size_t             i_;
+    Config             _config;
+    std::vector<Token> _tokens;
+    size_t             _i;
 };

@@ -211,7 +211,7 @@ void Server::handleCgiError(const int fd, struct pollfd (&pfds)[MAX_EVENTS], int
     // continue normal request handling so an error response is sent to the client
     int clientFdIndex = findPollFdIndexFromFd(req->getClientFd(), pfds, nfds);
     if (clientFdIndex >= 0)
-        handle_requests(req->getClientContext(), clientFdIndex, pfds, nfds);
+        handleRequests(req->getClientContext(), clientFdIndex, pfds, nfds);
     LOG_DEBUG("handleCgiError(): done");
 }
 

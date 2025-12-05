@@ -7,12 +7,10 @@
 #include <sstream>
 #include <string>
 
-#include "Config.hpp"
 #include "Enums.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
 #include "RequestRouter.hpp"
-#include "Server.hpp"
 #include "Utils.hpp"
 
 void RequestParser::parseHeaders(Request& req) {
@@ -34,10 +32,10 @@ void RequestParser::parseHeaders(Request& req) {
 }
 
 void RequestParser::parseHeader(std::string& header, Request& req) {
-    std::pair<std::string, std::string> header_pair;
+    std::pair<std::string, std::string> headerPair;
 
-    header_pair = checkHeaderSyntax(header, req);
-    fillHeadersMap(header_pair, req);
+    headerPair = checkHeaderSyntax(header, req);
+    fillHeadersMap(headerPair, req);
 }
 
 // splits the header line around ":" and performs syntax checks
@@ -125,7 +123,7 @@ void RequestParser::validateHeaders(Request& req) {
 
     // To do: get max body size from config before, we did:
     // const ServerConfig& serverConfig = _config.getServers().at(ctx.server_index);
-    // size_t maxBodySize = serverConfig.client_max_body_size;
+    // size_t maxBodySize = serverConfig.clientMaxBodySize;
 
     if (!req.hasHeader(HOST) || // TEST THIS
         headers.at(HOST).find(",") != std::string::npos) {
@@ -135,9 +133,9 @@ void RequestParser::validateHeaders(Request& req) {
 
     if ((req.getMethod() == GET || req.getMethod() == DELETE) &&
         (req.hasHeader(CONTENT_LENGTH) || req.hasHeader(TRANSFER_ENCODING))) {
-        std::string error_msg = "parseHeaders: a request of type " + methodToString(req.getMethod()) +
-                                " cannot have a content-length header";
-        throw RequestParsingError(error_msg.c_str());
+        std::string errorMsg = "parseHeaders: a request of type " + methodToString(req.getMethod()) +
+                               " cannot have a content-length header";
+        throw RequestParsingError(errorMsg.c_str());
     }
 
     if (req.hasHeader(CONTENT_LENGTH))
