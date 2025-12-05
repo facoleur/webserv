@@ -1,6 +1,9 @@
 // Utils.cpp
 
 #include "Utils.hpp"
+#include "Config.hpp"
+#include "Server.hpp"
+#include <cctype>
 #include <ctime>
 #include <dirent.h>
 #include <fstream>
@@ -34,13 +37,6 @@ size_t toSizet(const std::string& s) {
     return n;
 }
 
-std::string tolower(const std::string& s) {
-    std::string out = s;
-    for (size_t i = 0; i < out.size(); i++)
-        out[i] = std::tolower(static_cast<unsigned char>(out[i]));
-    return out;
-}
-
 void replace(std::string& str, const std::string& from, const std::string& to) {
     if (from.empty())
         return;
@@ -48,6 +44,12 @@ void replace(std::string& str, const std::string& from, const std::string& to) {
     while ((start = str.find(from, start)) != std::string::npos) {
         str.replace(start, from.length(), to);
         start += to.length();
+    }
+}
+
+void removeDoubleSlash(std::string& s) {
+    while (s.find("//") != std::string::npos) {
+        replace(s, "//", "/");
     }
 }
 
@@ -98,7 +100,7 @@ std::string readFile(const std::ifstream& file) {
     return content.str();
 }
 
-std::string getParentDir(const std::string& path) {
+std::string getParent(const std::string& path) {
     if (path.empty())
         return "";
 
@@ -113,7 +115,10 @@ std::string getParentDir(const std::string& path) {
     if (pos == 0)
         return "/";
 
-    return trimmed.substr(0, pos);
+    std::string parentPath = "/" + trimmed.substr(0, pos) + "/";
+
+    removeDoubleSlash(parentPath);
+    return parentPath;
 }
 
 bool isSpace(int i) {
@@ -164,18 +169,6 @@ std::string trimString(const std::string& str) {
     return std::string(begin, end);
 }
 
-std::string toLower(const std::string& str) {
-    std::string lowered = str;
-    for (size_t i = 0; i < lowered.size(); ++i) {
-        lowered[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(lowered[i])));
-    }
-    return lowered;
-}
-
-unsigned char toLowerChar(unsigned char c) {
-    return static_cast<unsigned char>(std::tolower(c));
-}
-
 bool isSubPath(const std::string& root, const std::string& candidate) {
     if (root.empty())
         return true;
@@ -200,4 +193,44 @@ enum requestMethod toMethod(const std::string& s) {
     if (s == "DELETE")
         return DELETE;
     return UNKNOWN;
+}
+
+std::string toLower(const std::string& s) {
+    std::string out = s;
+    for (size_t i = 0; i < out.size(); i++)
+        out[i] = std::tolower(static_cast<unsigned char>(out[i]));
+    return out;
+}
+
+unsigned char toLowerChar(unsigned char c) {
+    return static_cast<unsigned char>(std::tolower(c));
+}
+
+void initHeaderStringToEnumMap(std::map<std::string, requestHeaders>& headerStringToEnum) {
+    headerStringToEnum["server"]            = SERVER;
+    headerStringToEnum["date"]              = DATE;
+    headerStringToEnum["host"]              = HOST;
+    headerStringToEnum["content-length"]    = CONTENT_LENGTH;
+    headerStringToEnum["location"]          = LOCATION;
+    headerStringToEnum["transfer-encoding"] = TRANSFER_ENCODING;
+    headerStringToEnum["content-type"]      = CONTENT_TYPE;
+    headerStringToEnum["connection"]        = CONNECTION;
+    headerStringToEnum["accept"]            = ACCEPT;
+}
+
+const ServerConfig& getServerConfig(const ClientContext& context, const Config& config, const std::string& host) {
+    int                              chosenConfig  = -1;
+    const std::vector<ServerConfig>& serverConfigs = config.getServers();
+    for (size_t j = 0; j < context.availableServers.size(); j++) {
+        int index = context.availableServers[j];
+        std::cout << index << std::endl;
+        if (serverConfigs[index].matchServerName(host)) {
+            chosenConfig = index;
+            break;
+        }
+    }
+    if (chosenConfig == -1)
+        chosenConfig = context.availableServers[0];
+    const ServerConfig& serverConfig = config.getServers().at(chosenConfig);
+    return serverConfig;
 }

@@ -6,12 +6,12 @@
 #include "Utils.hpp"
 #include "Webserv.hpp"
 
-Response::Response() : _statusCode(OK) {
+Response::Response() : _statusCode(OK), _mustLaunchCgi(false) {
     setHeader(SERVER, WEBSERV_VERSION);
     setHeader(DATE, getCurrentDatetime());
 }
 
-Response::Response(statusCode statusCode) : _statusCode(statusCode) {
+Response::Response(statusCode statusCode) : _statusCode(statusCode), _mustLaunchCgi(false) {
 }
 
 Response::~Response() {
@@ -44,6 +44,10 @@ void Response::setStatusCode(statusCode statusCode) {
     _statusCode = statusCode;
 }
 
+void Response::setMustLaunchCgi(bool mustLaunchCgi) {
+    _mustLaunchCgi = mustLaunchCgi;
+}
+
 void Response::setHeader(requestHeaders key, const std::string& value) {
     _headers[key] = value;
 }
@@ -60,6 +64,10 @@ void Response::setBody(const std::string& body) {
 
 statusCode Response::getStatusCode() const {
     return _statusCode;
+}
+
+bool Response::getMustLaunchCgi() const {
+    return _mustLaunchCgi;
 }
 
 const headersMap& Response::getHeaders() const {
