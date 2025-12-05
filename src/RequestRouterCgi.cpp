@@ -15,25 +15,25 @@ bool RequestRouter::isCgiRequest(const std::string& path, const LocationConfig& 
 }
 
 std::string RequestRouter::getCgiInterpreter(const std::string& path, const LocationConfig& config) const {
-    const std::map<std::string, std::string>& cgi_ext = config.cgi_map;
-    if (cgi_ext.empty())
+    const std::map<std::string, std::string>& extension = config.cgiMap;
+    if (extension.empty())
         return "";
 
     std::string::size_type dot = path.find_last_of('.');
     if (dot != std::string::npos) {
         std::string                                        ext = path.substr(dot);
-        std::map<std::string, std::string>::const_iterator it  = cgi_ext.find(ext);
-        if (it != cgi_ext.end())
+        std::map<std::string, std::string>::const_iterator it  = extension.find(ext);
+        if (it != extension.end())
             return it->second;
         if (dot + 1 < path.size()) {
             std::string alt = path.substr(dot + 1);
-            it              = cgi_ext.find(alt);
-            if (it != cgi_ext.end())
+            it              = extension.find(alt);
+            if (it != extension.end())
                 return it->second;
             if (!alt.empty()) {
                 std::string withDot = "." + alt;
-                it                  = cgi_ext.find(withDot);
-                if (it != cgi_ext.end())
+                it                  = extension.find(withDot);
+                if (it != extension.end())
                     return it->second;
             }
         }
@@ -63,10 +63,10 @@ std::vector<std::string> RequestRouter::storeCgiEnv(const Request& request, cons
     envStorage.push_back("PATH_INFO=" + request.getPath());
     envStorage.push_back("REQUEST_URI=" + request.getPath());
     envStorage.push_back("DOCUMENT_ROOT=" + documentRoot);
-    envStorage.push_back("SERVER_NAME=" + (serverConfig.host.empty() ? std::string("localhost") : serverConfig.host));
+    envStorage.push_back("server_name=" + (serverConfig.host.empty() ? std::string("localhost") : serverConfig.host));
 
-    if (!serverConfig.listen_ports.empty())
-        envStorage.push_back("SERVER_PORT=" + toString(serverConfig.listen_ports[0]));
+    if (!serverConfig.listenPorts.empty())
+        envStorage.push_back("SERVER_PORT=" + toString(serverConfig.listenPorts[0]));
     if (!host.empty())
         envStorage.push_back("HTTP_HOST=" + host);
     if (!contentType.empty())

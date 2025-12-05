@@ -14,48 +14,43 @@ struct Redirect {
     }
 };
 
-/* Subject requires a directory listing toggle. Keep autoindex in model/parser;
-default off; only use it at runtime when serving dirs. If you truly
-won’t implement listings now, still parse/store it for spec compliance.
- */
-
 struct LocationConfig {
     std::string              path; // comme "/picture.img" ou "http://..."
     std::string              root;
-    std::vector<std::string> index_files;
+    std::vector<std::string> indexFiles;
     std::set<requestMethod>  methods; // {"GET", "POST", "DELETE"}
     Redirect                 redirect;
     // New features
-    bool                               autoindex;            // inherited from server if unspecified
-    size_t                             client_max_body_size; // 0 means unspecified -> inherit
-    std::map<std::string, std::string> cgi_map;              // ext -> interpreter
-    bool                               upload_enable;        // default false
-    std::string                        upload_store;         // empty if not set
+    bool                               autoindex;         // inherited from server if unspecified
+    size_t                             clientMaxBodySize; // 0 means unspecified -> inherit
+    std::map<std::string, std::string> cgiMap;            // ext -> interpreter
+    bool                               uploadEnable;      // default false
+    std::string                        uploadStore;       // empty if not set
     // Internal flag to distinguish explicit autoindex vs inherit
-    bool autoindex_set;
+    bool autoindexSet;
     LocationConfig()
-        : path(), root(), index_files(), methods(), redirect(), autoindex(false), client_max_body_size(0), cgi_map(),
-          upload_enable(false), upload_store(), autoindex_set(false) {
+        : path(), root(), indexFiles(), methods(), redirect(), autoindex(false), clientMaxBodySize(0), cgiMap(),
+          uploadEnable(false), uploadStore(), autoindexSet(false) {
     }
 };
 
 struct ServerConfig {
     std::string              host; // comme "127.0.0.1"
-    std::string              server_name;
+    std::string              serverName;
     std::string              root;
-    std::vector<std::string> index_files;
+    std::vector<std::string> indexFiles;
     std::set<requestMethod>  methods;
     Redirect                 redirect;
     // New features
-    std::vector<int>                   listen_ports;
-    std::map<int, std::string>         error_pages; // code -> path
+    std::vector<int>                   listenPorts;
+    std::map<int, std::string>         errorPages; // code -> path
     bool                               autoindex;
-    size_t                             client_max_body_size; // 0 means apply default
-    std::map<std::string, std::string> cgi_map;              // ext -> interpreter
+    size_t                             clientMaxBodySize; // 0 means apply default
+    std::map<std::string, std::string> cgiMap;            // ext -> interpreter
     std::vector<LocationConfig>        locations;
     ServerConfig()
-        : host(), root(), index_files(), methods(), redirect(), listen_ports(), error_pages(), autoindex(false),
-          client_max_body_size(0), cgi_map(), locations() {
+        : host(), root(), indexFiles(), methods(), redirect(), listenPorts(), errorPages(), autoindex(false),
+          clientMaxBodySize(0), cgiMap(), locations() {
     }
 
     bool matchServerName(const std::string& hostHeader) const;

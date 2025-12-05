@@ -1,4 +1,6 @@
 #include "Config.hpp"
+
+#include <Logger.hpp>
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
@@ -16,13 +18,13 @@ void applyDefaults(Config& cfg) {
 
         // Server defaults
         if (srv.root.empty())
-            srv.root = "./www";
-        if (srv.index_files.empty())
-            srv.index_files.push_back("index.html");
+            srv.root = "www";
+        if (srv.indexFiles.empty())
+            srv.indexFiles.push_back("index.html");
         if (srv.methods.empty())
             srv.methods.insert(GET);
-        if (srv.client_max_body_size == 0)
-            srv.client_max_body_size = 1048576; // 1 MiB
+        if (srv.clientMaxBodySize == 0)
+            srv.clientMaxBodySize = 1048576; // 1 MiB
         // srv.autoindex defaults to false (constructor)
 
         for (size_t j = 0; j < srv.locations.size(); ++j) {
@@ -30,19 +32,19 @@ void applyDefaults(Config& cfg) {
 
             if (loc.root.empty())
                 loc.root = srv.root; // inherit from server
-            if (loc.index_files.empty())
-                loc.index_files = srv.index_files;
+            // if (loc.indexFiles.empty())
+            //     loc.indexFiles = srv.indexFiles;
             if (loc.methods.empty())
                 loc.methods = srv.methods;
-            if (!loc.autoindex_set)
+            if (!loc.autoindexSet)
                 loc.autoindex = srv.autoindex;
-            if (loc.client_max_body_size == 0)
-                loc.client_max_body_size = srv.client_max_body_size;
+            if (loc.clientMaxBodySize == 0)
+                loc.clientMaxBodySize = srv.clientMaxBodySize;
             // Merge CGI maps (server entries fill missing keys)
-            for (std::map<std::string, std::string>::const_iterator it = srv.cgi_map.begin(); it != srv.cgi_map.end();
+            for (std::map<std::string, std::string>::const_iterator it = srv.cgiMap.begin(); it != srv.cgiMap.end();
                  ++it) {
-                if (loc.cgi_map.find(it->first) == loc.cgi_map.end())
-                    loc.cgi_map[it->first] = it->second;
+                if (loc.cgiMap.find(it->first) == loc.cgiMap.end())
+                    loc.cgiMap[it->first] = it->second;
             }
         }
     }
@@ -77,8 +79,8 @@ static void ensureIndexFiles(const std::string& root, const std::vector<std::str
     }
 }
 
-static void ensureCgiMap(const std::map<std::string, std::string>& cgi_map) {
-    for (std::map<std::string, std::string>::const_iterator it = cgi_map.begin(); it != cgi_map.end(); ++it) {
+static void ensureCgiMap(const std::map<std::string, std::string>& cgiMap) {
+    for (std::map<std::string, std::string>::const_iterator it = cgiMap.begin(); it != cgiMap.end(); ++it) {
         const std::string& interp = it->second;
         if (ConfigFile::getTypePath(interp) != PATH_FILE || ConfigFile::checkFile(interp, X_OK) != 0) {
             throw std::runtime_error("CGI interpreter not executable: " + interp);
@@ -96,15 +98,15 @@ static std::string parentDir(const std::string& path) {
 }
 
 static void ensureUploadStore(const LocationConfig& loc, const std::string& root) {
-    if (!loc.upload_enable)
+    if (!loc.uploadEnable)
         return;
-    if (loc.upload_store.empty())
+    if (loc.uploadStore.empty())
         throw std::runtime_error("upload_store required when upload_enable is on");
-    std::string path = loc.root.empty() ? root + "/" + loc.upload_store : loc.root + "/" + loc.upload_store;
-    PathType    type = ConfigFile::getTypePath(loc.root + "/" + loc.upload_store);
+    std::string path = loc.root.empty() ? root + "/" + loc.uploadStore : loc.root + "/" + loc.uploadStore;
+    PathType    type = ConfigFile::getTypePath(loc.root + "/" + loc.uploadStore);
     if (type == PATH_DIR) {
         if (ConfigFile::checkFile(path, W_OK | X_OK) != 0)
-            throw std::runtime_error("Upload directory not writable: " + loc.upload_store);
+            throw std::runtime_error("Upload directory not writable: " + loc.uploadStore);
         return;
     }
     if (type == PATH_ERROR) {
@@ -117,20 +119,6 @@ static void ensureUploadStore(const LocationConfig& loc, const std::string& root
     }
     throw std::runtime_error("Upload store must be a directory: " + path);
 }
-
-struct ServerBlock {
-    std::vector<int> ports;
-    std::string      host;
-    std::string      server_name;
-
-    bool operator==(const ServerBlock& other) const {
-        return ports == other.ports && host == other.host && server_name == other.server_name;
-    }
-
-    ServerBlock(std::vector<int> ports, const std::string& host, const std::string& server_name)
-        : ports(ports), host(host), server_name(server_name) {
-    }
-};
 
 void validateAmbigousServerBlock(const std::vector<ServerBlock>& serverBlock) {
     for (size_t i = 0; i < serverBlock.size(); i++) {
@@ -156,29 +144,28 @@ void validateCompatibility(const Config& cfg) {
     for (size_t i = 0; i < servers.size(); ++i) {
         const ServerConfig& srv = servers[i];
 
-        serverBlock.push_back(ServerBlock(srv.listen_ports, srv.host, srv.server_name));
+        serverBlock.push_back(ServerBlock(srv.listenPorts, srv.host, srv.serverName));
 
         // Server-level checks
-        if (srv.listen_ports.empty()) {
+        if (srv.listenPorts.empty()) {
             std::cerr << "Error: server[" << i << "] missing listen directive (at least one port required)\n";
             throw std::runtime_error("invalid config: missing listen");
         }
-        for (size_t p = 0; p < srv.listen_ports.size(); ++p) {
-            int port = srv.listen_ports[p];
+        for (size_t p = 0; p < srv.listenPorts.size(); ++p) {
+            int port = srv.listenPorts[p];
             if (port < 1 || port > 65535)
                 throw std::runtime_error("invalid listen port outside range 1..65535");
         }
-        if (srv.client_max_body_size == 0)
-            throw std::runtime_error("invalid server client_max_body_size (must be > 0)");
-        for (std::map<int, std::string>::const_iterator it = srv.error_pages.begin(); it != srv.error_pages.end();
-             ++it) {
+        if (srv.clientMaxBodySize == 0)
+            throw std::runtime_error("invalid server clientMaxBodySize (must be > 0)");
+        for (std::map<int, std::string>::const_iterator it = srv.errorPages.begin(); it != srv.errorPages.end(); ++it) {
             int code = it->first;
             if (code < 100 || code > 599)
-                throw std::runtime_error("invalid error_page code (must be 100..599)");
+                throw std::runtime_error("invalid errorPage code (must be 100..599)");
         }
         ensureDirectory(srv.root, "server root");
-        ensureIndexFiles(srv.root, srv.index_files);
-        ensureCgiMap(srv.cgi_map);
+        ensureIndexFiles(srv.root, srv.indexFiles);
+        ensureCgiMap(srv.cgiMap);
         for (size_t j = 0; j < srv.locations.size(); ++j) {
             const LocationConfig& loc = srv.locations[j];
             // if (loc.methods.count(POST) && loc.redirect.status == 0 && loc.root.find("upload") ==
@@ -192,13 +179,13 @@ void validateCompatibility(const Config& cfg) {
             if (loc.methods.count(DELETE) && loc.redirect.status != 0) {
                 std::cerr << "Warning: Location " << loc.path << " defines DELETE but has a redirect\n";
             }
-            if (loc.client_max_body_size == 0)
+            if (loc.clientMaxBodySize == 0)
                 throw std::runtime_error("invalid location client_max_body_size (must be > 0)");
-            if (loc.upload_enable && loc.upload_store.empty())
+            if (loc.uploadEnable && loc.uploadStore.empty())
                 throw std::runtime_error("upload enabled but upload_store not set in location");
             ensureDirectory(loc.root, "location root");
-            ensureIndexFiles(loc.root, loc.index_files);
-            ensureCgiMap(loc.cgi_map);
+            ensureIndexFiles(loc.root, loc.indexFiles);
+            ensureCgiMap(loc.cgiMap);
             ensureUploadStore(loc, srv.root);
         }
     }
@@ -207,7 +194,7 @@ void validateCompatibility(const Config& cfg) {
 }
 
 bool ServerConfig::matchServerName(const std::string& hostHeader) const {
-    if (hostHeader.find(server_name) != std::string::npos)
+    if (hostHeader.find(serverName) != std::string::npos)
         return true;
     return false;
 }

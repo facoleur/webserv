@@ -3,7 +3,7 @@
 #include "CGI.hpp"
 
 CgiInfo::CgiInfo()
-    : exists(false), _request(NULL), _interpreter(), _scriptPath(), _envStorage(), _CgiPID(-1), _lastActive(-1),
+    : exists(false), _request(NULL), _interpreter(), _scriptPath(), _envStorage(), _cgiPid(-1), _lastActive(-1),
       _writeFd(-1), _readFd(-1), _bytesWritten(0), _output() {
 }
 
@@ -28,7 +28,7 @@ std::vector<std::string> CgiInfo::getEnvStorage(void) const {
 }
 
 pid_t CgiInfo::getCgiPID(void) const {
-    return _CgiPID;
+    return _cgiPid;
 }
 
 int CgiInfo::getLastActive(void) const {
@@ -69,7 +69,7 @@ void CgiInfo::setEnvStorage(const std::vector<std::string>& envStorage) {
 }
 
 void CgiInfo::setCgiPID(pid_t CgiPID) {
-    _CgiPID = CgiPID;
+    _cgiPid = CgiPID;
 }
 
 void CgiInfo::setLastActive(int lastActive) {

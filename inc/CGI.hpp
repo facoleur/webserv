@@ -51,7 +51,7 @@ class CgiInfo {
     std::vector<std::string> _envStorage;
 
     // run variables
-    pid_t       _CgiPID;
+    pid_t       _cgiPid;
     int         _lastActive;
     int         _writeFd;
     int         _readFd;

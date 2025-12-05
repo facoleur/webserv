@@ -76,18 +76,18 @@ int ConfigFile::getSize() const {
     return size_;
 }
 
-bool ConfigFile::validateConfigPath(const std::string& path, std::string& err) {
+bool ConfigFile::validateConfigPath(const std::string& path, std::string& error) {
     PathType type = getTypePath(path);
     if (type == PATH_ERROR) {
-        err = std::string("Error: cannot access config file '") + path + "'";
+        error = std::string("Error: cannot access config file '") + path + "'";
         return false;
     }
     if (type != PATH_FILE) {
-        err = std::string("Error: '") + path + "' is not a regular file";
+        error = std::string("Error: '") + path + "' is not a regular file";
         return false;
     }
     if (checkFile(path, R_OK) != 0) {
-        err = std::string("Error: '") + path + "' is not readable (check permissions)";
+        error = std::string("Error: '") + path + "' is not readable (check permissions)";
         return false;
     }
     return true;

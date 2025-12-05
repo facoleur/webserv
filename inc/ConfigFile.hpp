@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 enum PathType { PATH_ERROR = -1, PATH_FILE = 1, PATH_DIR = 2, PATH_OTHER = 3 };
 
@@ -21,4 +22,18 @@ class ConfigFile {
   private:
     std::string path_;
     int         size_;
+};
+
+struct ServerBlock {
+    std::vector<int> ports;
+    std::string      host;
+    std::string      serverName;
+
+    bool operator==(const ServerBlock& other) const {
+        return ports == other.ports && host == other.host && serverName == other.serverName;
+    }
+
+    ServerBlock(std::vector<int> ports, const std::string& host, const std::string& serverName)
+        : ports(ports), host(host), serverName(serverName) {
+    }
 };

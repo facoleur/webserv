@@ -11,9 +11,9 @@ int main(int argc, char const* argv[]) {
     const char* path = (argc > 1) ? argv[1] : "config/default.conf";
 
     // Validate config path early
-    std::string err;
-    if (!ConfigFile::validateConfigPath(path, err)) {
-        LOG_ERROR(err);
+    std::string error;
+    if (!ConfigFile::validateConfigPath(path, error)) {
+        LOG_ERROR(error);
         return 1;
     }
     ConfigParser parser;
@@ -26,13 +26,15 @@ int main(int argc, char const* argv[]) {
     }
     applyDefaults(cfg);
     try {
-        validateCompatibility(cfg); // try catch => if catch, return
+        validateCompatibility(cfg);
     } catch (std::runtime_error& re) {
         LOG_ERROR(re.what());
+        LOG_ERROR("Aborting...");
+        return 0;
     }
 
     Server serv(cfg);
-    LOG_INFO("Starting server")
+    LOG_INFO("Starting server...")
     serv.run();
 
     return 0;
