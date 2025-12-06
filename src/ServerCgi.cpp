@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   ServerCgi.cpp                                      :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: francis <francis@student.42.fr>            +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/12/06 17:41:39 by francis           #+#    #+#             */
+/*   Updated: 2025/12/06 21:20:36 by francis          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 // ServerCgi.cpp
 
 #include <signal.h>
@@ -11,6 +23,7 @@
 #include "Request.hpp"
 #include "RequestRouter.hpp"
 #include "Server.hpp"
+#include "Utils.hpp"
 
 bool Server::isCgiPipe(const int fd) const {
     CgiFdMap::const_iterator it = _cgiFdMap.find(fd);
@@ -215,22 +228,88 @@ void Server::handleCgiError(const int fd, struct pollfd (&pfds)[MAX_EVENTS], int
     LOG_DEBUG("handleCgiError(): done");
 }
 
-int Server::waitForCgiTermination(pid_t pid, Request& req) {
-    (void)req;
+int Server::waitForCgiTermination(pid_t pid) {
     int status = 0;
     int ret    = waitpid(pid, &status, WNOHANG);
 
-    if (ret == -1) // If an error is detected or a caught signal aborts the call, a value of -1 is returned and
-                   // errno is set to indicate the error.
-                   // tear down the CGI state
-        return -1; // handle ECHILD ? i.e. no existing CGI ? "The calling process has no existing unwaited-for child
-    // processes."
+    if (ret == -1)
+        return -1;
     if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
         return -1;
-    // if (ret == 0)    // child still running, leave the pipes registered and keep enforcing timeouts
-    //                  // do nothing, continue server ?
-    //     if (ret > 0) // child exited => clean up pipes, parse buffered output, transition the request to CGI_DONE (or
-    //     error
-    //                  // if !WIFEXITED/WEXITSTATUS != 0)
     return 0;
+}
+
+// write body to CGI for processing
+int Server::writePendingBodyToCgi(int writeFd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
+    LOG_DEBUG("writePendingBodyToCgi()");
+    CgiPipeInfo& pipe = _cgiFdMap.at(writeFd);
+    CgiInfo*     info = pipe.cgiInfo;
+    Request*     req  = info->getRequest();
+
+    const std::string& body      = req->getBody();
+    int                written   = info->getBytesWritten();
+    int                remaining = static_cast<int>(body.size()) - written;
+
+    if (remaining <= 0) {
+        cleanUpCgiFd(writeFd, pfds, nfds);
+        return 0;
+    }
+
+    ssize_t n = write(writeFd, body.data() + written, remaining);
+    if (n > 0) {
+        info->setBytesWritten(written + static_cast<int>(n));
+        info->setLastActive(time(NULL));
+        if (info->getBytesWritten() == static_cast<int>(body.size())) {
+            cleanUpCgiFd(writeFd, pfds, nfds);
+        }
+        return 0;
+    }
+
+    handleCgiError(writeFd, pfds, nfds, BAD_GATEWAY);
+    return -1;
+}
+
+// read output from CGI
+int Server::readFromCgi(int readFd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
+    LOG_DEBUG("readFromCgi()");
+    CgiPipeInfo& pipe   = _cgiFdMap.at(readFd);
+    CgiInfo*     info   = pipe.cgiInfo;
+    int          cgiPID = info->getCgiPID();
+    Request*     req    = info->getRequest();
+    char         buf[CGI_BUFFER_SIZE];
+    if (!req)
+        return -1;
+
+    ssize_t n = read(readFd, buf, sizeof(buf));
+    if (n > 0) { // append chunk
+        std::string chunk(buf, n);
+        info->appendToOutput(chunk);
+        info->setLastActive(time(NULL));
+        LOG_DEBUG("read " + toString(n) + " bytes; output is now: \n\n{\n" + info->getOutput() + "\n}\n\n");
+        return 0;
+    }
+    if (n == 0) { // EOF: close stdout pipe
+        LOG_DEBUG("read 0 bytes; cleaning up Cgi fds");
+        cleanUpCgiFd(readFd, pfds, nfds);
+        int writeFd = info->getWriteFd();
+        if (writeFd >= 0)
+            cleanUpCgiFd(writeFd, pfds, nfds);
+        if (waitForCgiTermination(cgiPID) != 0)
+            req->setStatusCode(BAD_GATEWAY);
+        req->setState(CGI_DONE);
+
+        LOG_DEBUG("req->getClientFd() == " + toString(req->getClientFd()));
+        int clientFdIndex = findPollFdIndexFromFd(req->getClientFd(), pfds, nfds);
+        if (clientFdIndex == -1) {
+            LOG_DEBUG("findPollFdIndexFromFd() couldn't find the index for the client fd");
+            return -1;
+        }
+        LOG_DEBUG("findPollFdIndexFromFd() found index " + toString(clientFdIndex));
+        handleRequests(req->getClientContext(), clientFdIndex, pfds, nfds);
+        return 0;
+    }
+
+    LOG_DEBUG("read " + toString(n) + " bytes (read error !)");
+    handleCgiError(readFd, pfds, nfds, BAD_GATEWAY);
+    return -1;
 }

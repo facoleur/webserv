@@ -14,7 +14,7 @@
 class Response;
 
 #define MAX_EVENTS 64
-#define CLIENT_TIMEOUT 30
+#define CLIENT_TIMEOUT 5
 #define POLL_TIMEOUT 0
 #define READ_SIZE 8000
 
@@ -78,17 +78,8 @@ class Server {
     void cleanUpCgiFd(const int, struct pollfd (&)[MAX_EVENTS], int&);
     void cleanUpBothCgiFds(const int, struct pollfd (&)[MAX_EVENTS], int&);
     int  writePendingBodyToCgi(const int, struct pollfd (&)[MAX_EVENTS], int&);
-    int  readFromCgi(const int, int, struct pollfd (&)[MAX_EVENTS], int&);
-    int  waitForCgiTermination(pid_t, Request&);
+    int  readFromCgi(const int, struct pollfd (&)[MAX_EVENTS], int&);
+    int  waitForCgiTermination(pid_t);
     void handleCgiError(const int, struct pollfd (&)[MAX_EVENTS], int&, statusCode);
     void terminateCgiProcess(pid_t);
 };
-
-// CGI fd lookup:
-//
-// Use whatever lookup fits your existing data structures but make it O(1). Most teams keep a std::map<int, CgiPipe> or
-// std::vector<CgiPipe> keyed by the FD. Each entry stores {CGIState*, PipeRole} where PipeRole is an enum like
-// CGI_STDIN vs. CGI_STDOUT. When poll() says “fd 37 is writable,” you grab the entry, see it’s the stdin pipe, and push
-// more request-body bytes into the child. When it’s readable and tagged CGI_STDOUT, you drain the CGI output instead.
-// The “role” is simply “which direction this FD serves”—it’s how you distinguish between feeding stdin and draining
-// stdout, because they need different logic.

@@ -9,7 +9,7 @@
 class Request;
 
 #define CGI_BUFFER_SIZE 4096
-#define CGI_TIMEOUT 10
+#define CGI_TIMEOUT 5
 
 class CgiInfo {
   public:
@@ -58,29 +58,3 @@ class CgiInfo {
     int         _bytesWritten;
     std::string _output;
 };
-
-// BODY REFERENCE
-// The “body reference” is just a pointer/offset into the original HTTP request body so you know how much of it has
-// already been written to the child. Instead of copying the body into a new buffer, store either a reference to
-// Request::getBody() plus an index (bytesWritten) or a lightweight span structure; then each time the CGI stdin
-// pipe is writable you write from body.begin() + bytesWritten onward until everything is sent. This is the info CgiInfo
-// must keep so the streaming logic knows what remains to transfer. Intuition recap: route() sets up the plan,
-// launchCgi() spawns and registers the child, the poll loop advances read/write/waitpid, and only after the child
-// finishes do you construct the HTTP response using the buffers tracked inside CgiInfo; the “body reference” is simply
-// a way to remember which portion of the original request body still needs to be fed into the CGI stdin.
-
-// A usable CGIState should hold at least:
-// child PID,
-// stdin/out pipe FDs,
-// offsets into the request body (what remains to write),
-// buffers for stdout data (until headers parsed),
-// parsed header
-// map/status info, and
-// timestamps for CGI-specific timeouts.
-//
-// To distinguish pipe roles, store them explicitly (stdinFd,
-// stdoutFd) plus booleans like stdinClosed; when you register the FDs with poll,accompany each pollfd index with
-// metadata : either keep a std::map<int, CGIState*> where the key is the FD, or maintain a parallel array of
-// structs{fd, role, statePtr} so when pfds[i] fires you immediately know which state and which direction to service.
-
-// handleCgi() enforces sandbox rules (path under root, file readable, interpreter known

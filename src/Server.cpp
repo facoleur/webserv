@@ -3,9 +3,7 @@
 #include <arpa/inet.h>
 #include <cstddef>
 #include <cstring>
-#include <fcntl.h>
 #include <iostream>
-#include <map>
 #include <string>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -18,8 +16,8 @@
 #include "Enums.hpp"
 #include "Logger.hpp"
 #include "RequestParser.hpp"
-#include "RequestRouter.hpp"
 #include "Server.hpp"
+#include "Utils.hpp"
 
 Server::Server() {
 }
@@ -33,6 +31,10 @@ Server::~Server() {
 ClientContext::ClientContext(void) : closeAfterResponses(false), selectedServer(-1) {
 }
 
+// if client disconnects => go through client requests and check each request's CGIinfo.
+// If CGIInfo is there (exists), then end it with
+//
+
 void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pfds)[MAX_EVENTS]) {
     LOG_DEBUG("checkTimeouts()");
     ContextMap::iterator itClient;
@@ -41,7 +43,7 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
 
     currTime = time(NULL);
     if (currTime == -1)
-        return; // handleTimeError ?
+        return;
     LOG_DEBUG("TIMESTAMP: " + toString(time(NULL)));
 
     // loop over all clients
@@ -64,6 +66,7 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
 
             ++itClient; // to avoid issues when client is removed from contextMap in disconnectClient()
             LOG_DEBUG("Client timed out after (in theory) " + toString(CLIENT_TIMEOUT) + " seconds)");
+
             disconnectClient(j, clientFd, pfds, nfds, contextMap);
             continue; // skip the ++itClient
         } else
@@ -86,182 +89,6 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
             handleCgiError(cgiFd, pfds, nfds, GATEWAY_TIMEOUT);
         }
     }
-}
-
-// Handle incoming connections
-int Server::handleNewConnection(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds,
-                                ContextMap& context) {
-    (void)i;
-
-    LOG_DEBUG("handleNewConnection()");
-    int newClientFd = accept(listener, NULL, NULL);
-    if (newClientFd < 0) {
-        LOG_DEBUG("accept error: errno is " + toString(errno));
-        return -1;
-    }
-    fcntl(newClientFd, F_SETFL, O_NONBLOCK);
-    setPollFd(pfds[nfds], newClientFd, POLLIN, 0);
-    context[newClientFd]                  = ClientContext();
-    context[newClientFd].availableServers = _listenerToServers[listener];
-    context[newClientFd].lastActive       = time(NULL);
-    context[newClientFd].pfd              = pfds[nfds];
-    nfds++;
-    LOG_DEBUG("the new client fd is " + toString(newClientFd) + " with index " + toString(i) +
-              " and nfds == " + toString(nfds));
-    return 0;
-}
-
-size_t getTmpMaxBodySize(const Config& _config) {
-    size_t size = 0;
-
-    std::vector<ServerConfig> servers = _config.getServers();
-    for (size_t i = 0; i < servers.size(); i++) {
-        if (servers[i].clientMaxBodySize > size) {
-            size = servers[i].clientMaxBodySize;
-        }
-        for (size_t j = 0; j < servers[i].locations.size(); j++) {
-            LocationConfig& loc = servers[i].locations[j];
-            if (loc.clientMaxBodySize > size) {
-                size = loc.clientMaxBodySize;
-            }
-        }
-    }
-    return size;
-}
-
-int Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
-    char           tmp[READ_SIZE + 1];
-    int            len;
-    ClientContext& ctx = context[listener];
-
-    LOG_DEBUG("handleRead()");
-    len            = read(listener, tmp, READ_SIZE);
-    ctx.lastActive = time(NULL);
-    if (len == 0) { // client closed their send side (or POLLHUP ? unclear but it works)
-        LOG_DEBUG("read on fd " + toString(listener) + " returned 0 (client closed their send side)");
-        ctx.closeAfterResponses = true;
-        if (ctx.reqParser.getState() == REQ_PARSE_PARTIAL) {
-            handlePartialRequest(context[listener], i, pfds, nfds);
-            return -1;
-        }
-        pfds[i].events &= ~POLLIN;
-        pfds[i].revents = 0;
-    } else if (len < 0) {
-        LOG_DEBUG("disconnect 3: read error");
-        disconnectClient(i, listener, pfds, nfds, context);
-        return -1;
-    } else { // Parsing
-        size_t maxBodySize    = getTmpMaxBodySize(_config);
-        tmp[len]              = '\0';
-        ctx.reqParser._config = _config;
-        ctx.reqParser.feed(tmp, ctx.requests, context[listener], maxBodySize);
-        if (ctx.reqParser.getState() == REQ_PARSE_PARTIAL)
-            return -1;
-    }
-
-    handleRequests(ctx, i, pfds, nfds);
-    return 0;
-}
-
-int Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
-    LOG_DEBUG("sendResponses()");
-    std::string& buf = context[listener].writeBuffer;
-    while (!buf.empty()) {
-        ssize_t sent = write(listener, buf.data(), buf.size());
-        LOG_DEBUG("written bytes: " + toString(sent));
-        if (sent > 0) {
-            buf.erase(0, sent);
-            context[listener].lastActive = time(NULL);
-            break;
-        }
-        if (sent == -1) { // error or connection closed: (sent == 0 ?)
-            LOG_DEBUG("disconnect 4: error or connection closed while sending back response");
-            disconnectClient(i, listener, pfds, nfds, context);
-            return -1;
-        }
-    }
-    if (context[listener].closeAfterResponses) {
-        LOG_DEBUG("disconnect 6: sendResponses (client.closeAfterResponses: true)");
-        disconnectClient(i, listener, pfds, nfds, context);
-        return -1;
-    }
-    pfds[i].events = POLLIN;
-    return 0;
-}
-
-int Server::writePendingBodyToCgi(int writeFd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
-    LOG_DEBUG("writePendingBodyToCgi()");
-    CgiPipeInfo& pipe = _cgiFdMap.at(writeFd);
-    CgiInfo*     info = pipe.cgiInfo;
-    Request*     req  = info->getRequest();
-
-    const std::string& body      = req->getBody();
-    int                written   = info->getBytesWritten();
-    int                remaining = static_cast<int>(body.size()) - written;
-
-    if (remaining <= 0) {
-        cleanUpCgiFd(writeFd, pfds, nfds);
-        return 0;
-    }
-
-    ssize_t n = write(writeFd, body.data() + written, remaining);
-    if (n > 0) {
-        info->setBytesWritten(written + static_cast<int>(n));
-        info->setLastActive(time(NULL));
-        if (info->getBytesWritten() == static_cast<int>(body.size())) {
-            cleanUpCgiFd(writeFd, pfds, nfds);
-        }
-        return 0;
-    }
-
-    handleCgiError(writeFd, pfds, nfds, BAD_GATEWAY);
-    return -1;
-}
-
-// read output from CGI
-int Server::readFromCgi(int readFd, int index, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
-    LOG_DEBUG("readFromCgi()");
-    CgiPipeInfo& pipe   = _cgiFdMap.at(readFd);
-    CgiInfo*     info   = pipe.cgiInfo;
-    int          cgiPID = info->getCgiPID();
-    Request*     req    = info->getRequest();
-    char         buf[CGI_BUFFER_SIZE];
-    if (!req)
-        return -1;
-
-    ssize_t n = read(readFd, buf, sizeof(buf));
-    if (n > 0) { // append chunk
-        std::string chunk(buf, n);
-        info->appendToOutput(chunk);
-        info->setLastActive(time(NULL));
-        LOG_DEBUG("read " + toString(n) + " bytes; output is now: \n\n{\n" + info->getOutput() + "\n}\n\n");
-        return 0;
-    }
-    if (n == 0) { // EOF: close stdout pipe
-        LOG_DEBUG("read 0 bytes; cleaning up Cgi fds");
-        cleanUpCgiFd(readFd, pfds, nfds);
-        int writeFd = info->getWriteFd();
-        if (writeFd >= 0)
-            cleanUpCgiFd(writeFd, pfds, nfds);
-        if (waitForCgiTermination(cgiPID, *req) != 0)
-            req->setStatusCode(BAD_GATEWAY);
-        req->setState(CGI_DONE);
-
-        (void)index;
-        LOG_DEBUG("req->getClientFd() == " + toString(req->getClientFd()));
-        int clientFdIndex = findPollFdIndexFromFd(req->getClientFd(), pfds, nfds);
-        if (clientFdIndex == -1) {
-            LOG_DEBUG("findPollFdIndexFromFd() couldn't find the index for the client fd");
-            return -1;
-        }
-        LOG_DEBUG("findPollFdIndexFromFd() found index " + toString(clientFdIndex));
-        handleRequests(req->getClientContext(), clientFdIndex, pfds, nfds);
-        return 0;
-    }
-
-    LOG_DEBUG("read " + toString(n) + " bytes (read error !)");
-    handleCgiError(readFd, pfds, nfds, BAD_GATEWAY);
-    return -1;
 }
 
 void Server::run() {
@@ -304,7 +131,7 @@ void Server::run() {
 
             // handle CGI stdout as readable even when only POLLHUP is set (Linux pipe EOF)
             if (isCGIPipeRole(fd, CGI_STDOUT) && (revents & (POLLIN | POLLHUP))) {
-                readFromCgi(fd, index, pfds, nfds);
+                readFromCgi(fd, pfds, nfds);
                 continue;
             }
 

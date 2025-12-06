@@ -168,14 +168,6 @@ void validateCompatibility(const Config& cfg) {
         ensureCgiMap(srv.cgiMap);
         for (size_t j = 0; j < srv.locations.size(); ++j) {
             const LocationConfig& loc = srv.locations[j];
-            // if (loc.methods.count(POST) && loc.redirect.status == 0 && loc.root.find("upload") ==
-            // std::string::npos)
-            // {
-            //     std::cerr << "Warning: Location " << loc.path
-            //               << " allows POST but is not obviously an upload route (no 'upload' "
-            //                  "in root and no redirect). "
-            //                  "Consider restricting methods or implementing POST handling.\n";
-            // }
             if (loc.methods.count(DELETE) && loc.redirect.status != 0) {
                 std::cerr << "Warning: Location " << loc.path << " defines DELETE but has a redirect\n";
             }

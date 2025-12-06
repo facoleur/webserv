@@ -83,11 +83,6 @@ std::vector<int> Server::initListenerSockets(struct pollfd (&pfds)[MAX_EVENTS], 
         addr.sin_family = AF_INET;
         addr.sin_port   = htons(port);
 
-        // ip              = INADDR_ANY;
-        // if (!srv.host.empty() && inet_aton(srv.host.c_str(), &a))
-        //     ip = a.s_addr;
-        // addr.sin_addr.s_addr = ip;
-
         if (inet_aton(ipStr.c_str(), &a))
             addr.sin_addr = a;
         else

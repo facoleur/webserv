@@ -6,7 +6,6 @@
 #include "Config.hpp"
 #include "Enums.hpp"
 #include "Server.hpp"
-#include "Utils.hpp"
 
 class Request;
 class Response;
@@ -15,13 +14,13 @@ class RequestRouter {
 
   protected:
     LocationConfig           _config;
-    bool                     resourceExists(const std::string&, const Request&);
+    bool                     resourceExists(const std::string&);
     bool                     isMethodAllowed(const Request&, const LocationConfig&);
     bool                     isCgiRequest(const std::string&, const LocationConfig&);
     std::string              getCgiInterpreter(const std::string&, const LocationConfig&) const;
     Response                 handleGet(const Request&, std::string&, const LocationConfig&);
     Response                 handlePost(const Request&, const std::string&, const LocationConfig&);
-    Response                 handleDelete(const Request&, const std::string&, const LocationConfig&);
+    Response                 handleDelete(const std::string&);
     Response                 prepareCgi(Request&, const std::string&, const ServerConfig&, const LocationConfig&);
     std::vector<std::string> storeCgiEnv(const Request& request, const LocationConfig& locationConfig,
                                          const ServerConfig& serverConfig, const std::string& scriptPath) const;

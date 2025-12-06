@@ -27,8 +27,7 @@ RequestRouter::RequestRouter() {
 RequestRouter::~RequestRouter() {
 }
 
-bool RequestRouter::resourceExists(const std::string& path, const Request& req) {
-    (void)req;
+bool RequestRouter::resourceExists(const std::string& path) {
     struct stat info;
     return (stat(path.c_str(), &info) == 0);
 }
@@ -108,14 +107,14 @@ std::string RequestRouter::getMimeType(const std::string& path) {
 }
 
 Response RequestRouter::handleGet(const Request& req, std::string& path, const LocationConfig& config) {
-    (void)req;
+    // (void)req;
     Response res;
 
     if (isDirectory(path)) {
 
         for (size_t i = 0; i < config.indexFiles.size(); ++i) {
             std::string indexPath = path + config.indexFiles[i];
-            if (!resourceExists(indexPath, req))
+            if (!resourceExists(indexPath))
                 continue;
 
             std::ifstream file(indexPath.c_str());
@@ -138,7 +137,7 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
         }
     }
 
-    if (!resourceExists(path, req)) {
+    if (!resourceExists(path)) {
         return makeErrorResponse(NOT_FOUND);
     }
 
@@ -204,10 +203,8 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
     return res;
 }
 
-Response RequestRouter::handleDelete(const Request& req, const std::string& path, const LocationConfig& config) {
+Response RequestRouter::handleDelete(const std::string& path) {
     // if dir -> 403 (design choice, otherwise we must delete recursively dir entries)
-    (void)req;
-    (void)config;
 
     if (isDirectory(path)) {
         return makeErrorResponse(FORBIDDEN);
@@ -433,7 +430,7 @@ Response RequestRouter::route(Request& req, const ServerConfig& config) {
         }
 
     } else {
-        if (!resourceExists(resolvedPath, req)) {
+        if (!resourceExists(resolvedPath)) {
             return makeErrorResponse(NOT_FOUND);
         }
     }
@@ -458,7 +455,7 @@ Response RequestRouter::route(Request& req, const ServerConfig& config) {
         case POST:
             return handlePost(req, resolvedPath, resolvedConfig);
         case DELETE:
-            return handleDelete(req, resolvedPath, resolvedConfig);
+            return handleDelete(resolvedPath);
         default:
             return makeErrorResponse(BAD_REQUEST);
     }

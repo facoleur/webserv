@@ -1,4 +1,3 @@
-#include "Utils.hpp"
 #include <dirent.h>
 #include <vector>
 
@@ -23,5 +22,4 @@ class AutoIndex {
     ~AutoIndex();
 
     static std::string fillTemplate(const std::string& dir, const std::vector<AutoIndexItem>& items);
-    // std::string fillTemplate();
 };
