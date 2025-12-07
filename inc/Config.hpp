@@ -26,6 +26,8 @@ struct LocationConfig {
     std::map<std::string, std::string> cgiMap;            // ext -> interpreter
     bool                               uploadEnable;      // default false
     std::string                        uploadStore;       // empty if not set
+    std::map<int, std::string>         errorPages;        // code -> path
+
     // Internal flag to distinguish explicit autoindex vs inherit
     bool autoindexSet;
     LocationConfig()

@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
@@ -32,11 +33,11 @@ bool RequestRouter::resourceExists(const std::string& path) {
     return (stat(path.c_str(), &info) == 0);
 }
 
-bool RequestRouter::isMethodAllowed(const Request& req, const LocationConfig& config) {
-    for (std::set<enum requestMethod>::const_iterator it = config.methods.begin(); it != config.methods.end(); ++it) {
+bool RequestRouter::isMethodAllowed(const Request& req) {
+    for (std::set<enum requestMethod>::const_iterator it = _config.methods.begin(); it != _config.methods.end(); ++it) {
     }
 
-    return (config.methods.find(req.getMethod()) != config.methods.end());
+    return (_config.methods.find(req.getMethod()) != _config.methods.end());
 }
 
 void RequestRouter::resolveAbsolutePath(std::string& path) {
@@ -106,14 +107,14 @@ std::string RequestRouter::getMimeType(const std::string& path) {
     return mime[extension];
 }
 
-Response RequestRouter::handleGet(const Request& req, std::string& path, const LocationConfig& config) {
+Response RequestRouter::handleGet(const Request& req, std::string& path) {
     // (void)req;
     Response res;
 
     if (isDirectory(path)) {
 
-        for (size_t i = 0; i < config.indexFiles.size(); ++i) {
-            std::string indexPath = path + config.indexFiles[i];
+        for (size_t i = 0; i < _config.indexFiles.size(); ++i) {
+            std::string indexPath = path + _config.indexFiles[i];
             if (!resourceExists(indexPath))
                 continue;
 
@@ -130,7 +131,7 @@ Response RequestRouter::handleGet(const Request& req, std::string& path, const L
             return res;
         }
 
-        if (config.autoindex) {
+        if (_config.autoindex) {
             return makeAutoindexResponse(req.getPath(), path);
         } else {
             return makeErrorResponse(FORBIDDEN);
@@ -162,9 +163,9 @@ std::string generateUploadName() {
     return oss.str();
 }
 
-Response RequestRouter::handlePost(const Request& req, const std::string& path, const LocationConfig& config) {
+Response RequestRouter::handlePost(const Request& req, const std::string& path) {
 
-    if (config.uploadEnable == false) {
+    if (_config.uploadEnable == false) {
         return makeErrorResponse(FORBIDDEN);
     }
 
@@ -175,8 +176,8 @@ Response RequestRouter::handlePost(const Request& req, const std::string& path, 
 
     std::string fsUploadPath;
     std::string filename = generateUploadName();
-    if (!config.uploadStore.empty()) {
-        fsUploadPath = config.root + "/" + config.uploadStore + "/" + filename;
+    if (!_config.uploadStore.empty()) {
+        fsUploadPath = _config.root + "/" + _config.uploadStore + "/" + filename;
     }
 
     while (fsUploadPath.find("//") != std::string::npos) {
@@ -229,6 +230,14 @@ Response RequestRouter::makeResponse(enum statusCode statusCode) {
 }
 
 std::string RequestRouter::generateErrorHtml(enum statusCode status) {
+
+    if (_config.errorPages.find(status) != _config.errorPages.end()) {
+        std::ifstream f(_config.errorPages[status].c_str());
+        if (f.is_open()) {
+            return readFile(f);
+        }
+    }
+
     std::ifstream templateHtml("www/templates/error.html");
     std::string   html = readFile(templateHtml);
 
@@ -342,10 +351,13 @@ const LocationConfig resolveConfig(const ServerConfig& server, const LocationCon
         locationPath       = location->path;
         resolved           = *location;
         resolved.autoindex = location->autoindex;
+
     } else {
         resolved.autoindex         = server.autoindex;
         resolved.clientMaxBodySize = server.clientMaxBodySize;
     }
+
+    resolved.errorPages = server.errorPages;
 
     if (resolved.methods.empty()) {
         resolved.methods = server.methods;
@@ -383,32 +395,29 @@ Response RequestRouter::route(Request& req, const ServerConfig& config) {
         return makeErrorResponse(req.getStatusCode()); // can be 413 CONTENT_TOO_LARGE, for example
     }
 
-    // dynamic/config-based checks
     const LocationConfig* locationConfig = findLocationConfig(req.getPath(), config);
 
-    std::string           locationPath;
-    const LocationConfig& resolvedConfig = resolveConfig(config, locationConfig, locationPath);
+    std::string locationPath;
+    _config = resolveConfig(config, locationConfig, locationPath);
 
-    if (req.getBody().size() > resolvedConfig.clientMaxBodySize) {
+    if (req.getBody().size() > _config.clientMaxBodySize) {
         return makeErrorResponse(CONTENT_TOO_LARGE);
     }
 
-    _config = resolvedConfig;
-
-    if (resolvedConfig.redirect.status) {
-        return makeRedirectResponse(resolvedConfig.redirect.target);
+    if (_config.redirect.status) {
+        return makeRedirectResponse(_config.redirect.target);
     }
 
     std::string resolvedPath;
 
     try {
-        resolvedPath = resolvePath(req, resolvedConfig.root);
+        resolvedPath = resolvePath(req, _config.root);
 
     } catch (std::exception&) {
         return makeErrorResponse(BAD_REQUEST);
     }
 
-    if (!isMethodAllowed(req, resolvedConfig)) {
+    if (!isMethodAllowed(req)) {
         return makeErrorResponse(NOT_ALLOWED);
     }
 
@@ -446,14 +455,14 @@ Response RequestRouter::route(Request& req, const ServerConfig& config) {
         }
     }
 
-    if (isCgiRequest(resolvedPath, resolvedConfig))
-        return prepareCgi(req, resolvedPath, config, resolvedConfig);
+    if (isCgiRequest(resolvedPath))
+        return prepareCgi(req, resolvedPath, config);
 
     switch (req.getMethod()) {
         case GET:
-            return handleGet(req, resolvedPath, resolvedConfig);
+            return handleGet(req, resolvedPath);
         case POST:
-            return handlePost(req, resolvedPath, resolvedConfig);
+            return handlePost(req, resolvedPath);
         case DELETE:
             return handleDelete(resolvedPath);
         default:
