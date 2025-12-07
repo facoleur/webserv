@@ -31,9 +31,22 @@ Server::~Server() {
 ClientContext::ClientContext(void) : closeAfterResponses(false), selectedServer(-1) {
 }
 
-// if client disconnects => go through client requests and check each request's CGIinfo.
-// If CGIInfo is there (exists), then end it with
-//
+// n.b: we cleanup CGIs but don't send any responses to the queue
+void Server::cleanUpClientCgis(ClientContext& client, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
+
+    while (!client.requests.empty()) {
+        Request& req = client.requests.front();
+        if (req.cgiInfo.exists) {
+            int cgiWriteFd = req.cgiInfo.getWriteFd();
+            if (cgiWriteFd >= 0) {
+                LOG_DEBUG("cleanUpClientCgis(): FOUND ONE REQUEST WITH CGI");
+                handleCgiError(cgiWriteFd, pfds, nfds,
+                               NO_STATUS); // NO_STATUS: so handleCgiError() doesn't call handleRequests()
+            }
+        }
+        client.requests.pop();
+    }
+}
 
 void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pfds)[MAX_EVENTS]) {
     LOG_DEBUG("checkTimeouts()");
@@ -66,7 +79,7 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
 
             ++itClient; // to avoid issues when client is removed from contextMap in disconnectClient()
             LOG_DEBUG("Client timed out after (in theory) " + toString(CLIENT_TIMEOUT) + " seconds)");
-
+            cleanUpClientCgis(client, pfds, nfds);
             disconnectClient(j, clientFd, pfds, nfds, contextMap);
             continue; // skip the ++itClient
         } else

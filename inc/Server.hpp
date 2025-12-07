@@ -14,7 +14,7 @@
 class Response;
 
 #define MAX_EVENTS 64
-#define CLIENT_TIMEOUT 5
+#define CLIENT_TIMEOUT 10
 #define POLL_TIMEOUT 0
 #define READ_SIZE 8000
 
@@ -82,4 +82,5 @@ class Server {
     int  waitForCgiTermination(pid_t);
     void handleCgiError(const int, struct pollfd (&)[MAX_EVENTS], int&, statusCode);
     void terminateCgiProcess(pid_t);
+    void cleanUpClientCgis(ClientContext&, struct pollfd (&)[MAX_EVENTS], int&);
 };
