@@ -10,12 +10,12 @@
 #include "Response.hpp"
 #include "Utils.hpp"
 
-bool RequestRouter::isCgiRequest(const std::string& path, const LocationConfig& config) {
-    return !getCgiInterpreter(path, config).empty();
+bool RequestRouter::isCgiRequest(const std::string& path) {
+    return !getCgiInterpreter(path).empty();
 }
 
-std::string RequestRouter::getCgiInterpreter(const std::string& path, const LocationConfig& config) const {
-    const std::map<std::string, std::string>& extension = config.cgiMap;
+std::string RequestRouter::getCgiInterpreter(const std::string& path) const {
+    const std::map<std::string, std::string>& extension = _config.cgiMap;
     if (extension.empty())
         return "";
 
@@ -41,16 +41,15 @@ std::string RequestRouter::getCgiInterpreter(const std::string& path, const Loca
     return "";
 }
 
-std::vector<std::string> RequestRouter::storeCgiEnv(const Request& request, const LocationConfig& locationConfig,
-                                                    const ServerConfig& serverConfig,
-                                                    const std::string&  scriptPath) const {
+std::vector<std::string> RequestRouter::storeCgiEnv(const Request& request, const ServerConfig& serverConfig,
+                                                    const std::string& scriptPath) const {
     std::vector<std::string> envStorage;
 
     std::string protocol      = request.getProtocolVersion().empty() ? "HTTP/1.1" : request.getProtocolVersion();
     std::string host          = request.getHeader(HOST);
     std::string contentType   = request.getHeader(CONTENT_TYPE);
     std::string contentLength = request.getHeader(CONTENT_LENGTH);
-    std::string documentRoot  = locationConfig.root.empty() ? serverConfig.root : locationConfig.root;
+    std::string documentRoot  = _config.root.empty() ? serverConfig.root : _config.root;
 
     envStorage.push_back("REQUEST_METHOD=" + methodToString(request.getMethod()));
     envStorage.push_back("SCRIPT_FILENAME=" + scriptPath);
@@ -77,11 +76,10 @@ std::vector<std::string> RequestRouter::storeCgiEnv(const Request& request, cons
     return envStorage;
 }
 
-Response RequestRouter::prepareCgi(Request& req, const std::string& path, const ServerConfig& serverConfig,
-                                   const LocationConfig& resolvedConfig) {
+Response RequestRouter::prepareCgi(Request& req, const std::string& path, const ServerConfig& serverConfig) {
 
     // check path to script
-    if (!isSubPath(resolvedConfig.root, path))
+    if (!isSubPath(_config.root, path))
         return makeErrorResponse(FORBIDDEN);
 
     struct stat st;
@@ -92,13 +90,13 @@ Response RequestRouter::prepareCgi(Request& req, const std::string& path, const 
     req.cgiInfo.setScriptPath(path);
 
     // set CGI interpreter
-    std::string interpreter = getCgiInterpreter(path, resolvedConfig);
+    std::string interpreter = getCgiInterpreter(path);
     if (interpreter.empty())
         return makeErrorResponse(BAD_GATEWAY);
     req.cgiInfo.setInterpreter(interpreter);
 
     // prepare CGI env variables
-    std::vector<std::string> envStorage = storeCgiEnv(req, resolvedConfig, serverConfig, path);
+    std::vector<std::string> envStorage = storeCgiEnv(req, serverConfig, path);
     req.cgiInfo.setEnvStorage(envStorage);
 
     // set CGI owning request

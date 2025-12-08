@@ -15,23 +15,23 @@ class RequestRouter {
   protected:
     LocationConfig           _config;
     bool                     resourceExists(const std::string&);
-    bool                     isMethodAllowed(const Request&, const LocationConfig&);
-    bool                     isCgiRequest(const std::string&, const LocationConfig&);
-    std::string              getCgiInterpreter(const std::string&, const LocationConfig&) const;
-    Response                 handleGet(const Request&, std::string&, const LocationConfig&);
-    Response                 handlePost(const Request&, const std::string&, const LocationConfig&);
+    bool                     isMethodAllowed(const Request&);
+    bool                     isCgiRequest(const std::string&);
+    std::string              getCgiInterpreter(const std::string&) const;
+    Response                 handleGet(const Request&, std::string&);
+    Response                 handlePost(const Request&, const std::string&);
     Response                 handleDelete(const std::string&);
-    Response                 prepareCgi(Request&, const std::string&, const ServerConfig&, const LocationConfig&);
-    std::vector<std::string> storeCgiEnv(const Request& request, const LocationConfig& locationConfig,
-                                         const ServerConfig& serverConfig, const std::string& scriptPath) const;
+    Response                 prepareCgi(Request&, const std::string&, const ServerConfig&);
+    std::vector<std::string> storeCgiEnv(const Request& request, const ServerConfig& serverConfig,
+                                         const std::string& scriptPath) const;
     Response                 makeResponse(statusCode);
     Response                 makeErrorResponse(statusCode);
     Response                 makeRedirectResponse(const std::string&);
     void                     resolveAbsolutePath(std::string&);
     std::string              getMimeType(const std::string&);
 
-    int executeCgi(const ServerConfig&, const LocationConfig&, const Request&, const std::string&, const std::string&,
-                   std::string&, std::map<std::string, std::string>&, int&, std::string&) const;
+    int executeCgi(const ServerConfig&, const Request&, const std::string&, const std::string&, std::string&,
+                   std::map<std::string, std::string>&, int&, std::string&) const;
 
     std::string generateErrorHtml(enum statusCode);
     std::string generateHtml(const std::string&);

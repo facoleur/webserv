@@ -1,4 +1,5 @@
 #include <dirent.h>
+#include <string>
 #include <vector>
 
 enum autoIndexType { T_DIR, T_FILE };
