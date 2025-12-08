@@ -13,9 +13,9 @@
 
 class Response;
 
-#define MAX_EVENTS 64
-#define CLIENT_TIMEOUT 10
-#define POLL_TIMEOUT 0
+#define MAX_EVENTS 12000
+#define CLIENT_TIMEOUT 5
+#define POLL_TIMEOUT 50
 #define READ_SIZE 8000
 
 struct ClientContext {
