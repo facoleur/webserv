@@ -2,6 +2,7 @@
 
 #include "Server.hpp"
 #include <arpa/inet.h>
+#include <cerrno>
 #include <cstddef>
 #include <cstring>
 #include <fcntl.h>
@@ -29,6 +30,13 @@ int Server::handleNewConnection(int listener, int i, struct pollfd (&pfds)[MAX_E
         LOG_DEBUG("accept error: errno is " + toString(errno));
         return -1;
     }
+
+    if (nfds >= MAX_EVENTS) {
+        LOG_DEBUG("too many open fds (" + toString(nfds) + "), dropping new client");
+        close(newClientFd);
+        return -1;
+    }
+
     fcntl(newClientFd, F_SETFL, O_NONBLOCK);
     setPollFd(pfds[nfds], newClientFd, POLLIN, 0);
     context[newClientFd]                  = ClientContext();
@@ -69,7 +77,7 @@ int Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], i
     LOG_DEBUG("handleRead()");
     len            = read(listener, tmp, READ_SIZE);
     ctx.lastActive = time(NULL);
-    if (len == 0) { // client closed their send side (or POLLHUP ? unclear but it works)
+    if (len == 0) { // client closed their send side (EOF)
         LOG_DEBUG("read on fd " + toString(listener) + " returned 0 (client closed their send side)");
         ctx.closeAfterResponses = true;
         if (ctx.reqParser.getState() == REQ_PARSE_PARTIAL) {
@@ -99,6 +107,7 @@ int Server::handleRead(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], i
 int Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS], int& nfds, ContextMap& context) {
     LOG_DEBUG("sendResponses()");
     std::string& buf = context[listener].writeBuffer;
+
     while (!buf.empty()) {
         ssize_t sent = write(listener, buf.data(), buf.size());
         LOG_DEBUG("written bytes: " + toString(sent));
@@ -113,6 +122,7 @@ int Server::sendResponses(int listener, int i, struct pollfd (&pfds)[MAX_EVENTS]
             return -1;
         }
     }
+
     if (context[listener].closeAfterResponses) {
         LOG_DEBUG("disconnect 6: sendResponses (client.closeAfterResponses: true)");
         disconnectClient(i, listener, pfds, nfds, context);
