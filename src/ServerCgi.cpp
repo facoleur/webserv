@@ -86,12 +86,12 @@ void Server::cleanUpCgiFd(int fd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) 
     CgiFdMap::iterator it   = _cgiFdMap.find(fd);
     CgiInfo*           info = it->second.cgiInfo;
     removePollEntry(fd, pfds, nfds);
+    _cgiFdMap.erase(it);
     if (it->second.role == CGI_STDIN)
         info->setWriteFd(-1);
     else
         info->setReadFd(-1);
     close(fd);
-    _cgiFdMap.erase(it);
 }
 
 int Server::launchCgi(Request& request, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
@@ -203,7 +203,7 @@ void Server::handleCgiError(const int fd, struct pollfd (&pfds)[MAX_EVENTS], int
     terminateCgiProcess(cgiPID);
     cleanUpBothCgiFds(fd, pfds, nfds);
 
-    if (req) { // NO_STATUS => no response sent (for silent closing of client)
+    if (req && statusCode != NO_STATUS) { // NO_STATUS => no response sent (for silent closing of client)
         // request handling
         req->setStatusCode(statusCode);
         req->setState(CGI_DONE);
