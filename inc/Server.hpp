@@ -82,4 +82,5 @@ class Server {
     int  waitForCgiTermination(pid_t);
     void handleCgiError(const int, struct pollfd (&)[MAX_EVENTS], int&, statusCode);
     void terminateCgiProcess(pid_t);
+    void cleanUpClientCgis(ClientContext&, struct pollfd (&)[MAX_EVENTS], int&);
 };

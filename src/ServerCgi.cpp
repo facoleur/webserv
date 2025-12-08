@@ -1,15 +1,3 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   ServerCgi.cpp                                      :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: francis <francis@student.42.fr>            +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/12/06 17:41:39 by francis           #+#    #+#             */
-/*   Updated: 2025/12/06 21:20:36 by francis          ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 // ServerCgi.cpp
 
 #include <signal.h>
@@ -193,7 +181,6 @@ void Server::cleanUpBothCgiFds(const int fd, struct pollfd (&pfds)[MAX_EVENTS], 
 
     CgiInfo* info = it->second.cgiInfo;
     if (!info) {
-        info->exists = false;
         return;
     }
     if (info->getWriteFd() >= 0)
@@ -216,15 +203,16 @@ void Server::handleCgiError(const int fd, struct pollfd (&pfds)[MAX_EVENTS], int
     terminateCgiProcess(cgiPID);
     cleanUpBothCgiFds(fd, pfds, nfds);
 
-    // request handling
+    if (req) { // NO_STATUS => no response sent (for silent closing of client)
+        // request handling
+        req->setStatusCode(statusCode);
+        req->setState(CGI_DONE);
 
-    req->setStatusCode(statusCode);
-    req->setState(CGI_DONE);
-
-    // continue normal request handling so an error response is sent to the client
-    int clientFdIndex = findPollFdIndexFromFd(req->getClientFd(), pfds, nfds);
-    if (clientFdIndex >= 0)
-        handleRequests(req->getClientContext(), clientFdIndex, pfds, nfds);
+        // continue normal request handling so an error response is sent to the client
+        int clientFdIndex = findPollFdIndexFromFd(req->getClientFd(), pfds, nfds);
+        if (clientFdIndex >= 0)
+            handleRequests(req->getClientContext(), clientFdIndex, pfds, nfds);
+    }
     LOG_DEBUG("handleCgiError(): done");
 }
 
@@ -244,7 +232,11 @@ int Server::writePendingBodyToCgi(int writeFd, struct pollfd (&pfds)[MAX_EVENTS]
     LOG_DEBUG("writePendingBodyToCgi()");
     CgiPipeInfo& pipe = _cgiFdMap.at(writeFd);
     CgiInfo*     info = pipe.cgiInfo;
-    Request*     req  = info->getRequest();
+    if (!info)
+        return -1;
+    Request* req = info->getRequest();
+    if (!req)
+        return -1;
 
     const std::string& body      = req->getBody();
     int                written   = info->getBytesWritten();
@@ -272,11 +264,13 @@ int Server::writePendingBodyToCgi(int writeFd, struct pollfd (&pfds)[MAX_EVENTS]
 // read output from CGI
 int Server::readFromCgi(int readFd, struct pollfd (&pfds)[MAX_EVENTS], int& nfds) {
     LOG_DEBUG("readFromCgi()");
-    CgiPipeInfo& pipe   = _cgiFdMap.at(readFd);
-    CgiInfo*     info   = pipe.cgiInfo;
-    int          cgiPID = info->getCgiPID();
-    Request*     req    = info->getRequest();
-    char         buf[CGI_BUFFER_SIZE];
+    CgiPipeInfo& pipe = _cgiFdMap.at(readFd);
+    CgiInfo*     info = pipe.cgiInfo;
+    if (!info)
+        return -1;
+    int      cgiPID = info->getCgiPID();
+    Request* req    = info->getRequest();
+    char     buf[CGI_BUFFER_SIZE];
     if (!req)
         return -1;
 

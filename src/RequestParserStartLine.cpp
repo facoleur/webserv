@@ -61,7 +61,7 @@ void RequestParser::parsePathAndQueryString(std::string& split1, Request& req) {
     }
     req.setPath(split1);
 
-    if (!startsWith(req.getPath(), "http://") && !startsWith(req.getPath(), "/"))
+    if (!startsWith(req.getPath(), "http://") && !startsWith(req.getPath(), "/") && !startsWith(req.getPath(), "./"))
         throw RequestParsingError(
             "parsePathAndQueryString() - invalid request-target: does not start with \"http://\" or \"/\"");
 }
