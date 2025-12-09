@@ -1,6 +1,7 @@
 #include "ConfigParser.hpp"
 #include "Config.hpp"
 #include "Utils.hpp"
+#include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <fstream>
@@ -189,6 +190,8 @@ void ConfigParser::parseServer() {
                 msg << "invalid IPv4 address '" << ip.s << "' at line " << ip.line << ", col " << ip.col;
                 throw ParseError(msg.str());
             }
+            if (!srv.host.empty())
+                throw ParseError("Duplicate host in server block");
             srv.host = ip.s;
             expect(";", "missing ';' after host");
             continue;
@@ -260,6 +263,10 @@ bool ConfigParser::parseDirectiveListen(ServerConfig& srv) {
     int   port = toInt(p.s);
     if (port < 1 || port > 65535)
         throw ParseError("invalid listen port");
+
+    if (std::find(srv.listenPorts.begin(), srv.listenPorts.end(), port) != srv.listenPorts.end())
+        throw ParseError("duplicate port in server block");
+
     srv.listenPorts.push_back(port);
     expect(";", "missing ';' after listen");
     return true;
