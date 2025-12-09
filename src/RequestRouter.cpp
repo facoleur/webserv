@@ -62,7 +62,7 @@ std::string RequestRouter::resolvePath(const Request& req, const std::string& ro
     if (path.find("%") != std::string::npos || path.find("../") != std::string::npos ||
         path.find("./") != std::string::npos || path.find("=") != std::string::npos ||
         path.find("&") != std::string::npos) {
-        throw std::runtime_error("Not accepted in path");
+        throw std::runtime_error("Character not accepted in path");
     }
 
     std::string fsPath = root;
@@ -405,7 +405,8 @@ Response RequestRouter::route(Request& req, const ServerConfig& config) {
     try {
         resolvedPath = resolvePath(req, resolvedConfig.root);
 
-    } catch (std::exception&) {
+    } catch (std::exception& e) {
+        LOG_ERROR(e.what());
         return makeErrorResponse(BAD_REQUEST);
     }
 
