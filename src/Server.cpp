@@ -2,7 +2,9 @@
 
 #include <arpa/inet.h>
 #include <cstddef>
+#include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
 #include <iostream>
 #include <string>
 #include <sys/time.h>
@@ -26,6 +28,13 @@ Server::Server(const Config& cfg) : _config(cfg) {
 }
 
 Server::~Server() {
+}
+
+void Server::clean() {
+    LOG_INFO("Stopping server...")
+    for (int i = 0; i < nfds; i++) {
+        close(pfds[i].fd);
+    }
 }
 
 ClientContext::ClientContext(void) : closeAfterResponses(false), selectedServer(-1) {
@@ -92,8 +101,8 @@ void Server::checkTimeouts(ContextMap& contextMap, int& nfds, struct pollfd (&pf
 }
 
 void Server::run() {
-    struct pollfd    pfds[MAX_EVENTS];
-    int              nfds;
+
+    // struct pollfd    pfds[MAX_EVENTS];
     std::vector<int> listenFds;
     ContextMap       contextMap;
 

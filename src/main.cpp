@@ -1,5 +1,6 @@
 // main.cpp
 
+#include <csignal>
 #include <stdlib.h>
 
 #include "ConfigFile.hpp"
@@ -7,7 +8,16 @@
 #include "Logger.hpp"
 #include "Server.hpp"
 
+static Server* gServer = 0;
+
+void handle_sigint(int signum) {
+    (void)signum;
+    gServer->clean();
+    std::exit(0);
+}
+
 int main(int argc, char const* argv[]) {
+
     const char* path = (argc > 1) ? argv[1] : "config/default.conf";
 
     // Validate config path early
@@ -33,9 +43,12 @@ int main(int argc, char const* argv[]) {
         return 0;
     }
 
-    Server serv(cfg);
+    std::signal(SIGINT, handle_sigint);
+    Server server(cfg);
+    gServer = &server;
+
     LOG_INFO("Starting server...")
-    serv.run();
+    server.run();
 
     return 0;
 }
