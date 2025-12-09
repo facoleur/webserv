@@ -50,6 +50,11 @@ class Server {
     CgiFdMap                         _cgiFdMap;
 
   public:
+    struct pollfd pfds[MAX_EVENTS];
+    int           nfds;
+
+    void clean();
+
     Server();
     Server(const Config& cfg);
     ~Server();
